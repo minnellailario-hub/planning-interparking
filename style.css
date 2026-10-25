@@ -152,7 +152,65 @@ button.link:hover { text-decoration: underline; }
 .toast {position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg);
   padding: 8px 16px; border-radius: 6px; z-index: 30; }
 
+/* ----- Tableau / jour par jour ----- */
+.viewswitch { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+.viewswitch button { border: 0; border-radius: 0; background: var(--surface); padding: 6px 14px; font-size: 13px; }
+.viewswitch button.on { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.dayview { display: grid; gap: 10px; }
+.daycard { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; scroll-margin-top: 12px; }
+.daycard.today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.daycard.bad { border-left: 4px solid var(--danger); }
+.daycard.quiet { padding: 6px 12px; opacity: .65; }
+.daycard header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.daycard header b { font-size: 14px; margin-right: 2px; }
+.daycard .count { margin-left: auto; font-size: 12px; color: var(--muted); font-weight: 600; }
+.daycard .count.bad { color: var(--danger); }
+.badge { font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--off); color: var(--muted); }
+.badge.open { background: var(--rtt); color: var(--rtt-ink); }
+.badge.foot { background: var(--foot); color: var(--foot-ink); }
+.daycard .line { display: grid; grid-template-columns: 74px 1fr; gap: 8px; align-items: start; margin-top: 8px; }
+.daycard .lbl { font-size: 11px; font-weight: 700; padding: 4px 6px; border-radius: 5px; text-align: center; color: var(--muted); background: var(--off); }
+.daycard .line > div { display: flex; flex-wrap: wrap; gap: 5px; font-size: 13px; }
+.chip { font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 14px; border: 0; }
+.chip.empty { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted); font-weight: 500; }
+.daycard .warn { margin: 8px 0 0; font-size: 12px; color: var(--danger); }
+
+/* ----- Téléphone ----- */
+@media (max-width: 700px) {
+  body { overflow-x: hidden; }
+  .top { position: static; padding: 10px 16px; gap: 8px; }
+  .brand .logo-wrap { padding: 6px 9px; }
+  .brand .logo { height: 20px; }
+  .monthnav { order: 2; margin-left: auto; }
+  .monthnav h2 { font-size: 16px; min-width: 0; }
+  .actions { order: 3; width: 100%; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .actions::-webkit-scrollbar { display: none; }
+  .actions > * { flex: 0 0 auto; white-space: nowrap; }
+  main { padding: 10px 12px 32px; }
+  .hint { display: none; }
+  .viewswitch { display: flex; }
+  .viewswitch button { flex: 1; padding: 9px 8px; }
+  .panels { gap: 12px; }
+  .panel { padding: 12px; min-width: 0; overflow-x: auto; }
+  #grid th.name, #grid td.name { min-width: 92px; padding: 6px 6px; }
+  #grid td.cell { min-width: 42px; }
+  .legend { font-size: 11px; gap: 4px 10px; }
+  /* Fenêtres en plein écran */
+  dialog { width: 100%; max-width: none; height: 100dvh; max-height: none; margin: 0; border-radius: 0; border: 0; padding: 16px; }
+  dialog .row { gap: 8px; }
+  dialog label { flex-wrap: wrap; }
+  .list { font-size: 12px; }
+  .team { display: block; overflow-x: auto; }
+  /* Menu de modification d'une case : en bas de l'écran */
+  .popover { position: fixed; left: 0 !important; right: 0; top: auto !important; bottom: 0; border-radius: 14px 14px 0 0;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .popover button { padding: 11px 6px; font-size: 13px; }
+  .toast { bottom: 24px; max-width: calc(100% - 32px); text-align: center; }
+}
+
 @media print {
+  .viewswitch, .dayview { display: none !important; }
+  #tableView { display: block !important; }
   @page { size: A4 landscape; margin: 8mm; }
   body { background: #fff; color: #000; }
   .top .actions, .monthnav button, .hint, .panels, .popover, .toast, #grid .edit-emp, #grid tr.addrow { display: none !important; }

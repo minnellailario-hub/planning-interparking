@@ -104,9 +104,66 @@ function render() {
   }
   $('#stats').innerHTML = s;
 
+  renderDays();
   renderMatches();
   renderSettings();
 }
+
+// ----- Vue « jour par jour » (pratique sur téléphone) -----
+const DOW_FULL = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+const SHIFT_ORDER = ['8-16', '10-18', '11-19', '12-20', 'FOOT'];
+function renderDays() {
+  const v = data.view;
+  const today = new Date().toISOString().slice(0, 10);
+  const chip = (r, c, date) => `<button class="chip c-${c.kind === 'off' ? c.code : c.shift}" data-emp="${r.id}" data-date="${date}">${esc(r.name)}${c.kind === 'off' ? ` · ${SHORT[c.code] || c.code}` : ''}</button>`;
+  let h = '';
+  for (const d of v.days) {
+    const work = {}, off = [], empty = [];
+    for (const r of v.rows) {
+      const c = r.cells[d.date];
+      if (c && c.kind === 'work') (work[c.shift] = work[c.shift] || []).push(chip(r, c, d.date));
+      else if (c) off.push(chip(r, c, d.date));
+      else if (!r.isChef && !d.closed) empty.push(`<button class="chip empty" data-emp="${r.id}" data-date="${d.date}">${esc(r.name)}</button>`);
+    }
+    const badges = [
+      d.openSunday ? '<span class="badge open">Ouvert</span>' : '',
+      d.closed && !d.openSunday ? '<span class="badge">Fermé</span>' : '',
+      d.match ? `<span class="badge foot">⚽ ${d.match.time} ${esc(d.match.opponent)}</span>` : '',
+      d.weGroup.length ? `<span class="badge">Week-end : ${esc(d.weGroup.join(', '))}</span>` : '',
+    ].join('');
+    const bad = d.missing || d.warnings.length;
+    const count = d.need ? `<span class="count ${bad ? 'bad' : ''}">${d.present + d.students.length}/${d.need}</span>` : '';
+    const lines = SHIFT_ORDER.filter(t => work[t]).map(t => {
+      const label = t === 'FOOT' ? `⚽ ${d.match ? d.match.shift : ''}` : t;
+      return `<div class="line"><span class="lbl c-${t}">${label}</span><div>${work[t].join('')}</div></div>`;
+    });
+    if (d.students.length) lines.push(`<div class="line"><span class="lbl">Étudiants</span><div class="muted">${d.students.map(s => s.replace('FOOT', '⚽')).join(' · ')}</div></div>`);
+    if (off.length) lines.push(`<div class="line"><span class="lbl">Absents</span><div>${off.join('')}</div></div>`);
+    if (empty.length) lines.push(`<div class="line"><span class="lbl">À placer</span><div>${empty.join('')}</div></div>`);
+    const quiet = d.closed && !Object.keys(work).length && !off.length;
+    h += `<section class="daycard ${quiet ? 'quiet' : ''} ${d.date === today ? 'today' : ''} ${bad ? 'bad' : ''}" id="day-${d.date}">
+      <header><b>${DOW_FULL[d.dow]} ${d.day}</b>${badges}${count}</header>
+      ${quiet ? '' : lines.join('')}
+      ${d.warnings.length ? `<p class="warn">${d.warnings.map(esc).join(' · ')}</p>` : ''}
+    </section>`;
+  }
+  $('#dayView').innerHTML = h;
+}
+
+// Tableau ou jour par jour : par défaut « jour par jour » sur téléphone ; le choix est retenu.
+let view = (() => { try { return localStorage.getItem('view'); } catch { return null; } })() || (innerWidth < 700 ? 'days' : 'table');
+function applyView(scroll) {
+  $('#tableView').hidden = view !== 'table';
+  $('#dayView').hidden = view !== 'days';
+  $('#vTable').classList.toggle('on', view === 'table');
+  $('#vDays').classList.toggle('on', view === 'days');
+  try { localStorage.setItem('view', view); } catch {}
+  const t = document.getElementById('day-' + new Date().toISOString().slice(0, 10));
+  if (scroll && view === 'days' && t) t.scrollIntoView({ block: 'start' });
+}
+$('#vTable').onclick = () => { view = 'table'; applyView(); };
+$('#vDays').onclick = () => { view = 'days'; applyView(true); };
+applyView();
 
 // ----- Édition d'une case -----
 const pop = $('#popover');
@@ -122,7 +179,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('#grid .add-emp')) { openEmp(null); return; }
   const ed = e.target.closest('#grid .edit-emp');
   if (ed) { openEmp(ed.dataset.id); return; }
-  const td = e.target.closest('#grid td.cell');
+  const td = e.target.closest('#grid td.cell, #dayView .chip');
   if (td) { openPop(td); return; }
   if (!e.target.closest('#popover')) pop.hidden = true;
 });

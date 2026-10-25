@@ -67,7 +67,12 @@
 
   <main>
     <p class="hint">Clique sur une case pour la modifier : la valeur choisie est verrouillée 🔒 et gardée quand tu régénères. Mets d'abord les congés, puis « Générer le mois ». Clique sur l'en-tête d'un jour pour le marquer fermé.</p>
-    <div class="tablewrap"><table id="grid"></table></div>
+    <div class="viewswitch" role="tablist">
+      <button id="vTable" role="tab">Tableau du mois</button>
+      <button id="vDays" role="tab">Jour par jour</button>
+    </div>
+    <div class="tablewrap" id="tableView"><table id="grid"></table></div>
+    <div class="dayview" id="dayView" hidden></div>
     <div class="legend" id="legend"></div>
 
     <section class="panels">
