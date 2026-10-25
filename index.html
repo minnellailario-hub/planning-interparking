@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Planning InterParking</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#1d2330">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+  <div id="login" class="login" hidden>
+    <div class="login-card">
+      <span class="logo-wrap"><img src="logo.svg" alt="Interparking" class="logo"></span>
+      <h2>Planning du parking</h2>
+      <form id="loginForm">
+        <label class="field">Email<input type="email" id="lEmail" autocomplete="username" required></label>
+        <label class="field">Mot de passe<input type="password" id="lPass" autocomplete="current-password" required></label>
+        <button class="primary" type="submit" id="lSubmit">Se connecter</button>
+        <button class="link" type="button" id="lForgot">Mot de passe oublié ?</button>
+      </form>
+      <form id="forgotForm" hidden>
+        <p class="muted">Indique ton email : tu vas recevoir un lien « Reset password ». Ouvre l'email sur ce PC et clique sur le lien : le planning s'ouvrira pour que tu choisisses un nouveau mot de passe.</p>
+        <label class="field">Email<input type="email" id="fEmail" autocomplete="username" required></label>
+        <button type="submit" id="fSend">Recevoir le lien</button>
+        <button class="link" type="button" id="fBack">← Retour à la connexion</button>
+      </form>
+      <form id="resetForm" hidden>
+        <p class="muted">Choisis ton nouveau mot de passe (6 caractères minimum).</p>
+        <label class="field">Nouveau mot de passe<input type="password" id="rPass" autocomplete="new-password" minlength="6" required></label>
+        <label class="field">Confirme le mot de passe<input type="password" id="rPass2" autocomplete="new-password" minlength="6" required></label>
+        <button class="primary" type="submit" id="rSave">Enregistrer et ouvrir le planning</button>
+      </form>
+      <p class="login-msg" id="lMsg"></p>
+    </div>
+  </div>
+  <div id="syncBar" class="syncbar" hidden></div>
+  <div id="updateBar" class="updatebar" hidden>
+    <span id="updateText"></span>
+    <button id="updateNow" class="primary">Redémarrer pour mettre à jour</button>
+    <button id="updateLater" class="ghost" title="Plus tard : la mise à jour s'installera à la fermeture">✕</button>
+  </div>
+
+  <header class="top">
+    <div class="brand">
+      <span class="logo-wrap"><img src="logo.svg" alt="Interparking" class="logo" onerror="this.closest('.brand').classList.add('nologo')"></span>
+      <h1>Planning InterParking</h1>
+    </div>
+    <div class="monthnav">
+      <button id="prev" class="ghost" aria-label="Mois précédent">‹</button>
+      <h2 id="monthTitle"></h2>
+      <button id="next" class="ghost" aria-label="Mois suivant">›</button>
+    </div>
+    <div class="actions">
+      <button id="generate" class="primary">Générer le mois</button>
+      <button id="sickOpen">Maladie</button>
+      <button id="reqOpen">Demandes</button>
+      <button id="openTeam">Équipe</button>
+      <button id="openMatches">Calendrier</button>
+      <button id="openSettings">Paramètres</button>
+      <button id="print">Imprimer</button>
+      <a id="csv" class="btn">Excel (CSV)</a>
+    </div>
+  </header>
+
+  <main>
+    <p class="hint">Clique sur une case pour la modifier : la valeur choisie est verrouillée 🔒 et gardée quand tu régénères. Mets d'abord les congés, puis « Générer le mois ». Clique sur l'en-tête d'un jour pour le marquer fermé.</p>
+    <div class="tablewrap"><table id="grid"></table></div>
+    <div class="legend" id="legend"></div>
+
+    <section class="panels">
+      <div class="panel">
+        <h3>Alertes</h3>
+        <ul id="warnings" class="warnings"></ul>
+      </div>
+      <div class="panel">
+        <h3>Compteurs du mois</h3>
+        <table id="stats" class="stats"></table>
+      </div>
+    </section>
+  </main>
+
+  <div id="popover" class="popover" hidden></div>
+
+  <dialog id="matchesDlg">
+    <form method="dialog" class="dlg-head"><h3>Calendrier</h3><button class="ghost">✕</button></form>
+    <p class="muted">Les matchs et les dimanches d'ouverture se mettent à jour tout seuls chaque jour. Tu peux aussi forcer la mise à jour.</p>
+    <button id="refreshMatches">Mettre à jour depuis internet</button>
+
+    <h4>Dimanches d'ouverture du Westland</h4>
+    <p class="muted" id="openingsInfo"></p>
+    <table class="list" id="openList"></table>
+    <div class="row">
+      <input type="date" id="oDate"><input type="text" id="oLabel" placeholder="Raison (ex. Soldes)"><button id="addOpening">Ajouter un dimanche</button>
+    </div>
+    <p class="muted">Un dimanche ouvert est géré comme un lundi, mardi ou jeudi : 4 personnes minimum, sans étudiants. Ceux qui y travaillent ont une récup la semaine suivante.</p>
+
+    <h4>Matchs d'Anderlecht à domicile</h4>
+    <p class="muted" id="matchesInfo"></p>
+    <table class="list" id="matchList"></table>
+    <h4>Ajouter un match à la main</h4>
+    <div class="row">
+      <input type="date" id="mDate"><input type="time" id="mTime" value="20:45">
+      <input type="text" id="mOpp" placeholder="Adversaire"><button id="addMatch">Ajouter</button>
+    </div>
+    <p class="muted">Horaire foot : coup d'envoi à 20h ou plus → 16-00 · entre 17h et 20h → 15-23 · avant 17h → 11-19.</p>
+  </dialog>
+
+  <dialog id="sickDlg">
+    <form method="dialog" class="dlg-head"><h3>Déclarer une maladie</h3><button class="ghost">✕</button></form>
+    <p class="muted">Les jours sont marqués « Maladie » et l'horaire des autres est recalculé à partir du premier jour d'absence. Les jours déjà passés et les cases verrouillées 🔒 ne bougent pas.</p>
+    <div id="sickRows" class="entries"></div>
+    <div class="row"><button id="sickAdd">+ Ajouter un autre employé malade</button></div>
+    <label class="check"><input type="checkbox" id="sickRegen" checked> Recalculer l'horaire automatiquement</label>
+    <div class="row"><button id="sickSave" class="primary">Valider</button></div>
+    <div id="sickResult"></div>
+  </dialog>
+
+  <dialog id="reqDlg">
+    <form method="dialog" class="dlg-head"><h3>Demandes des employés</h3><button class="ghost">✕</button></form>
+    <p class="muted">Ex. : « Ilario voudrait faire 8-16 le jeudi 12 ». Choisis l'employé, l'horaire (ou repos, congé, RTT) et le jour. Pour un seul jour, mets la même date dans « Du » et « Au ». L'horaire des autres est recalculé autour, en changeant le moins possible.</p>
+    <div id="reqRows" class="entries"></div>
+    <div class="row"><button id="reqAdd">+ Ajouter une autre demande</button></div>
+    <label class="check"><input type="checkbox" id="reqRegen" checked> Recalculer l'horaire automatiquement</label>
+    <div class="row"><button id="reqSave" class="primary">Valider</button></div>
+    <div id="reqResult"></div>
+  </dialog>
+
+  <dialog id="empDlg">
+    <form method="dialog" class="dlg-head"><h3 id="empTitle">Employé</h3><button class="ghost">✕</button></form>
+    <div class="row">
+      <label>Nom <input type="text" id="empName"></label>
+      <label>Note <input type="text" id="empNote" placeholder="ex. CDR"></label>
+    </div>
+    <div class="row"><label>Week-end avec <select id="empGroup"></select></label></div>
+    <div class="row" id="empStartRow"><label>Commence le <input type="date" id="empStart"></label></div>
+    <label class="check"><input type="checkbox" id="empRegen" checked> Recalculer l'horaire automatiquement</label>
+    <div class="row"><button id="empSave" class="primary">Enregistrer</button></div>
+    <div id="empLeaveBox">
+      <h4>Départ (démission, licenciement…)</h4>
+      <p class="muted">La personne n'apparaît plus après son dernier jour, et l'horaire des autres est recalculé. Son historique reste visible dans les mois passés.</p>
+      <div class="row">
+        <label>Dernier jour de travail <input type="date" id="empEnd"></label>
+        <button id="empLeave">Enregistrer le départ</button>
+        <button id="empRejoin">Annuler le départ</button>
+      </div>
+      <h4>Supprimer complètement</h4>
+      <p class="muted">Efface la personne et tout son historique, y compris les mois passés. À utiliser surtout après une erreur de saisie.</p>
+      <div class="row"><button id="empDelete" class="danger">Supprimer définitivement</button></div>
+    </div>
+  </dialog>
+
+  <dialog id="teamDlg">
+    <form method="dialog" class="dlg-head"><h3>Équipe</h3><button class="ghost">✕</button></form>
+    <p class="muted">Modifie les noms, ajoute une personne ou indique une date de départ. Le groupe décide avec qui la personne a son week-end. Les dates d'arrivée et de départ sont facultatives. Une personne qui part garde son historique.</p>
+    <table class="list team" id="teamList"></table>
+    <div class="row"><button id="teamAdd">+ Ajouter une personne</button></div>
+    <h4>Chef terrain</h4>
+    <div class="row"><input type="text" id="chefNameInput"></div>
+    <div class="row" style="margin-top:14px"><button id="teamSave" class="primary">Enregistrer</button></div>
+  </dialog>
+
+  <dialog id="settingsDlg">
+    <form method="dialog" class="dlg-head"><h3>Paramètres</h3><button class="ghost">✕</button></form>
+    <h4>Roulement des week-ends</h4>
+    <p class="muted">Choisis un samedi et le groupe qui est en week-end ce jour-là. Le reste du roulement se calcule tout seul.</p>
+    <div class="row"><input type="date" id="refSat"><select id="refGroup"></select><button id="saveRotation">Enregistrer</button></div>
+    <h4>Semaine du lundi au vendredi de <span id="chefName"></span></h4>
+    <div class="row"><select id="chefWeek"></select><button id="saveChef">Enregistrer</button></div>
+    <div id="accountBox" hidden>
+      <h4>Mon compte</h4>
+      <p class="muted">Connecté : <b id="accEmail"></b></p>
+      <div class="row">
+        <label>Nouveau mot de passe <input type="password" id="accPass" autocomplete="new-password" minlength="6"></label>
+        <button id="accSave">Changer le mot de passe</button>
+      </div>
+      <div class="row"><button id="accLogout">Se déconnecter</button></div>
+    </div>
+    <p class="muted" id="appVersion" hidden></p>
+    <h4>Mois affiché</h4>
+    <div class="row">
+      <button id="unlock">Déverrouiller toutes les cases</button>
+      <button id="clear" class="danger">Vider (sauf cases verrouillées)</button>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="backend.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
