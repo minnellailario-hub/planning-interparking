@@ -28,6 +28,7 @@ button:hover, .btn:hover { border-color: var(--accent); }
 button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
 button.ghost { border-color: transparent; background: transparent; font-size: 18px; padding: 2px 10px; }
 button.danger { color: var(--danger); }
+button.account { border-color: var(--accent); color: var(--accent); }
 button:disabled { opacity: .6; cursor: wait; }
 input, select { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 6px; padding: 5px 8px; }
 

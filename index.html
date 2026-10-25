@@ -62,6 +62,7 @@
       <button id="openSettings">Paramètres</button>
       <button id="print">Imprimer</button>
       <a id="csv" class="btn">Excel (CSV)</a>
+      <button id="accountBtn" class="account" hidden title="Mon compte : mot de passe, déconnexion">👤 Mon compte</button>
     </div>
   </header>
 
@@ -167,6 +168,18 @@
     <div class="row" style="margin-top:14px"><button id="teamSave" class="primary">Enregistrer</button></div>
   </dialog>
 
+  <dialog id="accountDlg">
+    <form method="dialog" class="dlg-head"><h3>Mon compte</h3><button class="ghost">✕</button></form>
+    <p class="muted">Connecté : <b id="accEmail"></b></p>
+    <h4>Changer le mot de passe</h4>
+    <div class="row">
+      <label>Nouveau mot de passe <input type="password" id="accPass" autocomplete="new-password" minlength="6"></label>
+      <button id="accSave" class="primary">Enregistrer</button>
+    </div>
+    <h4>Se déconnecter</h4>
+    <div class="row"><button id="accLogout">Se déconnecter</button></div>
+  </dialog>
+
   <dialog id="settingsDlg">
     <form method="dialog" class="dlg-head"><h3>Paramètres</h3><button class="ghost">✕</button></form>
     <h4>Roulement des week-ends</h4>
@@ -174,15 +187,6 @@
     <div class="row"><input type="date" id="refSat"><select id="refGroup"></select><button id="saveRotation">Enregistrer</button></div>
     <h4>Semaine du lundi au vendredi de <span id="chefName"></span></h4>
     <div class="row"><select id="chefWeek"></select><button id="saveChef">Enregistrer</button></div>
-    <div id="accountBox" hidden>
-      <h4>Mon compte</h4>
-      <p class="muted">Connecté : <b id="accEmail"></b></p>
-      <div class="row">
-        <label>Nouveau mot de passe <input type="password" id="accPass" autocomplete="new-password" minlength="6"></label>
-        <button id="accSave">Changer le mot de passe</button>
-      </div>
-      <div class="row"><button id="accLogout">Se déconnecter</button></div>
-    </div>
     <p class="muted" id="appVersion" hidden></p>
     <h4>Mois affiché</h4>
     <div class="row">

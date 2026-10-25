@@ -264,7 +264,7 @@ $('#addMatch').onclick = () => {
 
 // ----- Paramètres -----
 function renderSettings() {
-  $('#accountBox').hidden = data.account.mode !== 'cloud';
+  $('#accountBtn').hidden = data.account.mode !== 'cloud';
   $('#accEmail').textContent = data.account.email || '';
   const c = data.config;
   const name = id => (c.employees.find(e => e.id === id) || {}).name || id;
@@ -490,10 +490,11 @@ $('#resetForm').onsubmit = e => {
     toast('Mot de passe changé');
   });
 };
+$('#accountBtn').onclick = () => { $('#accPass').value = ''; $('#accountDlg').showModal(); };
 $('#accSave').onclick = async () => {
   try {
     await authCall('/api/auth/password', { password: $('#accPass').value });
-    $('#accPass').value = ''; toast('Mot de passe changé');
+    $('#accPass').value = ''; $('#accountDlg').close(); toast('Mot de passe changé');
   } catch (e) { toast(e.message); }
 };
 $('#accLogout').onclick = async () => {
