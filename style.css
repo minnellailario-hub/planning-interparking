@@ -78,6 +78,10 @@ main { padding: 12px 20px 40px; }
 .c-STUDENT { background: var(--s10); color: var(--s10-ink); }
 .c-STUDENT.auto { background: transparent; color: var(--s10-ink); outline: 1px dashed var(--s10-ink); outline-offset: -1px; }
 .c-NONE { color: var(--muted); }
+.avail input { width: 46px; text-align: center; padding: 4px; }
+.avail td, .avail th { text-align: center; }
+.avail td:first-child { text-align: left; white-space: nowrap; }
+.availdates { margin: 4px 0 0; padding-left: 18px; font-size: 13px; }
 #grid tr.student td.name { color: var(--muted); font-weight: 600; }
 .c-FORMATION { background: var(--conge); color: var(--conge-ink); }
 .c-REPOS { background: var(--off); color: var(--off-ink); }

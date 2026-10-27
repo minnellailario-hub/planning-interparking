@@ -219,6 +219,17 @@
     <h4>Roulement des week-ends</h4>
     <p class="muted">Choisis un samedi et le groupe qui est en week-end ce jour-là. Le reste du roulement se calcule tout seul.</p>
     <div class="row"><input type="date" id="refSat"><select id="refGroup"></select><button id="saveRotation">Enregistrer</button></div>
+    <h4>Étudiants disponibles</h4>
+    <p class="muted">Combien d'étudiants peuvent venir chaque jour. Les jours de match, les étudiants sont en horaire foot et complètent l'équipe foot ; s'il n'y en a pas assez, des employés complètent.</p>
+    <table class="list avail" id="availTable"></table>
+    <div class="row"><label>Équipe foot les jours de match : <input type="number" id="footTeamIn" min="1" max="5" style="width:60px"> personnes minimum (5 max)</label></div>
+    <div class="row"><button id="saveAvail">Enregistrer</button></div>
+    <p class="muted">Exception pour une date précise (ex. examens, vacances scolaires) :</p>
+    <div class="row">
+      <input type="date" id="availDate"><input type="number" id="availN" min="0" max="10" style="width:60px" placeholder="nb">
+      <button id="addAvail">Ajouter l'exception</button>
+    </div>
+    <ul class="availdates" id="availDates"></ul>
     <h4>Semaine du lundi au vendredi de <span id="chefName"></span></h4>
     <div class="row"><select id="chefWeek"></select><button id="saveChef">Enregistrer</button></div>
     <p class="muted" id="appVersion" hidden></p>

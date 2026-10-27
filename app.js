@@ -290,7 +290,40 @@ $('#addMatch').onclick = () => {
 };
 
 // ----- Paramètres -----
+// Disponibilités des étudiants (index 0 = dimanche), avec les mêmes valeurs par défaut que le moteur.
+function studentAvailConfig() {
+  const s = data.config.students || {};
+  const a = s.avail || {};
+  return {
+    normal: a.normal || [0, 1, 2, 3, 4, 5, 6].map(d => (s.days || [3, 5, 6]).includes(d) ? (s.max ?? 3) : 0),
+    match: a.match || [2, 2, 2, 2, 2, 2, 4],
+    dates: a.dates || {},
+  };
+}
+function renderAvail() {
+  const a = studentAvailConfig();
+  const order = [1, 2, 3, 4, 5, 6, 0], lbl = ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'];
+  const line = (key, title) => `<tr><td>${title}</td>${order.map(d => `<td><input type="number" min="0" max="10" data-k="${key}" data-d="${d}" value="${a[key][d]}"></td>`).join('')}</tr>`;
+  $('#availTable').innerHTML = `<tr><th></th>${order.map(d => `<th>${lbl[d]}</th>`).join('')}</tr>` + line('normal', 'Jour normal') + line('match', 'Jour de match');
+  $('#footTeamIn').value = (data.config.foot && data.config.foot.team) || 4;
+  const dates = Object.entries(a.dates).sort();
+  $('#availDates').innerHTML = dates.length ? dates.map(([d, n]) => `<li>${fmtDate(d)}/${d.slice(0, 4)} : ${n} étudiant(s) <button class="ghost" data-del="${d}" title="Supprimer">✕</button></li>`).join('') : '';
+}
+$('#saveAvail').onclick = async () => {
+  const get = k => { const arr = Array(7).fill(0); document.querySelectorAll(`#availTable input[data-k="${k}"]`).forEach(i => { arr[+i.dataset.d] = Number(i.value) || 0; }); return arr; };
+  await api('/api/config', { students: { normal: get('normal'), match: get('match') }, footTeam: $('#footTeamIn').value });
+  toast('Disponibilités enregistrées');
+};
+$('#addAvail').onclick = () => {
+  if (!$('#availDate').value || $('#availN').value === '') return toast('Indique la date et le nombre d\'étudiants');
+  api('/api/config', { studentDate: { date: $('#availDate').value, n: $('#availN').value } });
+};
+$('#availDates').addEventListener('click', e => {
+  const b = e.target.closest('button[data-del]'); if (b) api('/api/config', { studentDate: { date: b.dataset.del, n: null } });
+});
+
 function renderSettings() {
+  renderAvail();
   $('#accountBtn').hidden = data.account.mode !== 'cloud';
   $('#accEmail').textContent = data.account.email || '';
   const c = data.config;
