@@ -75,6 +75,10 @@ main { padding: 12px 20px 40px; }
 .c-12-20 { background: var(--s12); color: var(--s12-ink); }
 .c-FOOT { background: var(--foot); color: var(--foot-ink); }
 .c-CHEF { background: var(--chef); color: var(--text); }
+.c-STUDENT { background: var(--s10); color: var(--s10-ink); }
+.c-STUDENT.auto { background: transparent; color: var(--s10-ink); outline: 1px dashed var(--s10-ink); outline-offset: -1px; }
+.c-NONE { color: var(--muted); }
+#grid tr.student td.name { color: var(--muted); font-weight: 600; }
 .c-FORMATION { background: var(--conge); color: var(--conge-ink); }
 .c-REPOS { background: var(--off); color: var(--off-ink); }
 .c-WE { background: var(--we); color: var(--off-ink); }

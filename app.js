@@ -76,9 +76,17 @@ function render() {
     }
     h += '</tr>';
   }
-  h += '<tr class="sum sep"><td class="name">Étudiants</td>';
-  for (const d of v.days) h += `<td class="stud ${colCls(d)}">${d.students.map(s => s.replace('FOOT', '⚽')).join('<br>')}</td>`;
-  h += '</tr><tr class="sum"><td class="name">Présents</td>';
+  // Étudiants : une ligne par étudiant ; en pointillé quand l'outil l'a ajouté tout seul.
+  v.studentRows.forEach((r, k) => {
+    h += `<tr class="student ${k === 0 ? 'sep' : ''}"><td class="name">${esc(r.name)}${k === 0 ? '<small>Étudiants</small>' : ''}</td>`;
+    for (const d of v.days) {
+      const c = r.cells[d.date];
+      const inner = !c ? '' : c.kind === 'off' ? '<span class="c-NONE">—</span>' : `<span class="c-STUDENT ${c.auto ? 'auto' : ''}">${esc(c.label)}</span>`;
+      h += `<td class="cell ${colCls(d)} ${c && c.locked ? 'lock' : ''}" data-emp="${r.id}" data-date="${d.date}">${inner}</td>`;
+    }
+    h += '</tr>';
+  });
+  h += '<tr class="sum"><td class="name">Présents</td>';
   for (const d of v.days) {
     if (d.closed && !d.present) { h += `<td class="${colCls(d)}"></td>`; continue; }
     const tot = d.present + d.students.length;
@@ -144,7 +152,9 @@ function renderDays() {
       const label = t === 'FOOT' ? `⚽ ${d.match ? d.match.shift : ''}` : t === 'CHEF' ? `Chef ${esc(data.config.chef.shift)}` : t;
       return `<div class="line"><span class="lbl c-${t}">${label}</span><div>${work[t].join('')}</div></div>`;
     });
-    if (d.students.length) lines.push(`<div class="line"><span class="lbl">Étudiants</span><div class="muted">${d.students.map(s => s.replace('FOOT', '⚽')).join(' · ')}</div></div>`);
+    const studs = d.studentRows.filter(r => !r.none).sort((a, b) => a.k - b.k);
+    if (studs.length) lines.push(`<div class="line"><span class="lbl">Étudiants</span><div>${studs.map(r =>
+      `<button class="chip c-STUDENT ${r.manual ? '' : 'auto'}" data-emp="student-${r.k}" data-date="${d.date}">Student ${r.k} · ${r.shift === 'FOOT' ? '⚽ ' + (d.match ? d.match.shift : '') : r.shift}</button>`).join('')}</div></div>`);
     if (off.length) lines.push(`<div class="line"><span class="lbl">Absents</span><div>${off.join('')}</div></div>`);
     if (empty.length) lines.push(`<div class="line"><span class="lbl">À placer</span><div>${empty.join('')}</div></div>`);
     const quiet = d.closed && !Object.keys(work).length && !off.length;
@@ -194,13 +204,22 @@ document.addEventListener('click', e => {
 function openPop(td) {
   const { emp, date } = td.dataset;
   const day = data.view.days.find(x => x.date === date);
-  const row = data.view.rows.find(r => r.id === emp);
+  const row = data.view.rows.find(r => r.id === emp) || data.view.studentRows.find(r => r.id === emp);
   const opts = row.isChef ? [data.config.chef.shift] : ['8-16', '10-18', '12-20'];
   if (day.match && !row.isChef) opts.push('FOOT');
   let h = `<div class="ttl">${esc(row.name)} – ${day.dowLabel} ${fmtDate(date)}</div>`;
+  if (row.isStudent) {
+    for (const o of opts) h += `<button data-v="${o}" class="c-${o === 'FOOT' ? 'FOOT' : 'STUDENT'}">${o === 'FOOT' ? '⚽ ' + day.match.shift : o}</button>`;
+    h += `<button data-v="NONE" class="c-NONE">Aucun étudiant</button>`;
+    h += `<button data-v="auto" class="auto">Automatique (déverrouiller)</button>`;
+    return showPop(td, h, emp, date);
+  }
   for (const o of opts) h += `<button data-v="${o}" class="c-${row.isChef ? 'CHEF' : o}">${o === 'FOOT' ? '⚽ ' + day.match.shift : o}</button>`;
   for (const k of Object.keys(OFF)) if (!row.isChef || ['REPOS', 'CONGE', 'MALADIE', 'FORMATION', 'RTT'].includes(k)) h += `<button data-v="${k}" class="c-${k}">${OFF[k]}</button>`;
   h += `<button data-v="auto" class="auto">Automatique (déverrouiller)</button>`;
+  showPop(td, h, emp, date);
+}
+function showPop(td, h, emp, date) {
   pop.innerHTML = h;
   pop.hidden = false;
   const r = td.getBoundingClientRect();
