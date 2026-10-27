@@ -56,6 +56,7 @@
     <div class="actions">
       <button id="generate" class="primary">Générer le mois</button>
       <button id="sickOpen">Maladie</button>
+      <button id="formOpen">Formation</button>
       <button id="reqOpen">Demandes</button>
       <button id="openTeam">Équipe</button>
       <button id="openMatches">Calendrier</button>
@@ -80,6 +81,11 @@
       <div class="panel">
         <h3>Alertes</h3>
         <ul id="warnings" class="warnings"></ul>
+      </div>
+      <div class="panel">
+        <h3>Rotation des matchs ⚽</h3>
+        <p class="muted small">Chaque match va de préférence à quelqu'un de différent : celui qui en a fait le moins passe en premier.</p>
+        <table id="footStats" class="stats"></table>
       </div>
       <div class="panel">
         <h3>Compteurs du mois</h3>
@@ -122,6 +128,31 @@
     <label class="check"><input type="checkbox" id="sickRegen" checked> Recalculer l'horaire automatiquement</label>
     <div class="row"><button id="sickSave" class="primary">Valider</button></div>
     <div id="sickResult"></div>
+  </dialog>
+
+  <dialog id="formDlg">
+    <form method="dialog" class="dlg-head"><h3>Déclarer une formation</h3><button class="ghost">✕</button></form>
+    <p class="muted">Les jours sont marqués « Formation » (la personne n'est pas au parking) et l'horaire des autres est recalculé à partir du premier jour. Les jours déjà passés et les cases verrouillées 🔒 ne bougent pas.</p>
+    <div id="formRows" class="entries"></div>
+    <div class="row"><button id="formAdd">+ Ajouter un autre employé en formation</button></div>
+    <label class="check"><input type="checkbox" id="formRegen" checked> Recalculer l'horaire automatiquement</label>
+    <div class="row"><button id="formSave" class="primary">Valider</button></div>
+    <div id="formResult"></div>
+  </dialog>
+
+  <dialog id="chefDlg">
+    <form method="dialog" class="dlg-head"><h3>Chef terrain</h3><button class="ghost">✕</button></form>
+    <p class="muted">Le chef terrain ne compte pas dans le minimum de personnes par jour.</p>
+    <div class="row">
+      <label>Nom <input type="text" id="chefNameIn"></label>
+      <label>Note <input type="text" id="chefNoteIn" placeholder="ex. Chef Terrain"></label>
+    </div>
+    <div class="row"><label>Horaire <input type="text" id="chefShiftIn" placeholder="11-19" size="7"></label></div>
+    <h4>Jours de travail</h4>
+    <div class="row" id="chefDaysIn"></div>
+    <label class="check"><input type="checkbox" id="chefMonthlyIn"> Une semaine par mois, il travaille du lundi au vendredi (son week-end)</label>
+    <p class="muted">La semaine concernée se choisit dans Paramètres.</p>
+    <div class="row"><button id="chefSave" class="primary">Enregistrer</button></div>
   </dialog>
 
   <dialog id="reqDlg">

@@ -1,8 +1,8 @@
 'use strict';
 const $ = s => document.querySelector(s);
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-const OFF = { REPOS: 'Repos', WE: 'Week-end', RTT: 'RTT', RECUP: 'Récup foot', CONGE: 'Congé', MALADIE: 'Maladie' };
-const SHORT = { REPOS: 'R', WE: 'WE', RTT: 'RTT', RECUP: 'Réc', CONGE: 'CG', MALADIE: 'Mal' };
+const OFF = { REPOS: 'Repos', WE: 'Week-end', RTT: 'RTT', RECUP: 'Récup foot', CONGE: 'Congé', MALADIE: 'Maladie', FORMATION: 'Formation' };
+const SHORT = { REPOS: 'R', WE: 'WE', RTT: 'RTT', RECUP: 'Réc', CONGE: 'CG', MALADIE: 'Mal', FORMATION: 'For' };
 
 let month = (() => {
   try { const m = localStorage.getItem('month'); if (/^\d{4}-\d{2}$/.test(m)) return m; } catch {}
@@ -39,10 +39,12 @@ const addMonth = (ym, n) => { const [y, m] = ym.split('-').map(Number); const d 
 const fmtDate = d => `${d.slice(8)}/${d.slice(5, 7)}`;
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-function cellHtml(c) {
+// Couleur d'une case : le chef terrain a sa propre couleur, quel que soit son horaire.
+const shiftCls = (c, isChef) => c.kind === 'off' ? c.code : isChef ? 'CHEF' : c.shift;
+function cellHtml(c, isChef) {
   if (!c) return '';
   if (c.kind === 'off') return `<span class="c-${c.code}">${SHORT[c.code] || c.code}</span>`;
-  return `<span class="c-${c.shift}">${esc(c.label)}</span>`;
+  return `<span class="c-${shiftCls(c, isChef)}">${esc(c.label)}</span>`;
 }
 
 function render() {
@@ -67,10 +69,10 @@ function render() {
   h += '</tr></thead><tbody>';
   for (const r of v.rows) {
     if (r.isChef) h += `<tr class="addrow"><td class="name"><button class="add-emp">+ Ajouter un employé</button></td><td colspan="${v.days.length}"></td></tr>`;
-    h += `<tr class="${r.isChef ? 'chef sep' : ''}"><td class="name"><div class="namebox"><span>${esc(r.name)}${r.note ? `<small>${esc(r.note)}</small>` : ''}</span>${r.isChef ? '' : `<button class="edit-emp ghost" data-id="${r.id}" title="Modifier ou supprimer ${esc(r.name)}">✎</button>`}</div></td>`;
+    h += `<tr class="${r.isChef ? 'chef sep' : ''}"><td class="name"><div class="namebox"><span>${esc(r.name)}${r.note ? `<small>${esc(r.note)}</small>` : ''}</span>${r.isChef ? `<button class="edit-chef ghost" title="Modifier le chef terrain (nom, horaire, jours)">✎</button>` : `<button class="edit-emp ghost" data-id="${r.id}" title="Modifier ou supprimer ${esc(r.name)}">✎</button>`}</div></td>`;
     for (const d of v.days) {
       const c = r.cells[d.date];
-      h += `<td class="cell ${colCls(d)} ${c && c.locked ? 'lock' : ''}" data-emp="${r.id}" data-date="${d.date}">${cellHtml(c)}</td>`;
+      h += `<td class="cell ${colCls(d)} ${c && c.locked ? 'lock' : ''}" data-emp="${r.id}" data-date="${d.date}">${cellHtml(c, r.isChef)}</td>`;
     }
     h += '</tr>';
   }
@@ -85,8 +87,8 @@ function render() {
   h += '</tr></tbody>';
   $('#grid').innerHTML = h;
 
-  $('#legend').innerHTML = [['8-16', '8-16'], ['10-18', '10-18'], ['12-20', '12-20'], ['FOOT', '⚽ Horaire foot'], ['11-19', 'Chef terrain'],
-    ['REPOS', 'R = Repos'], ['WE', 'WE = Week-end'], ['RTT', 'RTT'], ['RECUP', 'Réc = Récup foot'], ['CONGE', 'CG = Congé / Mal = Maladie']]
+  $('#legend').innerHTML = [['8-16', '8-16'], ['10-18', '10-18'], ['12-20', '12-20'], ['FOOT', '⚽ Horaire foot'], ['CHEF', 'Chef terrain'],
+    ['REPOS', 'R = Repos'], ['WE', 'WE = Week-end'], ['RTT', 'RTT'], ['RECUP', 'Réc = Récup foot'], ['CONGE', 'CG = Congé / Mal = Maladie'], ['FORMATION', 'For = Formation']]
     .map(([c, l]) => `<span><span class="sw c-${c}">&nbsp;</span>${l}</span>`).join('');
 
   $('#warnings').innerHTML = !v.generated ? '<li class="ok">Mois pas encore généré.</li>'
@@ -104,6 +106,11 @@ function render() {
   }
   $('#stats').innerHTML = s;
 
+  // Rotation des matchs : du moins de matchs au plus, puis le plus ancien dernier match d'abord.
+  const rot = v.stats.slice().sort((a, b) => a.footSeason - b.footSeason || (a.lastFoot || '').localeCompare(b.lastFoot || ''));
+  $('#footStats').innerHTML = '<tr><th>Employé</th><th>Ce mois</th><th>Saison</th><th>Dernier match</th></tr>'
+    + rot.map((st, k) => `<tr><td>${esc(st.name)}${k === 0 && v.stats.length > 1 ? ' <span class="badge foot">prochain</span>' : ''}</td><td>${st.foot}</td><td>${st.footSeason}</td><td>${st.lastFoot ? fmtDate(st.lastFoot) + '/' + st.lastFoot.slice(2, 4) : '—'}</td></tr>`).join('');
+
   renderDays();
   renderMatches();
   renderSettings();
@@ -111,17 +118,17 @@ function render() {
 
 // ----- Vue « jour par jour » (pratique sur téléphone) -----
 const DOW_FULL = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-const SHIFT_ORDER = ['8-16', '10-18', '11-19', '12-20', 'FOOT'];
+const SHIFT_ORDER = ['8-16', '10-18', '12-20', 'FOOT', 'CHEF'];
 function renderDays() {
   const v = data.view;
   const today = new Date().toISOString().slice(0, 10);
-  const chip = (r, c, date) => `<button class="chip c-${c.kind === 'off' ? c.code : c.shift}" data-emp="${r.id}" data-date="${date}">${esc(r.name)}${c.kind === 'off' ? ` · ${SHORT[c.code] || c.code}` : ''}</button>`;
+  const chip = (r, c, date) => `<button class="chip c-${shiftCls(c, r.isChef)}" data-emp="${r.id}" data-date="${date}">${esc(r.name)}${c.kind === 'off' ? ` · ${SHORT[c.code] || c.code}` : ''}</button>`;
   let h = '';
   for (const d of v.days) {
     const work = {}, off = [], empty = [];
     for (const r of v.rows) {
       const c = r.cells[d.date];
-      if (c && c.kind === 'work') (work[c.shift] = work[c.shift] || []).push(chip(r, c, d.date));
+      if (c && c.kind === 'work') { const k = r.isChef ? 'CHEF' : c.shift; (work[k] = work[k] || []).push(chip(r, c, d.date)); }
       else if (c) off.push(chip(r, c, d.date));
       else if (!r.isChef && !d.closed) empty.push(`<button class="chip empty" data-emp="${r.id}" data-date="${d.date}">${esc(r.name)}</button>`);
     }
@@ -134,7 +141,7 @@ function renderDays() {
     const bad = d.missing || d.warnings.length;
     const count = d.need ? `<span class="count ${bad ? 'bad' : ''}">${d.present + d.students.length}/${d.need}</span>` : '';
     const lines = SHIFT_ORDER.filter(t => work[t]).map(t => {
-      const label = t === 'FOOT' ? `⚽ ${d.match ? d.match.shift : ''}` : t;
+      const label = t === 'FOOT' ? `⚽ ${d.match ? d.match.shift : ''}` : t === 'CHEF' ? `Chef ${esc(data.config.chef.shift)}` : t;
       return `<div class="line"><span class="lbl c-${t}">${label}</span><div>${work[t].join('')}</div></div>`;
     });
     if (d.students.length) lines.push(`<div class="line"><span class="lbl">Étudiants</span><div class="muted">${d.students.map(s => s.replace('FOOT', '⚽')).join(' · ')}</div></div>`);
@@ -177,6 +184,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (e.target.closest('#grid .add-emp')) { openEmp(null); return; }
+  if (e.target.closest('#grid .edit-chef')) { openChef(); return; }
   const ed = e.target.closest('#grid .edit-emp');
   if (ed) { openEmp(ed.dataset.id); return; }
   const td = e.target.closest('#grid td.cell, #dayView .chip');
@@ -187,11 +195,11 @@ function openPop(td) {
   const { emp, date } = td.dataset;
   const day = data.view.days.find(x => x.date === date);
   const row = data.view.rows.find(r => r.id === emp);
-  const opts = row.isChef ? ['11-19'] : ['8-16', '10-18', '12-20'];
+  const opts = row.isChef ? [data.config.chef.shift] : ['8-16', '10-18', '12-20'];
   if (day.match && !row.isChef) opts.push('FOOT');
   let h = `<div class="ttl">${esc(row.name)} – ${day.dowLabel} ${fmtDate(date)}</div>`;
-  for (const o of opts) h += `<button data-v="${o}" class="c-${o}">${o === 'FOOT' ? '⚽ ' + day.match.shift : o}</button>`;
-  for (const k of Object.keys(OFF)) if (!row.isChef || ['REPOS', 'CONGE', 'MALADIE', 'RTT'].includes(k)) h += `<button data-v="${k}" class="c-${k}">${OFF[k]}</button>`;
+  for (const o of opts) h += `<button data-v="${o}" class="c-${row.isChef ? 'CHEF' : o}">${o === 'FOOT' ? '⚽ ' + day.match.shift : o}</button>`;
+  for (const k of Object.keys(OFF)) if (!row.isChef || ['REPOS', 'CONGE', 'MALADIE', 'FORMATION', 'RTT'].includes(k)) h += `<button data-v="${k}" class="c-${k}">${OFF[k]}</button>`;
   h += `<button data-v="auto" class="auto">Automatique (déverrouiller)</button>`;
   pop.innerHTML = h;
   pop.hidden = false;
@@ -344,8 +352,28 @@ function entriesDialog({ prefix, endpoint, withValue, describe }) {
 }
 entriesDialog({ prefix: 'sick', endpoint: '/api/sick', withValue: false,
   describe: (name, s, period) => `${name} est en maladie ${period}.` });
+entriesDialog({ prefix: 'form', endpoint: '/api/formation', withValue: false,
+  describe: (name, s, period) => `${name} est en formation ${period}.` });
 entriesDialog({ prefix: 'req', endpoint: '/api/requests', withValue: true,
   describe: (name, s, period) => `${name} : ${(REQUEST_CHOICES.find(c => c[0] === s.value) || [, s.value])[1]} ${period}.` });
+
+// ----- Chef terrain : nom, horaire, jours -----
+const DOW_SHORT = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+function openChef() {
+  const ch = data.config.chef;
+  const days = ch.days || [2, 3, 4, 5, 6];
+  $('#chefNameIn').value = ch.name;
+  $('#chefNoteIn').value = ch.note || '';
+  $('#chefShiftIn').value = ch.shift;
+  $('#chefDaysIn').innerHTML = [1, 2, 3, 4, 5, 6].map(d => `<label class="check"><input type="checkbox" value="${d}" ${days.includes(d) ? 'checked' : ''}> ${DOW_SHORT[d]}</label>`).join('');
+  $('#chefMonthlyIn').checked = ch.monthlyWeek !== false;
+  $('#chefDlg').showModal();
+}
+$('#chefSave').onclick = async () => {
+  const days = [...document.querySelectorAll('#chefDaysIn input:checked')].map(i => Number(i.value));
+  await api('/api/chef', { name: $('#chefNameIn').value, note: $('#chefNoteIn').value, shift: $('#chefShiftIn').value, days, monthlyWeek: $('#chefMonthlyIn').checked });
+  $('#chefDlg').close(); toast('Chef terrain enregistré');
+};
 
 // ----- Une personne : ajouter / modifier / départ / supprimer -----
 let empId = null;

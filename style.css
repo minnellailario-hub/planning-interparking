@@ -53,8 +53,8 @@ main { padding: 12px 20px 40px; }
 #grid th.name, #grid td.name { position: sticky; left: 0; background: var(--surface); text-align: left; padding: 6px 10px; z-index: 1; min-width: 120px; border-left: 0; }
 #grid td.name small { color: var(--muted); display: block; font-size: 10px; }
 #grid .namebox { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-#grid .edit-emp { font-size: 14px; padding: 2px 6px; color: var(--muted); opacity: .6; }
-#grid tr:hover .edit-emp { opacity: 1; }
+#grid .edit-emp, #grid .edit-chef { font-size: 14px; padding: 2px 6px; color: var(--muted); opacity: .6; }
+#grid tr:hover .edit-emp, #grid tr:hover .edit-chef { opacity: 1; }
 #grid .edit-emp:hover { color: var(--accent); border-color: var(--line-strong); }
 #grid tr.addrow td { padding: 6px 10px; border-bottom: 1px solid var(--line); }
 #grid .add-emp { font-size: 12px; padding: 4px 10px; color: var(--accent); border-style: dashed; white-space: nowrap; }
@@ -74,7 +74,8 @@ main { padding: 12px 20px 40px; }
 .c-10-18 { background: var(--s10); color: var(--s10-ink); }
 .c-12-20 { background: var(--s12); color: var(--s12-ink); }
 .c-FOOT { background: var(--foot); color: var(--foot-ink); }
-.c-11-19 { background: var(--chef); color: var(--text); }
+.c-CHEF { background: var(--chef); color: var(--text); }
+.c-FORMATION { background: var(--conge); color: var(--conge-ink); }
 .c-REPOS { background: var(--off); color: var(--off-ink); }
 .c-WE { background: var(--we); color: var(--off-ink); }
 .c-RTT { background: var(--rtt); color: var(--rtt-ink); }
@@ -89,7 +90,8 @@ main { padding: 12px 20px 40px; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 10px 0 0; font-size: 12px; color: var(--muted); }
 .legend span.sw { display: inline-block; padding: 1px 6px; border-radius: 4px; font-weight: 600; margin-right: 4px; }
 
-.panels { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-top: 16px; }
+.muted.small { font-size: 12px; margin: -4px 0 8px; }
 @media (max-width: 900px) { .panels { grid-template-columns: 1fr; } main, .top { padding-left: 16px; padding-right: 16px; } }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; }
 .panel h3 { margin: 0 0 8px; font-size: 14px; }
@@ -214,7 +216,7 @@ button.link:hover { text-decoration: underline; }
   #tableView { display: block !important; }
   @page { size: A4 landscape; margin: 8mm; }
   body { background: #fff; color: #000; }
-  .top .actions, .monthnav button, .hint, .panels, .popover, .toast, #grid .edit-emp, #grid tr.addrow { display: none !important; }
+  .top .actions, .monthnav button, .hint, .panels, .popover, .toast, #grid .edit-emp, #grid .edit-chef, #grid tr.addrow { display: none !important; }
   .top { position: static; border: 0; padding: 0 0 6px; }
   main { padding: 0; }
   .tablewrap { border: 0; overflow: visible; }
