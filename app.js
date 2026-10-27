@@ -126,7 +126,7 @@ function render() {
 
 // ----- Vue « jour par jour » (pratique sur téléphone) -----
 const DOW_FULL = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-const SHIFT_ORDER = ['8-16', '10-18', '12-20', 'FOOT', 'CHEF'];
+const SHIFT_ORDER = ['8-16', '10-18', '11-19', '12-20', 'FOOT', 'CHEF'];
 function renderDays() {
   const v = data.view;
   const today = new Date().toISOString().slice(0, 10);
@@ -205,7 +205,7 @@ function openPop(td) {
   const { emp, date } = td.dataset;
   const day = data.view.days.find(x => x.date === date);
   const row = data.view.rows.find(r => r.id === emp) || data.view.studentRows.find(r => r.id === emp);
-  const opts = row.isChef ? [data.config.chef.shift] : ['8-16', '10-18', '12-20'];
+  const opts = row.isChef ? [data.config.chef.shift] : day.openSunday ? ['11-19'] : ['8-16', '10-18', '12-20'];
   if (day.match && !row.isChef) opts.push('FOOT');
   let h = `<div class="ttl">${esc(row.name)} – ${day.dowLabel} ${fmtDate(date)}</div>`;
   if (row.isStudent) {
@@ -297,6 +297,7 @@ function studentAvailConfig() {
   return {
     normal: a.normal || [0, 1, 2, 3, 4, 5, 6].map(d => (s.days || [3, 5, 6]).includes(d) ? (s.max ?? 3) : 0),
     match: a.match || [2, 2, 2, 2, 2, 2, 4],
+    openSunday: a.openSunday ?? 3,
     dates: a.dates || {},
   };
 }
@@ -305,13 +306,14 @@ function renderAvail() {
   const order = [1, 2, 3, 4, 5, 6, 0], lbl = ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'];
   const line = (key, title) => `<tr><td>${title}</td>${order.map(d => `<td><input type="number" min="0" max="10" data-k="${key}" data-d="${d}" value="${a[key][d]}"></td>`).join('')}</tr>`;
   $('#availTable').innerHTML = `<tr><th></th>${order.map(d => `<th>${lbl[d]}</th>`).join('')}</tr>` + line('normal', 'Jour normal') + line('match', 'Jour de match');
-  $('#footTeamIn').value = (data.config.foot && data.config.foot.team) || 4;
+  $('#footTeamIn').value = (data.config.foot && data.config.foot.team) || 3;
+  $('#openSunIn').value = a.openSunday;
   const dates = Object.entries(a.dates).sort();
   $('#availDates').innerHTML = dates.length ? dates.map(([d, n]) => `<li>${fmtDate(d)}/${d.slice(0, 4)} : ${n} étudiant(s) <button class="ghost" data-del="${d}" title="Supprimer">✕</button></li>`).join('') : '';
 }
 $('#saveAvail').onclick = async () => {
   const get = k => { const arr = Array(7).fill(0); document.querySelectorAll(`#availTable input[data-k="${k}"]`).forEach(i => { arr[+i.dataset.d] = Number(i.value) || 0; }); return arr; };
-  await api('/api/config', { students: { normal: get('normal'), match: get('match') }, footTeam: $('#footTeamIn').value });
+  await api('/api/config', { students: { normal: get('normal'), match: get('match'), openSunday: $('#openSunIn').value }, footTeam: $('#footTeamIn').value });
   toast('Disponibilités enregistrées');
 };
 $('#addAvail').onclick = () => {
