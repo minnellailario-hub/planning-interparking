@@ -2,7 +2,7 @@
 const $ = s => document.querySelector(s);
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 const OFF = { REPOS: 'Repos', WE: 'Week-end', RTT: 'RTT', RECUP: 'Récup foot', CONGE: 'Congé', MALADIE: 'Maladie', FORMATION: 'Formation' };
-const SHORT = { REPOS: 'R', WE: 'WE', RTT: 'RTT', RECUP: 'Réc', CONGE: 'CG', MALADIE: 'Mal', FORMATION: 'For' };
+const SHORT = { REPOS: 'R', WE: 'WE', RTT: 'RTT', RECUP: 'Réc', CONGE: 'CG', MALADIE: 'M', FORMATION: 'For' };
 
 let month = (() => {
   try { const m = localStorage.getItem('month'); if (/^\d{4}-\d{2}$/.test(m)) return m; } catch {}
@@ -51,7 +51,7 @@ function render() {
   const v = data.view;
   const [y, m] = month.split('-').map(Number);
   $('#monthTitle').textContent = `${MONTHS[m - 1]} ${y}`;
-  $('#csv').href = `/api/export.csv?month=${month}`;
+  $('#csv').href = `/api/export.xlsx?month=${month}`;
   try { localStorage.setItem('month', month); } catch {}
   $('#syncBar').hidden = !data.syncError;
   $('#syncBar').textContent = data.syncError || '';
@@ -88,7 +88,7 @@ function render() {
   $('#grid').innerHTML = h;
 
   $('#legend').innerHTML = [['8-16', '8-16'], ['10-18', '10-18'], ['12-20', '12-20'], ['FOOT', '⚽ Horaire foot'], ['CHEF', 'Chef terrain'],
-    ['REPOS', 'R = Repos'], ['WE', 'WE = Week-end'], ['RTT', 'RTT'], ['RECUP', 'Réc = Récup foot'], ['CONGE', 'CG = Congé / Mal = Maladie'], ['FORMATION', 'For = Formation']]
+    ['REPOS', 'R = Repos'], ['WE', 'WE = Week-end'], ['RTT', 'RTT'], ['RECUP', 'Réc = Récup foot'], ['CONGE', 'CG = Congé'], ['MALADIE', 'M = Maladie'], ['FORMATION', 'For = Formation']]
     .map(([c, l]) => `<span><span class="sw c-${c}">&nbsp;</span>${l}</span>`).join('');
 
   $('#warnings').innerHTML = !v.generated ? '<li class="ok">Mois pas encore généré.</li>'
@@ -367,11 +367,12 @@ function openChef() {
   $('#chefShiftIn').value = ch.shift;
   $('#chefDaysIn').innerHTML = [1, 2, 3, 4, 5, 6].map(d => `<label class="check"><input type="checkbox" value="${d}" ${days.includes(d) ? 'checked' : ''}> ${DOW_SHORT[d]}</label>`).join('');
   $('#chefMonthlyIn').checked = ch.monthlyWeek !== false;
+  $('#parkChiefIn').value = (data.config.parkChief && data.config.parkChief.name) || '';
   $('#chefDlg').showModal();
 }
 $('#chefSave').onclick = async () => {
   const days = [...document.querySelectorAll('#chefDaysIn input:checked')].map(i => Number(i.value));
-  await api('/api/chef', { name: $('#chefNameIn').value, note: $('#chefNoteIn').value, shift: $('#chefShiftIn').value, days, monthlyWeek: $('#chefMonthlyIn').checked });
+  await api('/api/chef', { name: $('#chefNameIn').value, note: $('#chefNoteIn').value, shift: $('#chefShiftIn').value, days, monthlyWeek: $('#chefMonthlyIn').checked, parkChief: $('#parkChiefIn').value });
   $('#chefDlg').close(); toast('Chef terrain enregistré');
 };
 
@@ -545,10 +546,10 @@ if (window.planningApp) {
 // Version web : export Excel fabriqué dans la page.
 if (backend) $('#csv').addEventListener('click', async e => {
   e.preventDefault();
-  const out = await backend.handle('GET', '/api/export.csv', { month }, {});
-  if (!out.csv) return toast((out.json && out.json.error) || 'Export impossible');
+  const out = await backend.handle('GET', '/api/export.xlsx', { month }, {});
+  if (!out.xlsx) return toast((out.json && out.json.error) || 'Export impossible');
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([out.csv], { type: 'text/csv;charset=utf-8' }));
+  a.href = URL.createObjectURL(new Blob([out.xlsx], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
   a.download = out.filename;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);

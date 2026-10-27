@@ -62,7 +62,7 @@
       <button id="openMatches">Calendrier</button>
       <button id="openSettings">Paramètres</button>
       <button id="print">Imprimer</button>
-      <a id="csv" class="btn">Excel (CSV)</a>
+      <a id="csv" class="btn">Excel</a>
       <button id="accountBtn" class="account" hidden title="Mon compte : mot de passe, déconnexion">👤 Mon compte</button>
     </div>
   </header>
@@ -152,6 +152,9 @@
     <div class="row" id="chefDaysIn"></div>
     <label class="check"><input type="checkbox" id="chefMonthlyIn"> Une semaine par mois, il travaille du lundi au vendredi (son week-end)</label>
     <p class="muted">La semaine concernée se choisit dans Paramètres.</p>
+    <h4>Chef de parc</h4>
+    <div class="row"><label>Nom <input type="text" id="parkChiefIn" placeholder="ex. Valentino Van Driessche"></label></div>
+    <p class="muted">Affiché en premier dans l'export Excel, avec « CP » du lundi au vendredi. Laisse vide pour ne pas l'afficher.</p>
     <div class="row"><button id="chefSave" class="primary">Enregistrer</button></div>
   </dialog>
 
