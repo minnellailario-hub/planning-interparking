@@ -79,6 +79,8 @@ main { padding: 12px 20px 40px; }
 .c-STUDENT { background: var(--s10); color: var(--s10-ink); }
 .c-STUDENT.auto { background: transparent; color: var(--s10-ink); outline: 1px dashed var(--s10-ink); outline-offset: -1px; }
 .c-NONE { color: var(--muted); }
+.stats td.footlist { text-align: left; }
+.footlist span { display: inline-block; margin: 1px 4px 1px 0; padding: 1px 7px; border-radius: 10px; font-size: 11px; background: var(--foot); color: var(--foot-ink); white-space: nowrap; }
 .avail input { width: 46px; text-align: center; padding: 4px; }
 .avail td, .avail th { text-align: center; }
 .avail td:first-child { text-align: left; white-space: nowrap; }

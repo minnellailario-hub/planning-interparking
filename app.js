@@ -116,8 +116,9 @@ function render() {
 
   // Rotation des matchs : du moins de matchs au plus, puis le plus ancien dernier match d'abord.
   const rot = v.stats.slice().sort((a, b) => a.footSeason - b.footSeason || (a.lastFoot || '').localeCompare(b.lastFoot || ''));
-  $('#footStats').innerHTML = '<tr><th>Employé</th><th>Ce mois</th><th>Saison</th><th>Dernier match</th></tr>'
-    + rot.map((st, k) => `<tr><td>${esc(st.name)}${k === 0 && v.stats.length > 1 ? ' <span class="badge foot">prochain</span>' : ''}</td><td>${st.foot}</td><td>${st.footSeason}</td><td>${st.lastFoot ? fmtDate(st.lastFoot) + '/' + st.lastFoot.slice(2, 4) : '—'}</td></tr>`).join('');
+  $('#footStats').innerHTML = '<tr><th>Employé</th><th>Ce mois</th><th>Saison</th><th>Matchs de la saison</th></tr>'
+    + rot.map((st, k) => `<tr><td>${esc(st.name)}${k === 0 && v.stats.length > 1 ? ' <span class="badge foot">prochain</span>' : ''}</td><td>${st.foot}</td><td>${st.footSeason}</td>
+      <td class="footlist">${st.footList.length ? st.footList.map(m => `<span>${fmtDate(m.date)}${m.opponent ? ' · ' + esc(m.opponent) : ''}</span>`).join('') : '—'}</td></tr>`).join('');
 
   renderDays();
   renderMatches();
