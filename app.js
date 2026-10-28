@@ -511,24 +511,25 @@ function entriesDialog({ prefix, endpoint, withValue, describe }) {
   const el = id => $('#' + prefix + id);
   function render() {
     const opts = activeEmps();
+    // Formulaire vide au départ : on ajoute une ligne et on choisit l'employé (personne n'est pré-sélectionné).
+    if (!rows.length) { el('Rows').innerHTML = '<p class="muted empty-rows">Aucun employé pour le moment. Clique sur le bouton ci-dessous pour en ajouter un.</p>'; return; }
     el('Rows').innerHTML = rows.map((s, i) => `
       <div class="row">
-        <label>Employé <select data-i="${i}" data-k="empId">${opts.map(e => `<option value="${e.id}" ${e.id === s.empId ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select></label>
+        <label>Employé <select data-i="${i}" data-k="empId"><option value="" ${s.empId ? '' : 'selected'} disabled>— Choisir —</option>${opts.map(e => `<option value="${e.id}" ${e.id === s.empId ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select></label>
         ${withValue ? `<label>Quoi <select data-i="${i}" data-k="value">${REQUEST_CHOICES.map(([v, l]) => `<option value="${v}" ${v === s.value ? 'selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
         <label>Du <input type="date" data-i="${i}" data-k="from" value="${s.from}"></label>
         <label>Au <input type="date" data-i="${i}" data-k="to" value="${s.to}"></label>
-        ${rows.length > 1 ? `<button data-rm="${i}" class="ghost" title="Retirer">✕</button>` : ''}
+        <button data-rm="${i}" class="ghost" title="Retirer cette ligne">✕</button>
       </div>`).join('');
   }
-  const blank = from => ({ empId: activeEmps()[0].id, value: '8-16', from, to: from });
+  const blank = from => ({ empId: '', value: '8-16', from, to: from });
   el('Open').onclick = () => {
-    rows = [blank(today())];
+    rows = [];
     render(); el('Result').innerHTML = ''; el('Dlg').showModal();
   };
   el('Add').onclick = () => {
     const last = rows[rows.length - 1];
-    const next = withValue ? last.empId : (activeEmps().find(e => !rows.some(r => r.empId === e.id)) || activeEmps()[0]).id;
-    rows.push({ ...last, empId: next });
+    rows.push(last ? { ...last, empId: '' } : blank(today()));
     render();
   };
   el('Rows').addEventListener('change', e => {
@@ -541,6 +542,8 @@ function entriesDialog({ prefix, endpoint, withValue, describe }) {
     rows.splice(Number(b.dataset.rm), 1); render();
   });
   el('Save').onclick = async e => {
+    if (!rows.length) return toast('Ajoute au moins un employé');
+    if (rows.some(s => !s.empId)) return toast("Choisis l'employé sur chaque ligne");
     if (rows.some(s => !s.from || !s.to)) return toast('Indique les dates');
     e.target.disabled = true; e.target.textContent = 'Calcul en cours…';
     try {
