@@ -122,6 +122,7 @@ function render() {
 
   renderDays();
   renderDashboard();
+  renderHr();
   renderMatches();
   renderSettings();
   $('#alertChip').hidden = !v.warnings.length;
@@ -157,6 +158,61 @@ function renderDashboard() {
   ].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 6);
   $('#dashUpcoming').innerHTML = events.length ? '<ul class="events">' + events.map(e => `<li><span class="ev-date">${fmtDate(e.date)}</span>${e.html}</li>`).join('') + '</ul>' : '<p class="muted">Rien de prévu.</p>';
 }
+
+// ----- RH : remarques par personne -----
+let hrSel = null, hrType = 'positive', hrFilter = 'all';
+const hrWhen = iso => new Date(iso).toLocaleString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+function renderHr() {
+  const emps = data.config.employees.filter(e => !e.end || e.end >= today());
+  const notes = (data.hr && data.hr.notes) || [];
+  if (!emps.some(e => e.id === hrSel)) hrSel = emps.length ? emps[0].id : null;
+  const count = (id, t) => notes.filter(n => n.empId === id && (!t || n.type === t)).length;
+  $('#hrPeople').innerHTML = emps.map(e => `<button class="hr-person ${e.id === hrSel ? 'on' : ''}" data-emp="${e.id}">
+      <span class="avatar">${esc(e.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase())}</span>
+      <span class="who"><b>${esc(e.name)}</b><small>${count(e.id)} remarque${count(e.id) > 1 ? 's' : ''}</small></span>
+      <span class="hr-counts"><span class="pos">+${count(e.id, 'positive')}</span><span class="neg">−${count(e.id, 'negative')}</span></span>
+    </button>`).join('') || '<p class="muted">Aucun employé.</p>';
+  const emp = emps.find(e => e.id === hrSel);
+  $('#hrName').textContent = emp ? emp.name : '';
+  $('#hrSummary').textContent = emp ? `${count(emp.id, 'positive')} positive(s) · ${count(emp.id, 'negative')} négative(s)` : '';
+  const mine = notes.filter(n => emp && n.empId === emp.id && (hrFilter === 'all' || n.type === hrFilter)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  $('#hrNotes').innerHTML = mine.length ? mine.map(n => `<li class="hr-note ${n.type}">
+      <div class="hr-note-head"><span class="tag ${n.type}">${n.type === 'positive' ? '👍 Positif' : '👎 Négatif'}</span>
+        <span class="muted">${hrWhen(n.createdAt)}${n.author ? ' · ' + esc(n.author) : ''}</span>
+        <button class="ghost hr-del" data-del="${n.id}" title="Supprimer la remarque">✕</button></div>
+      <p>${esc(n.text).replace(/\n/g, '<br>')}</p></li>`).join('') : '<li class="muted">Aucune remarque pour le moment.</li>';
+}
+$('#hrPeople').addEventListener('click', e => { const b = e.target.closest('[data-emp]'); if (b) { hrSel = b.dataset.emp; renderHr(); } });
+const setHrType = t => { hrType = t; $('#hrPos').classList.toggle('on', t === 'positive'); $('#hrNeg').classList.toggle('on', t === 'negative'); };
+$('#hrPos').onclick = () => setHrType('positive');
+$('#hrNeg').onclick = () => setHrType('negative');
+$('#hrAdd').onclick = async () => {
+  if (!$('#hrText').value.trim()) return toast('Écris la remarque');
+  await api('/api/hr/add', { empId: hrSel, type: hrType, text: $('#hrText').value });
+  $('#hrText').value = ''; toast('Remarque ajoutée');
+};
+$('#hrNotes').addEventListener('click', e => {
+  const b = e.target.closest('[data-del]'); if (!b) return;
+  if (confirm('Supprimer cette remarque ?')) api('/api/hr/delete', { id: b.dataset.del });
+});
+document.querySelectorAll('.hr-filter button').forEach(b => b.onclick = () => {
+  hrFilter = b.dataset.f;
+  document.querySelectorAll('.hr-filter button').forEach(x => x.classList.toggle('on', x === b));
+  renderHr();
+});
+// Téléchargement d'un fichier Excel (en ligne : fabriqué dans la page ; en local : par le serveur).
+async function downloadXlsx(path, q) {
+  if (!backend) { location.href = path + '?' + new URLSearchParams({ month, ...q }); return; }
+  const out = await backend.handle('GET', path, { month, ...q }, {});
+  if (!out.xlsx) return toast((out.json && out.json.error) || 'Export impossible');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([out.xlsx], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  a.download = out.filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$('#hrExportAll').onclick = () => downloadXlsx('/api/export-hr.xlsx', {});
+$('#hrExportOne').onclick = () => hrSel && downloadXlsx('/api/export-hr.xlsx', { emp: hrSel });
 
 // ----- Navigation entre les pages -----
 const PAGES = [...document.querySelectorAll('.page')];

@@ -56,6 +56,7 @@
         <button class="nav" id="reqOpen" data-go="requests"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>Demandes</button>
         <div class="nav-label">Organisation</div>
         <button class="nav" id="openTeam" data-go="team"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.8.7 3 2.5 3.5 5.2"/></svg>Équipe</button>
+        <button class="nav" data-go="hr"><svg viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="18" rx="2"/><path d="M9 3.5h6v3H9zM8.5 11h7M8.5 15h7M8.5 19h4"/></svg>RH</button>
         <button class="nav" data-go="students"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21c1-4.5 4.3-7 8-7s7 2.5 8 7"/></svg>Étudiants</button>
         <button class="nav" id="openMatches" data-go="calendar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 4.5h-5L8 10z"/></svg>Matchs &amp; dimanches</button>
         <button class="nav" data-go="stats"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Statistiques</button>
@@ -184,6 +185,31 @@
         <div class="card">
           <div class="card-head"><h3>Chef terrain &amp; chef de parc</h3><button id="teamChefBtn">Modifier</button></div>
           <div id="teamChefInfo" class="muted"></div>
+        </div>
+      </section>
+
+      <!-- RH -->
+      <section class="page" data-page="hr" data-title="RH" data-sub="Remarques positives et négatives sur chaque personne de l'équipe, avec la date et l'heure d'ajout.">
+        <div class="hr-layout">
+          <div class="card hr-list">
+            <div class="card-head"><h3>Équipe</h3><button id="hrExportAll">Excel (toute l'équipe)</button></div>
+            <div id="hrPeople" class="hr-people"></div>
+          </div>
+          <div class="card hr-detail">
+            <div class="card-head"><div><h3 id="hrName"></h3><p class="muted" id="hrSummary"></p></div><button id="hrExportOne">Excel (cette personne)</button></div>
+            <div class="hr-form">
+              <div class="hr-type" role="radiogroup">
+                <button id="hrPos" class="pos on" type="button">👍 Positif</button>
+                <button id="hrNeg" class="neg" type="button">👎 Négatif</button>
+              </div>
+              <textarea id="hrText" rows="3" placeholder="Écris la remarque (ex. « Très bon accueil des clients pendant le match »)"></textarea>
+              <div class="row"><button id="hrAdd" class="primary">Ajouter la remarque</button><span class="muted">La date et l'heure sont enregistrées automatiquement.</span></div>
+            </div>
+            <div class="hr-filter viewswitch">
+              <button data-f="all" class="on">Toutes</button><button data-f="positive">Positives</button><button data-f="negative">Négatives</button>
+            </div>
+            <ul id="hrNotes" class="hr-notes"></ul>
+          </div>
         </div>
       </section>
 

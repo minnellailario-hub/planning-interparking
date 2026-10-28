@@ -295,3 +295,29 @@ button.link:hover { text-decoration: underline; }
   #grid td.cell.lock::after { content: ""; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ===== RH ===== */
+.hr-layout { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.hr-people { display: grid; gap: 6px; }
+.hr-person { width: 100%; justify-content: flex-start; gap: 10px; padding: 10px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); text-align: left; }
+.hr-person.on { background: var(--accent-soft); border-color: var(--accent); }
+.hr-person .avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--side); color: #fff; font-size: 12px; font-weight: 700; flex: 0 0 34px; }
+.hr-person .who { flex: 1; min-width: 0; display: grid; }
+.hr-person .who b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hr-person .who small { color: var(--muted); font-size: 12px; font-weight: 400; }
+.hr-counts { display: flex; gap: 4px; font-size: 12px; font-weight: 700; }
+.hr-counts .pos { color: var(--ok); } .hr-counts .neg { color: var(--danger); }
+.hr-form { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 14px; }
+.hr-form textarea { width: 100%; margin-top: 10px; border: 1px solid var(--line-strong); border-radius: 10px; padding: 10px; font: inherit; resize: vertical; background: var(--surface); }
+.hr-type { display: inline-flex; gap: 6px; }
+.hr-type button.on.pos { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); font-weight: 600; }
+.hr-type button.on.neg { background: var(--danger-soft); border-color: var(--danger); color: var(--danger); font-weight: 600; }
+.hr-filter { margin-bottom: 10px; }
+.hr-notes { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.hr-note { border: 1px solid var(--line); border-left: 4px solid var(--ok); border-radius: 12px; padding: 10px 14px; background: var(--surface); }
+.hr-note.negative { border-left-color: var(--danger); }
+.hr-note p { margin: 8px 0 0; white-space: normal; }
+.hr-note-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.hr-note-head .hr-del { margin-left: auto; color: var(--muted); }
+.tag.positive { background: var(--ok-soft); color: var(--ok); } .tag.negative { background: var(--danger-soft); color: var(--danger); }
+@media (max-width: 900px) { .hr-layout { grid-template-columns: 1fr; } }
