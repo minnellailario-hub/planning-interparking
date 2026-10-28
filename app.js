@@ -121,9 +121,68 @@ function render() {
       <td class="footlist">${st.footList.length ? st.footList.map(m => `<span>${fmtDate(m.date)}${m.opponent ? ' · ' + esc(m.opponent) : ''}</span>`).join('') : '—'}</td></tr>`).join('');
 
   renderDays();
+  renderDashboard();
   renderMatches();
   renderSettings();
+  $('#alertChip').hidden = !v.warnings.length;
+  $('#alertChip').textContent = `⚠ ${v.warnings.length} alerte${v.warnings.length > 1 ? 's' : ''}`;
 }
+
+// ----- Tableau de bord -----
+function renderDashboard() {
+  const v = data.view;
+  const today = new Date().toISOString().slice(0, 10);
+  const sum = k => v.stats.reduce((n, s) => n + (s[k] || 0), 0);
+  const nextMatch = (data.matches || []).filter(m => m.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
+  const nextOpen = (data.openings || []).filter(o => !o.ignored && o.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
+  const students = v.days.reduce((n, d) => n + d.studentRows.filter(r => !r.none).length, 0);
+  const longDate = d => new Date(d + 'T12:00:00').toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long' });
+  const kpi = (cls, label, value, sub, go) => `<button class="kpi ${cls}" data-go="${go}"><span class="kpi-label">${label}</span><span class="kpi-value">${value}</span><span class="kpi-sub">${sub}</span></button>`;
+  $('#dashKpis').innerHTML = [
+    kpi(v.warnings.length ? 'bad' : 'good', 'Alertes du mois', v.generated ? v.warnings.length : '—', v.generated ? (v.warnings.length ? "à régler dans l'horaire" : 'tout est en ordre') : 'mois pas encore généré', 'planning'),
+    kpi('foot', 'Prochain match', nextMatch ? fmtDate(nextMatch.date) : '—', nextMatch ? `${esc(nextMatch.opponent)} · ${nextMatch.time}` : 'aucun match prévu', 'calendar'),
+    kpi('open', 'Prochain dimanche ouvert', nextOpen ? fmtDate(nextOpen.date) : '—', nextOpen ? esc(nextOpen.label) : 'aucun prévu', 'calendar'),
+    kpi('abs', 'Absences du mois', sum('MALADIE') + sum('FORMATION') + sum('CONGE'), `${sum('MALADIE')} maladie · ${sum('FORMATION')} formation · ${sum('CONGE')} congé`, 'sick'),
+    kpi('stud', 'Étudiants ce mois', students, 'jours-étudiant prévus', 'students'),
+  ].join('');
+  // Aujourd'hui, ou le premier jour ouvert du mois affiché si on regarde un autre mois.
+  const shown = v.days.find(d => d.date === today) || v.days.find(d => !d.closed) || v.days[0];
+  $('#dashTodayTitle').textContent = shown && shown.date === today ? 'Aujourd\'hui' : 'Premier jour du mois';
+  $('#dashTodayDate').textContent = shown ? longDate(shown.date) : '';
+  $('#dashToday').innerHTML = shown && dayCards[shown.date] ? dayCards[shown.date].replace('class="daycard', 'class="daycard plain') : '';
+  // À venir : matchs et dimanches d'ouverture.
+  const events = [
+    ...(data.matches || []).filter(m => m.date >= today).map(m => ({ date: m.date, html: `<span class="ev foot">⚽</span><div><b>${esc(m.opponent)}</b><small>${esc(m.competition || '')} · ${m.time}${m.confirmed === false ? ' · heure à confirmer' : ''}</small></div>` })),
+    ...(data.openings || []).filter(o => !o.ignored && o.date >= today).map(o => ({ date: o.date, html: `<span class="ev open">🛍</span><div><b>Dimanche d'ouverture</b><small>${esc(o.label)}${o.hours ? ' · ' + esc(o.hours) : ''}</small></div>` })),
+  ].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 6);
+  $('#dashUpcoming').innerHTML = events.length ? '<ul class="events">' + events.map(e => `<li><span class="ev-date">${fmtDate(e.date)}</span>${e.html}</li>`).join('') + '</ul>' : '<p class="muted">Rien de prévu.</p>';
+}
+
+// ----- Navigation entre les pages -----
+const PAGES = [...document.querySelectorAll('.page')];
+function go(page) {
+  const el = PAGES.find(p => p.dataset.page === page) || PAGES[0];
+  document.body.dataset.page = el.dataset.page;
+  PAGES.forEach(p => { p.hidden = p !== el; });
+  $('#pageTitle').textContent = el.dataset.title;
+  $('#pageSub').textContent = el.dataset.sub || '';
+  document.querySelectorAll('.nav[data-go]').forEach(b => b.classList.toggle('on', b.dataset.go === el.dataset.page));
+  document.body.classList.remove('menu-open');
+  try { localStorage.setItem('page', el.dataset.page); } catch {}
+  window.scrollTo(0, 0);
+}
+// Les anciennes fenêtres sont devenues des pages : « ouvrir » = aller à la page.
+PAGES.forEach(p => { p.showModal = () => go(p.dataset.page); p.close = () => {}; });
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-go]'); if (!b) return;
+  // Un raccourci (carte, action rapide) passe par le bouton du menu, qui prépare la page.
+  const nav = document.querySelector(`.nav[data-go="${b.dataset.go}"]`);
+  if (b !== nav && nav && nav.onclick) return nav.click();
+  if (!b.onclick) go(b.dataset.go);
+});
+$('#menuBtn').onclick = () => document.body.classList.toggle('menu-open');
+$('#scrim').onclick = () => document.body.classList.remove('menu-open');
+go('dashboard');
 
 // ----- Vue « jour par jour » (pratique sur téléphone) -----
 const DOW_FULL = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
@@ -159,14 +218,17 @@ function renderDays() {
     if (off.length) lines.push(`<div class="line"><span class="lbl">Absents</span><div>${off.join('')}</div></div>`);
     if (empty.length) lines.push(`<div class="line"><span class="lbl">À placer</span><div>${empty.join('')}</div></div>`);
     const quiet = d.closed && !Object.keys(work).length && !off.length;
-    h += `<section class="daycard ${quiet ? 'quiet' : ''} ${d.date === today ? 'today' : ''} ${bad ? 'bad' : ''}" id="day-${d.date}">
+    const card = `<section class="daycard ${quiet ? 'quiet' : ''} ${d.date === today ? 'today' : ''} ${bad ? 'bad' : ''}" id="day-${d.date}">
       <header><b>${DOW_FULL[d.dow]} ${d.day}</b>${badges}${count}</header>
       ${quiet ? '' : lines.join('')}
       ${d.warnings.length ? `<p class="warn">${d.warnings.map(esc).join(' · ')}</p>` : ''}
     </section>`;
+    dayCards[d.date] = card;
+    h += card;
   }
   $('#dayView').innerHTML = h;
 }
+const dayCards = {};
 
 // Tableau ou jour par jour : par défaut « jour par jour » sur téléphone ; le choix est retenu.
 let view = (() => { try { return localStorage.getItem('view'); } catch { return null; } })() || (innerWidth < 700 ? 'days' : 'table');
@@ -329,7 +391,12 @@ function renderSettings() {
   renderAvail();
   $('#accountBtn').hidden = data.account.mode !== 'cloud';
   $('#accEmail').textContent = data.account.email || '';
+  $('#accountLabel').textContent = data.account.email || 'Mon compte';
   const c = data.config;
+  const ch = c.chef, days = (ch.days || [2, 3, 4, 5, 6]).map(d => DOW_SHORT[d].slice(0, 3).toLowerCase()).join(', ');
+  $('#teamChefInfo').innerHTML = `<p><b>${esc(ch.name)}</b> · chef terrain · ${esc(ch.shift)} · ${days}${ch.monthlyWeek === false ? '' : ' (une semaine par mois du lundi au vendredi)'}</p>`
+    + `<p>Chef de parc : <b>${c.parkChief && c.parkChief.name ? esc(c.parkChief.name) : 'non renseigné'}</b> (affiché dans l'export Excel)</p>`;
+  if (document.body.dataset.page === 'team') loadTeam();
   const name = id => (c.employees.find(e => e.id === id) || {}).name || id;
   $('#refSat').value = c.rotation.refSaturday;
   $('#refGroup').innerHTML = c.rotation.groups.map((g, i) => `<option value="${i}" ${i === c.rotation.refGroup ? 'selected' : ''}>${g.map(name).join(' et ')}</option>`).join('');
@@ -494,13 +561,15 @@ function renderTeam() {
       <td>${t.id ? '' : `<button data-rm="${i}">Retirer</button>`}</td>
     </tr>`).join('');
 }
-$('#openTeam').onclick = () => {
+function loadTeam() {
   const c = data.config;
   team = c.employees.map(e => ({ ...e, group: c.rotation.groups.findIndex(g => g.includes(e.id)) }));
   $('#chefNameInput').value = c.chef.name;
   renderTeam();
-  $('#teamDlg').showModal();
-};
+}
+$('#openTeam').onclick = () => { loadTeam(); $('#teamDlg').showModal(); };
+$('#teamAddEmp').onclick = () => openEmp(null);
+$('#teamChefBtn').onclick = () => openChef();
 $('#teamList').addEventListener('change', e => {
   const { i, k } = e.target.dataset; if (i === undefined) return;
   team[i][k] = e.target.value;
@@ -630,5 +699,11 @@ if (backend && 'serviceWorker' in navigator) navigator.serviceWorker.register('s
     showLogin();
     if (params.has('resetError')) loginMsg(params.get('resetError'));
     history.replaceState(null, '', here);
-  } else api('/api/state');
+  } else api('/api/state').then(restorePage);
 })();
+function restorePage() {
+  let p = 'dashboard';
+  try { p = localStorage.getItem('page') || p; } catch {}
+  const nav = document.querySelector(`.nav[data-go="${p}"]`);
+  if (nav && nav.onclick) nav.click(); else go(p);
+}

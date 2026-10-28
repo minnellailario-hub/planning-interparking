@@ -4,13 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Planning InterParking</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#1d2330">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
-<body>
+<body data-page="dashboard">
   <div id="login" class="login" hidden>
     <div class="login-card">
       <span class="logo-wrap"><img src="logo.svg" alt="Interparking" class="logo"></span>
@@ -22,7 +25,7 @@
         <button class="link" type="button" id="lForgot">Mot de passe oublié ?</button>
       </form>
       <form id="forgotForm" hidden>
-        <p class="muted">Indique ton email : tu vas recevoir un lien « Reset password ». Ouvre l'email sur ce PC et clique sur le lien : le planning s'ouvrira pour que tu choisisses un nouveau mot de passe.</p>
+        <p class="muted">Indique ton email : tu vas recevoir un lien « Reset password ». Clique sur le lien dans l'email : le planning s'ouvrira pour que tu choisisses un nouveau mot de passe.</p>
         <label class="field">Email<input type="email" id="fEmail" autocomplete="username" required></label>
         <button type="submit" id="fSend">Recevoir le lien</button>
         <button class="link" type="button" id="fBack">← Retour à la connexion</button>
@@ -36,110 +39,238 @@
       <p class="login-msg" id="lMsg"></p>
     </div>
   </div>
-  <div id="syncBar" class="syncbar" hidden></div>
-  <div id="updateBar" class="updatebar" hidden>
-    <span id="updateText"></span>
-    <button id="updateNow" class="primary">Redémarrer pour mettre à jour</button>
-    <button id="updateLater" class="ghost" title="Plus tard : la mise à jour s'installera à la fermeture">✕</button>
+
+  <div class="app">
+    <!-- ===== Barre latérale ===== -->
+    <aside class="sidebar" id="sidebar">
+      <div class="side-brand">
+        <img src="logo.svg" alt="Interparking" class="logo">
+        <span class="side-sub">Westland Shopping · Planning</span>
+      </div>
+      <nav class="side-nav">
+        <button class="nav" data-go="dashboard"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Tableau de bord</button>
+        <button class="nav" data-go="planning"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Horaire</button>
+        <div class="nav-label">Absences &amp; demandes</div>
+        <button class="nav" id="sickOpen" data-go="sick"><svg viewBox="0 0 24 24"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"/></svg>Maladie</button>
+        <button class="nav" id="formOpen" data-go="formation"><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/></svg>Formation</button>
+        <button class="nav" id="reqOpen" data-go="requests"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>Demandes</button>
+        <div class="nav-label">Organisation</div>
+        <button class="nav" id="openTeam" data-go="team"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.8.7 3 2.5 3.5 5.2"/></svg>Équipe</button>
+        <button class="nav" data-go="students"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21c1-4.5 4.3-7 8-7s7 2.5 8 7"/></svg>Étudiants</button>
+        <button class="nav" id="openMatches" data-go="calendar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 4.5h-5L8 10z"/></svg>Matchs &amp; dimanches</button>
+        <button class="nav" data-go="stats"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Statistiques</button>
+        <button class="nav" id="openSettings" data-go="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Paramètres</button>
+      </nav>
+      <div class="side-foot">
+        <button class="nav" id="accountBtn" hidden><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.3-6 8-6s7 2 8 6"/></svg><span id="accountLabel">Mon compte</span></button>
+      </div>
+    </aside>
+    <div class="scrim" id="scrim"></div>
+
+    <!-- ===== Contenu ===== -->
+    <div class="main">
+      <div id="syncBar" class="syncbar" hidden></div>
+      <div id="updateBar" class="updatebar" hidden>
+        <span id="updateText"></span>
+        <button id="updateNow" class="primary">Redémarrer pour mettre à jour</button>
+        <button id="updateLater" class="ghost" title="Plus tard : la mise à jour s'installera à la fermeture">✕</button>
+      </div>
+
+      <header class="topbar">
+        <button class="menu-btn" id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+        <div class="page-title">
+          <h1 id="pageTitle">Tableau de bord</h1>
+          <p id="pageSub"></p>
+        </div>
+        <div class="monthnav">
+          <button id="prev" class="icon-btn" aria-label="Mois précédent">‹</button>
+          <h2 id="monthTitle"></h2>
+          <button id="next" class="icon-btn" aria-label="Mois suivant">›</button>
+        </div>
+        <div class="actions">
+          <button id="generate" class="primary">Générer le mois</button>
+          <a id="csv" class="btn">Excel</a>
+          <button id="print">Imprimer</button>
+        </div>
+      </header>
+
+      <!-- Tableau de bord -->
+      <section class="page" data-page="dashboard" data-title="Tableau de bord" data-sub="Résumé du mois et points à régler.">
+        <div class="kpis" id="dashKpis"></div>
+        <div class="dash-grid">
+          <div class="card">
+            <div class="card-head"><h3 id="dashTodayTitle">Aujourd'hui</h3><span class="muted" id="dashTodayDate"></span></div>
+            <div id="dashToday"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Alertes du mois</h3></div>
+            <ul id="warnings" class="warnings"></ul>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>À venir</h3></div>
+            <div id="dashUpcoming"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Actions rapides</h3></div>
+            <div class="quick">
+              <button data-go="sick" class="q"><b>Déclarer une maladie</b><span>Recalcule l'horaire des autres</span></button>
+              <button data-go="formation" class="q"><b>Déclarer une formation</b><span>La personne n'est pas au parking</span></button>
+              <button data-go="requests" class="q"><b>Ajouter une demande</b><span>Horaire, congé, repos, RTT…</span></button>
+              <button data-go="planning" class="q"><b>Voir l'horaire</b><span>Tableau du mois ou jour par jour</span></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Horaire -->
+      <section class="page" data-page="planning" data-title="Horaire" data-sub="Clique sur une case pour la modifier : elle est verrouillée 🔒 et gardée quand tu régénères. Clique sur l'en-tête d'un jour pour le marquer fermé.">
+        <div class="planning-bar">
+          <div class="viewswitch" role="tablist">
+            <button id="vTable" role="tab">Tableau du mois</button>
+            <button id="vDays" role="tab">Jour par jour</button>
+          </div>
+          <button class="alert-chip" id="alertChip" data-go="dashboard" hidden></button>
+        </div>
+        <div class="tablewrap card flat" id="tableView"><table id="grid"></table></div>
+        <div class="dayview" id="dayView" hidden></div>
+        <div class="legend" id="legend"></div>
+      </section>
+
+      <!-- Maladie -->
+      <section class="page" id="sickDlg" data-page="sick" data-title="Maladie" data-sub="Les jours sont marqués « M » et l'horaire des autres est recalculé à partir du premier jour d'absence. Les jours passés et les cases verrouillées 🔒 ne bougent pas.">
+        <div class="card form-card">
+          <h3>Déclarer une maladie</h3>
+          <div id="sickRows" class="entries"></div>
+          <div class="row"><button id="sickAdd">+ Ajouter un autre employé malade</button></div>
+          <label class="check"><input type="checkbox" id="sickRegen" checked> Recalculer l'horaire automatiquement</label>
+          <div class="row"><button id="sickSave" class="primary">Valider</button></div>
+          <div id="sickResult"></div>
+        </div>
+      </section>
+
+      <!-- Formation -->
+      <section class="page" id="formDlg" data-page="formation" data-title="Formation" data-sub="La personne n'est pas au parking ces jours-là ; l'horaire des autres est recalculé à partir du premier jour.">
+        <div class="card form-card">
+          <h3>Déclarer une formation</h3>
+          <div id="formRows" class="entries"></div>
+          <div class="row"><button id="formAdd">+ Ajouter un autre employé en formation</button></div>
+          <label class="check"><input type="checkbox" id="formRegen" checked> Recalculer l'horaire automatiquement</label>
+          <div class="row"><button id="formSave" class="primary">Valider</button></div>
+          <div id="formResult"></div>
+        </div>
+      </section>
+
+      <!-- Demandes -->
+      <section class="page" id="reqDlg" data-page="requests" data-title="Demandes" data-sub="Ex. « Ilario voudrait faire 8-16 le jeudi 12 ». Pour un seul jour, mets la même date dans « Du » et « Au ». L'horaire des autres est recalculé en changeant le moins possible.">
+        <div class="card form-card">
+          <h3>Demandes des employés</h3>
+          <div id="reqRows" class="entries"></div>
+          <div class="row"><button id="reqAdd">+ Ajouter une autre demande</button></div>
+          <label class="check"><input type="checkbox" id="reqRegen" checked> Recalculer l'horaire automatiquement</label>
+          <div class="row"><button id="reqSave" class="primary">Valider</button></div>
+          <div id="reqResult"></div>
+        </div>
+      </section>
+
+      <!-- Équipe -->
+      <section class="page" id="teamDlg" data-page="team" data-title="Équipe" data-sub="Noms, groupes de week-end, arrivées et départs. Une personne qui part garde son historique.">
+        <div class="card">
+          <div class="card-head"><h3>Employés</h3><button id="teamAddEmp" class="primary">+ Ajouter un employé</button></div>
+          <table class="list team" id="teamList"></table>
+          <div class="row"><button id="teamAdd">+ Ajouter une ligne</button><button id="teamSave" class="primary">Enregistrer</button></div>
+          <input type="hidden" id="chefNameInput">
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Chef terrain &amp; chef de parc</h3><button id="teamChefBtn">Modifier</button></div>
+          <div id="teamChefInfo" class="muted"></div>
+        </div>
+      </section>
+
+      <!-- Étudiants -->
+      <section class="page" data-page="students" data-title="Étudiants" data-sub="Combien d'étudiants peuvent venir. Ils sont ajoutés automatiquement là où il en faut (lignes « Student 1, 2… » de l'horaire).">
+        <div class="card">
+          <h3>Disponibilités par jour</h3>
+          <p class="muted">Jours de match : l'équipe foot = 1 seul employé + des étudiants, tous en horaire foot. S'il n'y a pas assez d'étudiants, une alerte le signale.</p>
+          <table class="list avail" id="availTable"></table>
+          <div class="row"><label>Dimanches d'ouverture du Westland : 1 employé + <input type="number" id="openSunIn" min="0" max="10" style="width:64px"> étudiants (tous en 11-19)</label></div>
+          <div class="row"><label>Équipe foot les jours de match : <input type="number" id="footTeamIn" min="1" max="5" style="width:64px"> personnes au total (1 employé + étudiants)</label></div>
+          <div class="row"><button id="saveAvail" class="primary">Enregistrer</button></div>
+        </div>
+        <div class="card">
+          <h3>Exceptions</h3>
+          <p class="muted">Pour une date précise (examens, vacances scolaires…).</p>
+          <div class="row">
+            <input type="date" id="availDate"><input type="number" id="availN" min="0" max="10" style="width:64px" placeholder="nb">
+            <button id="addAvail">Ajouter l'exception</button>
+          </div>
+          <ul class="availdates" id="availDates"></ul>
+        </div>
+      </section>
+
+      <!-- Matchs & dimanches -->
+      <section class="page" id="matchesDlg" data-page="calendar" data-title="Matchs & dimanches" data-sub="Mis à jour tout seuls chaque jour depuis internet.">
+        <div class="row"><button id="refreshMatches">Mettre à jour depuis internet</button></div>
+        <div class="card">
+          <h3>Matchs d'Anderlecht à domicile</h3>
+          <p class="muted" id="matchesInfo"></p>
+          <table class="list" id="matchList"></table>
+          <h4>Ajouter un match à la main</h4>
+          <div class="row">
+            <input type="date" id="mDate"><input type="time" id="mTime" value="20:45">
+            <input type="text" id="mOpp" placeholder="Adversaire"><button id="addMatch">Ajouter</button>
+          </div>
+          <p class="muted">Horaire foot : coup d'envoi à 20h ou plus → 16-00 · entre 17h et 20h → 15-23 · avant 17h → 11-19.</p>
+        </div>
+        <div class="card">
+          <h3>Dimanches d'ouverture du Westland</h3>
+          <p class="muted" id="openingsInfo"></p>
+          <table class="list" id="openList"></table>
+          <div class="row">
+            <input type="date" id="oDate"><input type="text" id="oLabel" placeholder="Raison (ex. Soldes)"><button id="addOpening">Ajouter un dimanche</button>
+          </div>
+          <p class="muted">Un dimanche d'ouverture : 1 employé + des étudiants, tous en 11-19. L'employé a une récup la semaine suivante.</p>
+        </div>
+      </section>
+
+      <!-- Statistiques -->
+      <section class="page" data-page="stats" data-title="Statistiques" data-sub="Compteurs du mois, rotation des matchs et des samedis.">
+        <div class="card">
+          <h3>Rotation des matchs ⚽</h3>
+          <p class="muted">Chaque match va de préférence à quelqu'un de différent : celui qui en a fait le moins passe en premier.</p>
+          <div class="scroll-x"><table id="footStats" class="stats"></table></div>
+        </div>
+        <div class="card">
+          <h3>Compteurs du mois</h3>
+          <div class="scroll-x"><table id="stats" class="stats"></table></div>
+        </div>
+      </section>
+
+      <!-- Paramètres -->
+      <section class="page" id="settingsDlg" data-page="settings" data-title="Paramètres" data-sub="Roulement des week-ends, semaine du chef terrain et outils du mois.">
+        <div class="card">
+          <h3>Roulement des week-ends</h3>
+          <p class="muted">Choisis un samedi et le groupe qui est en week-end ce jour-là. Le reste du roulement se calcule tout seul.</p>
+          <div class="row"><input type="date" id="refSat"><select id="refGroup"></select><button id="saveRotation" class="primary">Enregistrer</button></div>
+        </div>
+        <div class="card">
+          <h3>Semaine du lundi au vendredi de <span id="chefName"></span></h3>
+          <div class="row"><select id="chefWeek"></select><button id="saveChef" class="primary">Enregistrer</button></div>
+        </div>
+        <div class="card">
+          <h3>Mois affiché</h3>
+          <div class="row">
+            <button id="unlock">Déverrouiller toutes les cases</button>
+            <button id="clear" class="danger">Vider (sauf cases verrouillées)</button>
+          </div>
+          <p class="muted" id="appVersion" hidden></p>
+        </div>
+      </section>
+    </div>
   </div>
-
-  <header class="top">
-    <div class="brand">
-      <span class="logo-wrap"><img src="logo.svg" alt="Interparking" class="logo" onerror="this.closest('.brand').classList.add('nologo')"></span>
-      <h1>Planning InterParking</h1>
-    </div>
-    <div class="monthnav">
-      <button id="prev" class="ghost" aria-label="Mois précédent">‹</button>
-      <h2 id="monthTitle"></h2>
-      <button id="next" class="ghost" aria-label="Mois suivant">›</button>
-    </div>
-    <div class="actions">
-      <button id="generate" class="primary">Générer le mois</button>
-      <button id="sickOpen">Maladie</button>
-      <button id="formOpen">Formation</button>
-      <button id="reqOpen">Demandes</button>
-      <button id="openTeam">Équipe</button>
-      <button id="openMatches">Calendrier</button>
-      <button id="openSettings">Paramètres</button>
-      <button id="print">Imprimer</button>
-      <a id="csv" class="btn">Excel</a>
-      <button id="accountBtn" class="account" hidden title="Mon compte : mot de passe, déconnexion">👤 Mon compte</button>
-    </div>
-  </header>
-
-  <main>
-    <p class="hint">Clique sur une case pour la modifier : la valeur choisie est verrouillée 🔒 et gardée quand tu régénères. Mets d'abord les congés, puis « Générer le mois ». Clique sur l'en-tête d'un jour pour le marquer fermé.</p>
-    <div class="viewswitch" role="tablist">
-      <button id="vTable" role="tab">Tableau du mois</button>
-      <button id="vDays" role="tab">Jour par jour</button>
-    </div>
-    <div class="tablewrap" id="tableView"><table id="grid"></table></div>
-    <div class="dayview" id="dayView" hidden></div>
-    <div class="legend" id="legend"></div>
-
-    <section class="panels">
-      <div class="panel">
-        <h3>Alertes</h3>
-        <ul id="warnings" class="warnings"></ul>
-      </div>
-      <div class="panel">
-        <h3>Rotation des matchs ⚽</h3>
-        <p class="muted small">Chaque match va de préférence à quelqu'un de différent : celui qui en a fait le moins passe en premier.</p>
-        <table id="footStats" class="stats"></table>
-      </div>
-      <div class="panel">
-        <h3>Compteurs du mois</h3>
-        <table id="stats" class="stats"></table>
-      </div>
-    </section>
-  </main>
 
   <div id="popover" class="popover" hidden></div>
 
-  <dialog id="matchesDlg">
-    <form method="dialog" class="dlg-head"><h3>Calendrier</h3><button class="ghost">✕</button></form>
-    <p class="muted">Les matchs et les dimanches d'ouverture se mettent à jour tout seuls chaque jour. Tu peux aussi forcer la mise à jour.</p>
-    <button id="refreshMatches">Mettre à jour depuis internet</button>
-
-    <h4>Dimanches d'ouverture du Westland</h4>
-    <p class="muted" id="openingsInfo"></p>
-    <table class="list" id="openList"></table>
-    <div class="row">
-      <input type="date" id="oDate"><input type="text" id="oLabel" placeholder="Raison (ex. Soldes)"><button id="addOpening">Ajouter un dimanche</button>
-    </div>
-    <p class="muted">Un dimanche ouvert est géré comme un lundi, mardi ou jeudi : 4 personnes minimum, sans étudiants. Ceux qui y travaillent ont une récup la semaine suivante.</p>
-
-    <h4>Matchs d'Anderlecht à domicile</h4>
-    <p class="muted" id="matchesInfo"></p>
-    <table class="list" id="matchList"></table>
-    <h4>Ajouter un match à la main</h4>
-    <div class="row">
-      <input type="date" id="mDate"><input type="time" id="mTime" value="20:45">
-      <input type="text" id="mOpp" placeholder="Adversaire"><button id="addMatch">Ajouter</button>
-    </div>
-    <p class="muted">Horaire foot : coup d'envoi à 20h ou plus → 16-00 · entre 17h et 20h → 15-23 · avant 17h → 11-19.</p>
-  </dialog>
-
-  <dialog id="sickDlg">
-    <form method="dialog" class="dlg-head"><h3>Déclarer une maladie</h3><button class="ghost">✕</button></form>
-    <p class="muted">Les jours sont marqués « Maladie » et l'horaire des autres est recalculé à partir du premier jour d'absence. Les jours déjà passés et les cases verrouillées 🔒 ne bougent pas.</p>
-    <div id="sickRows" class="entries"></div>
-    <div class="row"><button id="sickAdd">+ Ajouter un autre employé malade</button></div>
-    <label class="check"><input type="checkbox" id="sickRegen" checked> Recalculer l'horaire automatiquement</label>
-    <div class="row"><button id="sickSave" class="primary">Valider</button></div>
-    <div id="sickResult"></div>
-  </dialog>
-
-  <dialog id="formDlg">
-    <form method="dialog" class="dlg-head"><h3>Déclarer une formation</h3><button class="ghost">✕</button></form>
-    <p class="muted">Les jours sont marqués « Formation » (la personne n'est pas au parking) et l'horaire des autres est recalculé à partir du premier jour. Les jours déjà passés et les cases verrouillées 🔒 ne bougent pas.</p>
-    <div id="formRows" class="entries"></div>
-    <div class="row"><button id="formAdd">+ Ajouter un autre employé en formation</button></div>
-    <label class="check"><input type="checkbox" id="formRegen" checked> Recalculer l'horaire automatiquement</label>
-    <div class="row"><button id="formSave" class="primary">Valider</button></div>
-    <div id="formResult"></div>
-  </dialog>
-
+  <!-- Fenêtres -->
   <dialog id="chefDlg">
     <form method="dialog" class="dlg-head"><h3>Chef terrain</h3><button class="ghost">✕</button></form>
     <p class="muted">Le chef terrain ne compte pas dans le minimum de personnes par jour.</p>
@@ -156,16 +287,6 @@
     <div class="row"><label>Nom <input type="text" id="parkChiefIn" placeholder="ex. Valentino Van Driessche"></label></div>
     <p class="muted">Affiché en premier dans l'export Excel, avec « CP » du lundi au vendredi. Laisse vide pour ne pas l'afficher.</p>
     <div class="row"><button id="chefSave" class="primary">Enregistrer</button></div>
-  </dialog>
-
-  <dialog id="reqDlg">
-    <form method="dialog" class="dlg-head"><h3>Demandes des employés</h3><button class="ghost">✕</button></form>
-    <p class="muted">Ex. : « Ilario voudrait faire 8-16 le jeudi 12 ». Choisis l'employé, l'horaire (ou repos, congé, RTT) et le jour. Pour un seul jour, mets la même date dans « Du » et « Au ». L'horaire des autres est recalculé autour, en changeant le moins possible.</p>
-    <div id="reqRows" class="entries"></div>
-    <div class="row"><button id="reqAdd">+ Ajouter une autre demande</button></div>
-    <label class="check"><input type="checkbox" id="reqRegen" checked> Recalculer l'horaire automatiquement</label>
-    <div class="row"><button id="reqSave" class="primary">Valider</button></div>
-    <div id="reqResult"></div>
   </dialog>
 
   <dialog id="empDlg">
@@ -192,16 +313,6 @@
     </div>
   </dialog>
 
-  <dialog id="teamDlg">
-    <form method="dialog" class="dlg-head"><h3>Équipe</h3><button class="ghost">✕</button></form>
-    <p class="muted">Modifie les noms, ajoute une personne ou indique une date de départ. Le groupe décide avec qui la personne a son week-end. Les dates d'arrivée et de départ sont facultatives. Une personne qui part garde son historique.</p>
-    <table class="list team" id="teamList"></table>
-    <div class="row"><button id="teamAdd">+ Ajouter une personne</button></div>
-    <h4>Chef terrain</h4>
-    <div class="row"><input type="text" id="chefNameInput"></div>
-    <div class="row" style="margin-top:14px"><button id="teamSave" class="primary">Enregistrer</button></div>
-  </dialog>
-
   <dialog id="accountDlg">
     <form method="dialog" class="dlg-head"><h3>Mon compte</h3><button class="ghost">✕</button></form>
     <p class="muted">Connecté : <b id="accEmail"></b></p>
@@ -212,33 +323,6 @@
     </div>
     <h4>Se déconnecter</h4>
     <div class="row"><button id="accLogout">Se déconnecter</button></div>
-  </dialog>
-
-  <dialog id="settingsDlg">
-    <form method="dialog" class="dlg-head"><h3>Paramètres</h3><button class="ghost">✕</button></form>
-    <h4>Roulement des week-ends</h4>
-    <p class="muted">Choisis un samedi et le groupe qui est en week-end ce jour-là. Le reste du roulement se calcule tout seul.</p>
-    <div class="row"><input type="date" id="refSat"><select id="refGroup"></select><button id="saveRotation">Enregistrer</button></div>
-    <h4>Étudiants disponibles</h4>
-    <p class="muted">Combien d'étudiants peuvent venir chaque jour. Les jours de match, l'équipe foot = 1 seul employé + des étudiants, tous en horaire foot ; s'il n'y a pas assez d'étudiants, une alerte le signale.</p>
-    <table class="list avail" id="availTable"></table>
-    <div class="row"><label>Dimanches d'ouverture du Westland : 1 employé + <input type="number" id="openSunIn" min="0" max="10" style="width:60px"> étudiants (tous en 11-19)</label></div>
-    <div class="row"><label>Équipe foot les jours de match : <input type="number" id="footTeamIn" min="1" max="5" style="width:60px"> personnes au total (1 employé + étudiants)</label></div>
-    <div class="row"><button id="saveAvail">Enregistrer</button></div>
-    <p class="muted">Exception pour une date précise (ex. examens, vacances scolaires) :</p>
-    <div class="row">
-      <input type="date" id="availDate"><input type="number" id="availN" min="0" max="10" style="width:60px" placeholder="nb">
-      <button id="addAvail">Ajouter l'exception</button>
-    </div>
-    <ul class="availdates" id="availDates"></ul>
-    <h4>Semaine du lundi au vendredi de <span id="chefName"></span></h4>
-    <div class="row"><select id="chefWeek"></select><button id="saveChef">Enregistrer</button></div>
-    <p class="muted" id="appVersion" hidden></p>
-    <h4>Mois affiché</h4>
-    <div class="row">
-      <button id="unlock">Déverrouiller toutes les cases</button>
-      <button id="clear" class="danger">Vider (sauf cases verrouillées)</button>
-    </div>
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
