@@ -370,6 +370,20 @@ $('#backupList').addEventListener('click', e => {
 });
 $('#wsSwitch').onclick = () => api('/api/workspace/switch', { id: $('#wsSelect').value }).then(() => { access = null; loadAccess(); toast('Espace ouvert'); });
 
+// ----- Planning partagé : afficher les modifications faites par l'autre compte -----
+// Toutes les 30 secondes (page visible, rien en cours de saisie), on vérifie s'il y a du nouveau.
+setInterval(async () => {
+  if (!backend || !data || document.visibilityState !== 'visible') return;
+  if (!pop.hidden || document.querySelector('dialog[open]')) return;
+  const a = document.activeElement;
+  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
+  const before = data.reloaded;
+  const j = await call('/api/state', null, { month });
+  if (j.error || j.reloaded === before) return;
+  data = j; render();
+  toast('Planning mis à jour : modifications faites par un autre compte');
+}, 30000);
+
 // ----- Navigation entre les pages -----
 const PAGES = [...document.querySelectorAll('.page')];
 function go(page) {
