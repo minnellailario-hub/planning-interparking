@@ -568,7 +568,6 @@ function loadTeam() {
   renderTeam();
 }
 $('#openTeam').onclick = () => { loadTeam(); $('#teamDlg').showModal(); };
-$('#teamAddEmp').onclick = () => openEmp(null);
 $('#teamChefBtn').onclick = () => openChef();
 $('#teamList').addEventListener('change', e => {
   const { i, k } = e.target.dataset; if (i === undefined) return;
