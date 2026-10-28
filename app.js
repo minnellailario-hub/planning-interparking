@@ -505,7 +505,7 @@ function openEmp(id) {
   const e = id && c.employees.find(x => x.id === id);
   empId = id;
   const label = g => c.rotation.groups[g].map(x => (c.employees.find(y => y.id === x) || {}).name).filter(Boolean).join(', ');
-  $('#empGroup').innerHTML = c.rotation.groups.map((_, g) => `<option value="${g}">Groupe ${g + 1}${label(g) ? ' (' + esc(label(g)) + ')' : ''}</option>`).join('');
+  $('#empGroup').innerHTML = c.rotation.groups.map((_, g) => `<option value="${g}">Groupe ${g + 1}${label(g) ? ' (' + esc(label(g)) + ')' : ''}</option>`).join('') + `<option value="${c.rotation.groups.length}">+ Nouveau groupe</option>`;
   $('#empGroup').value = e ? Math.max(0, c.rotation.groups.findIndex(g => g.includes(id))) : 0;
   $('#empTitle').textContent = e ? `Modifier ${e.name}` : 'Ajouter un employé';
   $('#empName').value = e ? e.name : '';
@@ -543,19 +543,30 @@ $('#empDelete').onclick = () => {
 
 // ----- Équipe -----
 let team = [];
-function groupLabels() {
-  return data.config.rotation.groups.map((_, i) => {
-    const names = team.filter(t => Number(t.group) === i && (!t.end || t.end >= today())).map(t => t.name || '…');
-    return `Groupe ${i + 1}${names.length ? ' (' + names.join(', ') + ')' : ''}`;
-  });
+// Groupes de week-end : 2 personnes (encore en poste) maximum ; « Nouveau groupe » en crée un.
+const activeMember = t => !t.end || t.end >= today();
+function groupCount() { return Math.max(data.config.rotation.groups.length, ...team.map(t => Number(t.group) + 1)); }
+function groupOptions(i) {
+  const n = groupCount(), me = team[i];
+  let h = '';
+  for (let g = 0; g < n; g++) {
+    const others = team.filter((t, k) => k !== i && Number(t.group) === g && activeMember(t));
+    const names = team.filter(t => Number(t.group) === g && activeMember(t)).map(t => t.name || '…');
+    const full = others.length >= 2 && activeMember(me);
+    h += `<option value="${g}" ${Number(me.group) === g ? 'selected' : ''} ${full && Number(me.group) !== g ? 'disabled' : ''}>Groupe ${g + 1}${names.length ? ' (' + esc(names.join(', ')) + ')' : ' (vide)'}${full && Number(me.group) !== g ? ' — complet' : ''}</option>`;
+  }
+  return h + `<option value="${n}">+ Nouveau groupe</option>`;
 }
 function renderTeam() {
-  const labels = groupLabels();
+  const n = groupCount(), used = new Set(team.filter(activeMember).map(t => Number(t.group)));
+  const over = [...used].filter(g => team.filter(t => Number(t.group) === g && activeMember(t)).length > 2);
+  $('#teamGroupsInfo').innerHTML = `<b>${used.size} groupe${used.size > 1 ? 's' : ''}</b> : chaque groupe a son week-end obligatoire toutes les ${used.size} semaines (2 personnes maximum par groupe).`
+    + (over.length ? ` <span class="tag warn">${over.map(g => 'Groupe ' + (g + 1)).join(', ')} : plus de 2 personnes, choisis « + Nouveau groupe » pour l'une d'elles</span>` : '');
   $('#teamList').innerHTML = '<tr><th>Nom</th><th>Note</th><th>Week-end avec</th><th>Arrivée</th><th>Départ</th><th></th></tr>' + team.map((t, i) => `
     <tr class="${t.end && t.end < today() ? 'gone' : ''}">
       <td><input type="text" data-i="${i}" data-k="name" value="${esc(t.name)}"></td>
       <td><input type="text" data-i="${i}" data-k="note" value="${esc(t.note || '')}" placeholder="ex. CDR"></td>
-      <td><select data-i="${i}" data-k="group">${labels.map((l, g) => `<option value="${g}" ${Number(t.group) === g ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></td>
+      <td><select data-i="${i}" data-k="group">${groupOptions(i)}</select></td>
       <td><input type="date" data-i="${i}" data-k="start" value="${t.start || ''}"></td>
       <td><input type="date" data-i="${i}" data-k="end" value="${t.end || ''}"></td>
       <td>${t.id ? '' : `<button data-rm="${i}">Retirer</button>`}</td>
