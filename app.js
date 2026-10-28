@@ -122,7 +122,8 @@ function render() {
 
   renderDays();
   renderDashboard();
-  renderHr();
+  renderAccount();
+  if (data.account.role === 'admin') renderHr();
   renderMatches();
   renderSettings();
   $('#alertChip').hidden = !v.warnings.length;
@@ -300,6 +301,75 @@ const hrExportPath = () => hrTab === 'hours' ? '/api/export-hours.xlsx' : '/api/
 $('#hrExportAll').onclick = () => downloadXlsx(hrExportPath(), {});
 $('#hrExportOne').onclick = () => hrSel && downloadXlsx(hrExportPath(), { emp: hrSel });
 
+// ----- Droits, annuler, historique, accès et sauvegardes -----
+let access = null;
+const ROLE_LABEL = { admin: 'Administrateur', editor: 'Éditeur', viewer: 'Lecteur' };
+function renderAccount() {
+  const acc = data.account, role = acc.role || 'admin';
+  document.body.classList.toggle('readonly', role === 'viewer');
+  document.body.classList.toggle('not-admin', role !== 'admin');
+  $('#roBar').hidden = role !== 'viewer';
+  // Annuler : la dernière étape de l'historique.
+  const last = (data.history || [])[0];
+  $('#undoBtn').hidden = !last || role === 'viewer';
+  if (last) $('#undoBtn').title = `Annuler : ${last.label} (${hrWhen(last.at)})`;
+  $('#undoBtn2').disabled = !last || role === 'viewer';
+  $('#historyList').innerHTML = (data.history || []).length ? '<tr><th>Quand</th><th>Modification</th><th>Par</th><th></th></tr>' + data.history.map((h, k) =>
+    `<tr><td>${hrWhen(h.at)}</td><td>${esc(h.label)}</td><td class="muted">${esc(h.author || '')}</td>
+      <td>${role === 'viewer' ? '' : `<button data-hist="${h.id}">${k === 0 ? 'Annuler' : 'Revenir avant'}</button>`}</td></tr>`).join('')
+    : '<tr><td class="muted">Aucune modification enregistrée pour le moment.</td></tr>';
+  // Plusieurs espaces : choix de l'espace.
+  $('#wsCard').hidden = !(acc.workspaces && acc.workspaces.length > 1);
+  if (acc.workspaces) $('#wsSelect').innerHTML = acc.workspaces.map((w, i) => `<option value="${w.id}" ${w.id === acc.workspaceId ? 'selected' : ''}>${esc(w.name)} ${i + 1} · ${ROLE_LABEL[w.role]}</option>`).join('');
+  $('#accessCard').hidden = acc.mode !== 'cloud';
+  $('#backupCard').hidden = acc.mode !== 'cloud' || role !== 'admin';
+  renderAccess();
+}
+function renderAccess() {
+  if (!access) { $('#membersList').innerHTML = '<tr><td class="muted">Chargement…</td></tr>'; $('#backupList').innerHTML = ''; return; }
+  const me = data.account.email, admin = data.account.role === 'admin';
+  $('#membersList').innerHTML = '<tr><th>Compte</th><th>Rôle</th><th></th></tr>' + access.members.map(m => `<tr><td>${esc(m.email)}${m.email === me ? ' <span class="tag">toi</span>' : ''}</td>
+    <td>${admin && m.email !== me ? `<select data-role="${esc(m.email)}">${Object.entries(ROLE_LABEL).map(([v, l]) => `<option value="${v}" ${v === m.role ? 'selected' : ''}>${l}</option>`).join('')}</select>` : ROLE_LABEL[m.role]}</td>
+    <td>${admin && m.email !== me ? `<button class="danger" data-rmuser="${m.user_id}">Retirer</button>` : ''}</td></tr>`).join('');
+  $('#backupList').innerHTML = access.backups.length ? '<tr><th>Date</th><th>Type</th><th></th></tr>' + access.backups.map(b => `<tr><td>${hrWhen(b.created_at)}</td>
+    <td>${b.kind === 'hebdo' ? 'Automatique (lundi)' : 'Manuelle'}</td><td><button data-restore="${b.id}">Restaurer</button></td></tr>`).join('') : '<tr><td class="muted">Aucune sauvegarde pour le moment.</td></tr>';
+}
+async function loadAccess() {
+  if (!data || data.account.mode !== 'cloud') return;
+  const j = await call('/api/access/list', { month });
+  if (j.error) return toast(j.error);
+  access = j.access; renderAccess();
+}
+async function accessCall(path, body, msg) {
+  const j = await call(path, { month, ...body });
+  if (j.error) return toast(j.error);
+  data = j; access = j.access; render(); toast(msg);
+}
+async function undo(id) {
+  const j = await api('/api/undo', id ? { id } : {});
+  toast(`Annulé : ${j.undone}`);
+}
+$('#undoBtn').onclick = () => { const last = data.history[0]; if (last && confirm(`Annuler « ${last.label} » ?`)) undo(); };
+$('#undoBtn2').onclick = () => $('#undoBtn').onclick();
+$('#historyList').addEventListener('click', e => {
+  const b = e.target.closest('[data-hist]'); if (!b) return;
+  const h = data.history.find(x => x.id === b.dataset.hist);
+  if (confirm(`Revenir à l'état d'avant « ${h.label} » (${hrWhen(h.at)}) ? Les modifications faites après seront aussi annulées.`)) undo(h.id);
+});
+$('#memberAdd').onclick = () => accessCall('/api/access/add', { email: $('#memberEmail').value, role: $('#memberRole').value }, 'Accès donné');
+$('#membersList').addEventListener('change', e => {
+  const s = e.target.closest('[data-role]'); if (s) accessCall('/api/access/add', { email: s.dataset.role, role: s.value }, 'Rôle modifié');
+});
+$('#membersList').addEventListener('click', e => {
+  const b = e.target.closest('[data-rmuser]'); if (b && confirm('Retirer l\'accès de ce compte ?')) accessCall('/api/access/remove', { userId: b.dataset.rmuser }, 'Accès retiré');
+});
+$('#backupNow').onclick = () => accessCall('/api/backup/now', {}, 'Sauvegarde faite');
+$('#backupList').addEventListener('click', e => {
+  const b = e.target.closest('[data-restore]');
+  if (b && confirm('Restaurer cette sauvegarde ? Le planning actuel est d\'abord sauvegardé, puis remplacé.')) accessCall('/api/backup/restore', { id: b.dataset.restore }, 'Sauvegarde restaurée');
+});
+$('#wsSwitch').onclick = () => api('/api/workspace/switch', { id: $('#wsSelect').value }).then(() => { access = null; loadAccess(); toast('Espace ouvert'); });
+
 // ----- Navigation entre les pages -----
 const PAGES = [...document.querySelectorAll('.page')];
 function go(page) {
@@ -311,6 +381,7 @@ function go(page) {
   document.querySelectorAll('.nav[data-go]').forEach(b => b.classList.toggle('on', b.dataset.go === el.dataset.page));
   document.body.classList.remove('menu-open');
   try { localStorage.setItem('page', el.dataset.page); } catch {}
+  if (el.dataset.page === 'settings') loadAccess();
   window.scrollTo(0, 0);
 }
 // Les anciennes fenêtres sont devenues des pages : « ouvrir » = aller à la page.
@@ -407,6 +478,7 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#popover')) pop.hidden = true;
 });
 function openPop(td) {
+  if (document.body.classList.contains('readonly')) return; // lecteur : consultation seulement
   const { emp, date } = td.dataset;
   const day = data.view.days.find(x => x.date === date);
   const row = data.view.rows.find(r => r.id === emp) || data.view.studentRows.find(r => r.id === emp);

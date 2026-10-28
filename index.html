@@ -71,6 +71,7 @@
     <!-- ===== Contenu ===== -->
     <div class="main">
       <div id="syncBar" class="syncbar" hidden></div>
+      <div id="roBar" class="robar" hidden>👁 Accès en lecture seule : tu peux consulter le planning, pas le modifier.</div>
       <div id="updateBar" class="updatebar" hidden>
         <span id="updateText"></span>
         <button id="updateNow" class="primary">Redémarrer pour mettre à jour</button>
@@ -88,6 +89,7 @@
           <h2 id="monthTitle"></h2>
           <button id="next" class="icon-btn" aria-label="Mois suivant">›</button>
         </div>
+        <button id="undoBtn" class="undo-btn" hidden title="Annuler la dernière modification">↶ Annuler</button>
         <div class="actions">
           <button id="generate" class="primary">Générer le mois</button>
           <a id="csv" class="btn">Excel</a>
@@ -318,6 +320,32 @@
         <div class="card">
           <h3>Semaine du lundi au vendredi de <span id="chefName"></span></h3>
           <div class="row"><select id="chefWeek"></select><button id="saveChef" class="primary">Enregistrer</button></div>
+        </div>
+        <div class="card" id="wsCard" hidden>
+          <h3>Espace de travail</h3>
+          <p class="muted">Tu as accès à plusieurs plannings. Choisis celui à afficher.</p>
+          <div class="row"><select id="wsSelect"></select><button id="wsSwitch">Ouvrir</button></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Historique des modifications</h3><button id="undoBtn2">↶ Annuler la dernière</button></div>
+          <p class="muted">Avant chaque modification (générer, maladie, demande, case…), l'outil garde une copie de l'horaire. Tu peux revenir à l'état d'avant une étape (les 12 dernières).</p>
+          <div class="scroll-x"><table class="list" id="historyList"></table></div>
+        </div>
+        <div class="card" id="accessCard" hidden>
+          <h3>Accès au planning</h3>
+          <p class="muted"><b>Administrateur</b> : tout, y compris RH, accès et sauvegardes · <b>Éditeur</b> : modifie le planning (pas la RH) · <b>Lecteur</b> : consulte seulement.<br>
+            Le compte doit d'abord exister dans Supabase (Authentication → Users → Add user).</p>
+          <div class="scroll-x"><table class="list" id="membersList"></table></div>
+          <div class="row admin-only">
+            <input type="email" id="memberEmail" placeholder="email du compte">
+            <select id="memberRole"><option value="editor">Éditeur</option><option value="viewer">Lecteur</option><option value="admin">Administrateur</option></select>
+            <button id="memberAdd" class="primary">Donner l'accès</button>
+          </div>
+        </div>
+        <div class="card admin-only" id="backupCard" hidden>
+          <div class="card-head"><h3>Sauvegardes</h3><button id="backupNow">Sauvegarder maintenant</button></div>
+          <p class="muted">Une sauvegarde complète (équipe, horaires, RH…) est faite automatiquement chaque lundi à 3h ; les 8 dernières sont gardées. Restaurer remet le planning dans cet état (l'état actuel est d'abord sauvegardé).</p>
+          <div class="scroll-x"><table class="list" id="backupList"></table></div>
         </div>
         <div class="card">
           <h3>Mois affiché</h3>

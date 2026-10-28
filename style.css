@@ -335,3 +335,14 @@ input.wide { width: 100%; }
 .hours-balance .bal.pos { background: var(--ok-soft); border-color: #bfe6d2; } .hours-balance .bal.pos b { color: var(--ok); }
 .hours-balance .bal.neg { background: var(--danger-soft); border-color: #f4c7c3; } .hours-balance .bal.neg b { color: var(--danger); }
 .eff-pos { color: var(--ok); font-weight: 700; } .eff-neg { color: var(--danger); font-weight: 700; }
+
+/* ===== Droits, annuler ===== */
+.undo-btn { background: var(--surface); border-color: var(--line-strong); font-weight: 600; }
+.undo-btn:hover { background: var(--accent-soft); }
+.robar { background: var(--accent-soft); color: var(--accent); padding: 8px 20px; font-size: 13px; text-align: center; font-weight: 500; }
+/* Lecteur : pas de boutons de modification */
+body.readonly #generate, body.readonly #undoBtn, body.readonly .nav[data-go="sick"], body.readonly .nav[data-go="formation"], body.readonly .nav[data-go="requests"],
+body.readonly .quick, body.readonly #grid .edit-emp, body.readonly #grid .edit-chef, body.readonly #grid tr.addrow, body.readonly .card .row button.primary { display: none !important; }
+body.readonly #grid td.cell { cursor: default; }
+/* Pas administrateur : pas de RH, ni gestion des accès / sauvegardes */
+body.not-admin .nav[data-go="hr"], body.not-admin .admin-only { display: none !important; }
