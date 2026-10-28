@@ -346,3 +346,6 @@ body.readonly .quick, body.readonly #grid .edit-emp, body.readonly #grid .edit-c
 body.readonly #grid td.cell { cursor: default; }
 /* Pas administrateur : pas de RH, ni gestion des accès / sauvegardes */
 body.not-admin .nav[data-go="hr"], body.not-admin .admin-only { display: none !important; }
+.abs-wrap { overflow-x: auto; }
+.abs-wrap .list td { white-space: nowrap; }
+.abs-actions { text-align: right; }

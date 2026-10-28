@@ -123,6 +123,7 @@ function render() {
   renderDays();
   renderDashboard();
   renderAccount();
+  renderAbsences();
   if (data.account.role === 'admin') renderHr();
   renderMatches();
   renderSettings();
@@ -694,15 +695,65 @@ function entriesDialog({ prefix, endpoint, withValue, describe }) {
       let h = `<div class="ok-box">${rows.map(s => esc(describe(nameOf(s.empId), s, period(s)))).join('<br>')}`;
       h += regenerated.length ? '<br>Horaire recalculé.' : '<br>Horaire non recalculé (mois pas encore généré ou option décochée).';
       h += '</div>';
-      if (changes.length) {
-        h += `<h4>Changements à prévenir (${changes.length})</h4><div class="changes"><table class="list"><tr><th>Date</th><th>Qui</th><th>Avant</th><th>Après</th></tr>`
-          + changes.map(c => `<tr><td>${fmtDate(c.date)}</td><td>${esc(c.name)}</td><td>${esc(c.before)}</td><td><b>${esc(c.after)}</b></td></tr>`).join('')
-          + '</table></div>';
-      } else if (regenerated.length) h += '<p class="muted">Aucun autre horaire ne change.</p>';
-      el('Result').innerHTML = h;
+      el('Result').innerHTML = changesHtml(h, { regenerated, changes });
     } finally { e.target.disabled = false; e.target.textContent = 'Valider'; }
   };
 }
+// Maladies / formations déjà dans l'horaire : on peut changer les dates ou les supprimer (l'horaire est recalculé).
+const ABSENCE_LISTS = [{ code: 'MALADIE', prefix: 'sick', word: 'maladie' }, { code: 'FORMATION', prefix: 'form', word: 'formation' }];
+let absEdit = null; // période en cours de modification : `${code}|${empId}|${from}`
+function renderAbsences() {
+  const nameOf = id => (data.config.employees.find(e => e.id === id) || {}).name || id;
+  for (const { code, prefix, word } of ABSENCE_LISTS) {
+    const list = (data.absences || []).filter(a => a.code === code);
+    const el = $('#' + prefix + 'List');
+    if (!list.length) { el.innerHTML = `<p class="muted">Aucune ${word} en cours ou à venir.</p>`; continue; }
+    el.innerHTML = `<div class="abs-wrap"><table class="list"><tr><th>Employé</th><th>Du</th><th>Au</th><th>État</th><th></th></tr>` + list.map(a => {
+      const key = `${a.code}|${a.empId}|${a.from}`;
+      const state = a.to < today() ? 'Terminée' : a.from > today() ? 'À venir' : 'En cours';
+      const past = a.to < today();
+      const attrs = `data-code="${a.code}" data-emp="${a.empId}" data-from="${a.from}" data-to="${a.to}"`;
+      if (absEdit === key) return `<tr ${attrs}><td>${esc(nameOf(a.empId))}</td>
+        <td><input type="date" class="abs-from" value="${a.from}"></td><td><input type="date" class="abs-to" value="${a.to}"></td><td>${state}</td>
+        <td class="abs-actions"><button class="primary abs-save">Enregistrer</button> <button class="ghost abs-cancel">Annuler</button></td></tr>`;
+      return `<tr ${attrs}><td>${esc(nameOf(a.empId))}</td><td>${fmtDate(a.from)}</td><td>${fmtDate(a.to)}</td><td>${state}</td>
+        <td class="abs-actions">${past ? '' : `<button class="abs-edit">Modifier</button> <button class="ghost danger abs-del">Supprimer</button>`}</td></tr>`;
+    }).join('') + '</table></div><p class="muted small">Les jours déjà passés ne sont pas modifiés. Après un changement, l\'horaire des autres est recalculé.</p>';
+  }
+}
+for (const { prefix, word } of ABSENCE_LISTS) $('#' + prefix + 'List').addEventListener('click', async e => {
+  const tr = e.target.closest('tr[data-code]'); if (!tr) return;
+  const a = { code: tr.dataset.code, empId: tr.dataset.emp, from: tr.dataset.from, to: tr.dataset.to };
+  const name = (data.config.employees.find(x => x.id === a.empId) || {}).name;
+  const send = async (body, msg) => {
+    e.target.disabled = true;
+    try {
+      const r = await api('/api/absence/edit', { ...a, ...body, regenerate: true });
+      absEdit = null; renderAbsences(); toast(msg);
+      $('#' + prefix + 'Result').innerHTML = changesHtml(`<div class="ok-box">${esc(msg)}</div>`, r.result);
+    } finally { e.target.disabled = false; }
+  };
+  if (e.target.closest('.abs-edit')) { absEdit = `${a.code}|${a.empId}|${a.from}`; renderAbsences(); }
+  else if (e.target.closest('.abs-cancel')) { absEdit = null; renderAbsences(); }
+  else if (e.target.closest('.abs-del')) {
+    if (confirm(`Supprimer la ${word} de ${name} (${fmtDate(a.from)} → ${fmtDate(a.to)}) ? Son horaire sera recalculé.`))
+      await send({ remove: true }, `${word[0].toUpperCase() + word.slice(1)} de ${name} supprimée.`);
+  } else if (e.target.closest('.abs-save')) {
+    const newFrom = tr.querySelector('.abs-from').value, newTo = tr.querySelector('.abs-to').value;
+    if (!newFrom || !newTo || newTo < newFrom) return toast('Dates invalides');
+    await send({ newFrom, newTo }, `${word[0].toUpperCase() + word.slice(1)} de ${name} : du ${fmtDate(newFrom)} au ${fmtDate(newTo)}.`);
+  }
+});
+function changesHtml(head, { regenerated, changes }) {
+  let h = head;
+  if (changes.length) {
+    h += `<h4>Changements à prévenir (${changes.length})</h4><div class="changes"><table class="list"><tr><th>Date</th><th>Qui</th><th>Avant</th><th>Après</th></tr>`
+      + changes.map(c => `<tr><td>${fmtDate(c.date)}</td><td>${esc(c.name)}</td><td>${esc(c.before)}</td><td><b>${esc(c.after)}</b></td></tr>`).join('')
+      + '</table></div>';
+  } else if (regenerated.length) h += '<p class="muted">Aucun autre horaire ne change.</p>';
+  return h;
+}
+
 entriesDialog({ prefix: 'sick', endpoint: '/api/sick', withValue: false,
   describe: (name, s, period) => `${name} est en maladie ${period}.` });
 entriesDialog({ prefix: 'form', endpoint: '/api/formation', withValue: false,
