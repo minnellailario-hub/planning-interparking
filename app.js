@@ -160,7 +160,12 @@ function renderDashboard() {
 }
 
 // ----- RH : remarques par personne -----
-let hrSel = null, hrType = 'positive', hrFilter = 'all';
+let hrSel = null, hrType = 'positive', hrFilter = 'all', hrTab = 'notes';
+// Heures supp / à faire : effet sur le solde (1 h supp = 2 h de récup).
+const HOUR_KINDS = { supp: ['Heures supp', 2], afaire: ['Heures à faire', -1], recup: ['Récup prise', -1], rattrape: ['Heures rattrapées', 1] };
+const hm = m => `${m < 0 ? '-' : ''}${Math.floor(Math.abs(m) / 60)}h${String(Math.abs(m) % 60).padStart(2, '0')}`;
+const balanceOf = id => ((data.hr && data.hr.hours) || []).filter(h => h.empId === id).reduce((m, h) => m + h.minutes * (HOUR_KINDS[h.kind] || [0, 0])[1], 0);
+const balanceText = m => m > 0 ? `+${hm(m)} à récupérer` : m < 0 ? `${hm(-m)} à faire` : 'à jour';
 const hrWhen = iso => new Date(iso).toLocaleString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 function renderHr() {
   const emps = data.config.employees.filter(e => !e.end || e.end >= today());
@@ -172,12 +177,15 @@ function renderHr() {
   $('#hrPeople').innerHTML = emps.map(e => `<button class="hr-person ${e.id === hrSel ? 'on' : ''}" data-emp="${e.id}">
       <span class="avatar">${esc(e.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase())}</span>
       <span class="who"><b>${esc(e.name)}</b><small>${count(e.id)} remarque${count(e.id) > 1 ? 's' : ''}${lates(e.id).length ? ` · ⏰ ${lates(e.id).length} retard${lates(e.id).length > 1 ? 's' : ''}` : ''}</small></span>
-      <span class="hr-counts"><span class="pos">+${count(e.id, 'positive')}</span><span class="neg">−${count(e.id, 'negative')}</span></span>
+      ${hrTab === 'hours' ? `<span class="hr-counts"><span class="${balanceOf(e.id) > 0 ? 'pos' : balanceOf(e.id) < 0 ? 'neg' : ''}">${balanceOf(e.id) ? (balanceOf(e.id) > 0 ? '+' : '') + hm(balanceOf(e.id)) : '0h'}</span></span>`
+        : `<span class="hr-counts"><span class="pos">+${count(e.id, 'positive')}</span><span class="neg">−${count(e.id, 'negative')}</span></span>`}
     </button>`).join('') || '<p class="muted">Aucun employé.</p>';
   const emp = emps.find(e => e.id === hrSel);
   $('#hrName').textContent = emp ? emp.name : '';
   $('#hrSummary').textContent = emp ? `${count(emp.id, 'positive')} positive(s) · ${count(emp.id, 'negative')} négative(s)`
     + (lates(emp.id).length ? ` · ⏰ ${lates(emp.id).length} retard(s), ${lateMin(emp.id)} min au total` : '') : '';
+  if (hrTab === 'hours' && emp) $('#hrSummary').textContent = `Solde : ${balanceText(balanceOf(emp.id))}`;
+  renderHours(emp);
   const mine = notes.filter(n => emp && n.empId === emp.id && (hrFilter === 'all' || n.type === hrFilter)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   $('#hrNotes').innerHTML = mine.length ? mine.map(n => `<li class="hr-note ${n.type}">
       <div class="hr-note-head"><span class="tag ${n.type}">${n.late ? '⏰ Retard · ' + n.late.minutes + ' min' : n.type === 'positive' ? '👍 Positif' : '👎 Négatif'}</span>
@@ -185,6 +193,49 @@ function renderHr() {
         <button class="ghost hr-del" data-del="${n.id}" title="Supprimer la remarque">✕</button></div>
       <p>${esc(n.text).replace(/\n/g, '<br>')}</p></li>`).join('') : '<li class="muted">Aucune remarque pour le moment.</li>';
 }
+function renderHours(emp) {
+  const list = ((data.hr && data.hr.hours) || []).filter(h => emp && h.empId === emp.id).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+  const bal = emp ? balanceOf(emp.id) : 0;
+  const sum = k => list.filter(h => h.kind === k).reduce((m, h) => m + h.minutes, 0);
+  $('#hoursBalance').innerHTML = `<div class="bal ${bal > 0 ? 'pos' : bal < 0 ? 'neg' : ''}"><span>Solde</span><b>${balanceText(bal)}</b></div>
+    <div><span>Heures supp</span><b>${hm(sum('supp'))}</b><small>= ${hm(sum('supp') * 2)} de récup</small></div>
+    <div><span>Récup prise</span><b>${hm(sum('recup'))}</b></div>
+    <div><span>Heures à faire</span><b>${hm(sum('afaire'))}</b></div>
+    <div><span>Rattrapées</span><b>${hm(sum('rattrape'))}</b></div>`;
+  $('#hoursList').innerHTML = list.length ? '<tr><th>Date</th><th>Type</th><th>Durée</th><th>Effet</th><th>Commentaire</th><th>Ajouté</th><th></th></tr>' + list.map(h => {
+    const [label, f] = HOUR_KINDS[h.kind] || [h.kind, 0], eff = h.minutes * f;
+    return `<tr><td>${fmtDate(h.date)}/${h.date.slice(2, 4)}</td><td><span class="tag ${f > 0 ? 'positive' : 'negative'}">${label}</span></td><td>${hm(h.minutes)}</td>
+      <td class="${eff > 0 ? 'eff-pos' : 'eff-neg'}">${eff > 0 ? '+' : ''}${hm(eff)}</td><td>${esc(h.comment || '')}</td><td class="muted">${hrWhen(h.createdAt)}</td>
+      <td><button class="ghost" data-hdel="${h.id}" title="Supprimer">✕</button></td></tr>`;
+  }).join('') : '<tr><td class="muted">Aucune heure enregistrée.</td></tr>';
+  showHoursPreview();
+}
+function hoursMinutes() { const m = $('#hoursDur').value.match(/^(\d{1,2}):(\d{2})/); return m ? Number(m[1]) * 60 + Number(m[2]) : 0; }
+function showHoursPreview() {
+  const k = HOUR_KINDS[$('#hoursKind').value], min = hoursMinutes();
+  $('#hoursPreview').textContent = !min ? 'Indique la durée.' : k[1] === 2 ? `${hm(min)} supp → +${hm(min * 2)} de récup sur le solde.`
+    : `${k[0]} : ${k[1] > 0 ? '+' : '−'}${hm(min)} sur le solde.`;
+}
+$('#hoursKind').onchange = showHoursPreview;
+$('#hoursDur').oninput = showHoursPreview;
+$('#hoursAdd').onclick = async () => {
+  if (!hrSel) return toast('Choisis un employé');
+  if (!$('#hoursDate').value) return toast('Choisis la date');
+  if (!hoursMinutes()) return toast('Indique la durée');
+  await api('/api/hr/hours/add', { empId: hrSel, kind: $('#hoursKind').value, date: $('#hoursDate').value, minutes: hoursMinutes(), comment: $('#hoursComment').value });
+  $('#hoursComment').value = ''; toast('Heures enregistrées');
+};
+$('#hoursList').addEventListener('click', e => {
+  const b = e.target.closest('[data-hdel]'); if (b && confirm('Supprimer cette ligne ?')) api('/api/hr/hours/delete', { id: b.dataset.hdel });
+});
+document.querySelectorAll('.hr-tabs button').forEach(b => b.onclick = () => {
+  hrTab = b.dataset.tab;
+  document.querySelectorAll('.hr-tabs button').forEach(x => x.classList.toggle('on', x === b));
+  $('#hrTabNotes').hidden = hrTab !== 'notes';
+  $('#hrTabHours').hidden = hrTab !== 'hours';
+  if (!$('#hoursDate').value) $('#hoursDate').value = today();
+  renderHr();
+});
 $('#hrPeople').addEventListener('click', e => { const b = e.target.closest('[data-emp]'); if (b) { hrSel = b.dataset.emp; renderHr(); checkLate(); } });
 const setHrType = t => { hrType = t; $('#hrPos').classList.toggle('on', t === 'positive'); $('#hrNeg').classList.toggle('on', t === 'negative'); };
 $('#hrPos').onclick = () => setHrType('positive');
@@ -244,8 +295,10 @@ $('#lateAdd').onclick = async () => {
   $('#lateTime').value = ''; $('#lateComment').value = ''; latePlanned = null; checkLate();
   toast('Retard enregistré');
 };
-$('#hrExportAll').onclick = () => downloadXlsx('/api/export-hr.xlsx', {});
-$('#hrExportOne').onclick = () => hrSel && downloadXlsx('/api/export-hr.xlsx', { emp: hrSel });
+// Export : les remarques ou les heures, selon la sous-section ouverte.
+const hrExportPath = () => hrTab === 'hours' ? '/api/export-hours.xlsx' : '/api/export-hr.xlsx';
+$('#hrExportAll').onclick = () => downloadXlsx(hrExportPath(), {});
+$('#hrExportOne').onclick = () => hrSel && downloadXlsx(hrExportPath(), { emp: hrSel });
 
 // ----- Navigation entre les pages -----
 const PAGES = [...document.querySelectorAll('.page')];

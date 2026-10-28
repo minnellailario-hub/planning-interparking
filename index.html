@@ -189,7 +189,11 @@
       </section>
 
       <!-- RH -->
-      <section class="page" data-page="hr" data-title="RH" data-sub="Remarques positives et négatives sur chaque personne de l'équipe, avec la date et l'heure d'ajout.">
+      <section class="page" data-page="hr" data-title="RH" data-sub="Suivi de chaque personne de l'équipe : remarques et retards, heures supp et heures à faire.">
+        <div class="viewswitch hr-tabs">
+          <button data-tab="notes" class="on">📝 Remarques &amp; retards</button>
+          <button data-tab="hours">⏱ Heures supp / à faire</button>
+        </div>
         <div class="hr-layout">
           <div class="card hr-list">
             <div class="card-head"><h3>Équipe</h3><button id="hrExportAll">Excel (toute l'équipe)</button></div>
@@ -197,6 +201,7 @@
           </div>
           <div class="card hr-detail">
             <div class="card-head"><div><h3 id="hrName"></h3><p class="muted" id="hrSummary"></p></div><button id="hrExportOne">Excel (cette personne)</button></div>
+            <div id="hrTabNotes">
             <div class="hr-form">
               <div class="hr-type" role="radiogroup">
                 <button id="hrPos" class="pos on" type="button">👍 Positif</button>
@@ -219,6 +224,27 @@
               <button data-f="all" class="on">Toutes</button><button data-f="positive">Positives</button><button data-f="negative">Négatives</button>
             </div>
             <ul id="hrNotes" class="hr-notes"></ul>
+            </div>
+            <div id="hrTabHours" hidden>
+              <div class="hours-balance" id="hoursBalance"></div>
+              <div class="hr-form">
+                <h4>Ajouter des heures</h4>
+                <div class="row">
+                  <label>Type <select id="hoursKind">
+                    <option value="supp">Heures supp (compte ×2 en récup)</option>
+                    <option value="afaire">Heures à faire</option>
+                    <option value="recup">Récup prise</option>
+                    <option value="rattrape">Heures à faire rattrapées</option>
+                  </select></label>
+                  <label>Date <input type="date" id="hoursDate"></label>
+                  <label>Durée <input type="time" id="hoursDur" value="01:00" step="300"></label>
+                </div>
+                <p class="late-planned ok" id="hoursPreview"></p>
+                <input type="text" id="hoursComment" class="wide" placeholder="Commentaire (facultatif, ex. « resté jusqu'à 21h pour le match »)">
+                <div class="row"><button id="hoursAdd" class="primary">Enregistrer</button><span class="muted">1 h supp = 2 h de récup. La date et l'heure d'ajout sont enregistrées.</span></div>
+              </div>
+              <div class="scroll-x"><table class="list" id="hoursList"></table></div>
+            </div>
           </div>
         </div>
       </section>
