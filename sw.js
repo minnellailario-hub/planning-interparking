@@ -1,7 +1,7 @@
 'use strict';
 // Service worker de la version web : permet d'installer le planning comme une application.
 // Toujours la version en ligne d'abord (mises à jour immédiates) ; la copie locale ne sert que hors connexion.
-const CACHE = 'planning-20261028173542';
+const CACHE = 'planning-20261028173706';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil((async () => {
