@@ -167,22 +167,25 @@ function renderHr() {
   const notes = (data.hr && data.hr.notes) || [];
   if (!emps.some(e => e.id === hrSel)) hrSel = emps.length ? emps[0].id : null;
   const count = (id, t) => notes.filter(n => n.empId === id && (!t || n.type === t)).length;
+  const lates = id => notes.filter(n => n.empId === id && n.late);
+  const lateMin = id => lates(id).reduce((m, n) => m + n.late.minutes, 0);
   $('#hrPeople').innerHTML = emps.map(e => `<button class="hr-person ${e.id === hrSel ? 'on' : ''}" data-emp="${e.id}">
       <span class="avatar">${esc(e.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase())}</span>
-      <span class="who"><b>${esc(e.name)}</b><small>${count(e.id)} remarque${count(e.id) > 1 ? 's' : ''}</small></span>
+      <span class="who"><b>${esc(e.name)}</b><small>${count(e.id)} remarque${count(e.id) > 1 ? 's' : ''}${lates(e.id).length ? ` · ⏰ ${lates(e.id).length} retard${lates(e.id).length > 1 ? 's' : ''}` : ''}</small></span>
       <span class="hr-counts"><span class="pos">+${count(e.id, 'positive')}</span><span class="neg">−${count(e.id, 'negative')}</span></span>
     </button>`).join('') || '<p class="muted">Aucun employé.</p>';
   const emp = emps.find(e => e.id === hrSel);
   $('#hrName').textContent = emp ? emp.name : '';
-  $('#hrSummary').textContent = emp ? `${count(emp.id, 'positive')} positive(s) · ${count(emp.id, 'negative')} négative(s)` : '';
+  $('#hrSummary').textContent = emp ? `${count(emp.id, 'positive')} positive(s) · ${count(emp.id, 'negative')} négative(s)`
+    + (lates(emp.id).length ? ` · ⏰ ${lates(emp.id).length} retard(s), ${lateMin(emp.id)} min au total` : '') : '';
   const mine = notes.filter(n => emp && n.empId === emp.id && (hrFilter === 'all' || n.type === hrFilter)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   $('#hrNotes').innerHTML = mine.length ? mine.map(n => `<li class="hr-note ${n.type}">
-      <div class="hr-note-head"><span class="tag ${n.type}">${n.type === 'positive' ? '👍 Positif' : '👎 Négatif'}</span>
+      <div class="hr-note-head"><span class="tag ${n.type}">${n.late ? '⏰ Retard · ' + n.late.minutes + ' min' : n.type === 'positive' ? '👍 Positif' : '👎 Négatif'}</span>
         <span class="muted">${hrWhen(n.createdAt)}${n.author ? ' · ' + esc(n.author) : ''}</span>
         <button class="ghost hr-del" data-del="${n.id}" title="Supprimer la remarque">✕</button></div>
       <p>${esc(n.text).replace(/\n/g, '<br>')}</p></li>`).join('') : '<li class="muted">Aucune remarque pour le moment.</li>';
 }
-$('#hrPeople').addEventListener('click', e => { const b = e.target.closest('[data-emp]'); if (b) { hrSel = b.dataset.emp; renderHr(); } });
+$('#hrPeople').addEventListener('click', e => { const b = e.target.closest('[data-emp]'); if (b) { hrSel = b.dataset.emp; renderHr(); checkLate(); } });
 const setHrType = t => { hrType = t; $('#hrPos').classList.toggle('on', t === 'positive'); $('#hrNeg').classList.toggle('on', t === 'negative'); };
 $('#hrPos').onclick = () => setHrType('positive');
 $('#hrNeg').onclick = () => setHrType('negative');
@@ -211,6 +214,36 @@ async function downloadXlsx(path, q) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
+// Retard : heure prévue lue dans l'horaire, minutes de retard calculées en direct.
+let latePlanned = null;
+async function checkLate() {
+  latePlanned = null;
+  const date = $('#lateDate').value;
+  if (!date || !hrSel) { $('#latePlanned').textContent = 'Choisis la date : l\'outil retrouve l\'heure prévue dans l\'horaire.'; $('#latePlanned').className = 'late-planned'; return; }
+  const j = await call('/api/hr/late-check', { month, empId: hrSel, date });
+  if (j.error) { $('#latePlanned').textContent = j.error; $('#latePlanned').className = 'late-planned bad'; return; }
+  latePlanned = j.planned;
+  showLateDelay();
+}
+function showLateDelay() {
+  if (!latePlanned) return;
+  let txt = `Devait commencer à ${latePlanned.startLabel} (${latePlanned.label}).`, cls = 'late-planned ok';
+  const m = $('#lateTime').value.match(/^(\d{2}):(\d{2})$/);
+  if (m) {
+    const min = Number(m[1]) * 60 + Number(m[2]) - latePlanned.start * 60;
+    if (min > 0) { txt += ` Arrivé à ${$('#lateTime').value} → ${min >= 60 ? Math.floor(min / 60) + ' h ' + String(min % 60).padStart(2, '0') : min + ' min'} de retard.`; cls = 'late-planned bad'; }
+    else txt += ' Arrivé à l\'heure : pas de retard.';
+  }
+  $('#latePlanned').textContent = txt; $('#latePlanned').className = cls;
+}
+$('#lateDate').onchange = checkLate;
+$('#lateTime').oninput = showLateDelay;
+$('#lateAdd').onclick = async () => {
+  if (!$('#lateDate').value || !$('#lateTime').value) return toast('Indique la date et l\'heure d\'arrivée');
+  await api('/api/hr/late', { empId: hrSel, date: $('#lateDate').value, time: $('#lateTime').value, comment: $('#lateComment').value });
+  $('#lateTime').value = ''; $('#lateComment').value = ''; latePlanned = null; checkLate();
+  toast('Retard enregistré');
+};
 $('#hrExportAll').onclick = () => downloadXlsx('/api/export-hr.xlsx', {});
 $('#hrExportOne').onclick = () => hrSel && downloadXlsx('/api/export-hr.xlsx', { emp: hrSel });
 

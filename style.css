@@ -321,3 +321,8 @@ button.link:hover { text-decoration: underline; }
 .hr-note-head .hr-del { margin-left: auto; color: var(--muted); }
 .tag.positive { background: var(--ok-soft); color: var(--ok); } .tag.negative { background: var(--danger-soft); color: var(--danger); }
 @media (max-width: 900px) { .hr-layout { grid-template-columns: 1fr; } }
+.hr-late h4 { margin: 0 0 4px; font-size: 13.5px; }
+.late-planned { margin: 6px 0 10px; font-size: 13px; padding: 8px 10px; border-radius: 10px; background: var(--surface); color: var(--muted); border: 1px solid var(--line); }
+.late-planned.ok { color: var(--text); }
+.late-planned.bad { background: var(--danger-soft); color: var(--danger); border-color: #f4c7c3; }
+input.wide { width: 100%; }

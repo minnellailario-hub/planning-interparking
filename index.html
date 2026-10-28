@@ -205,6 +205,16 @@
               <textarea id="hrText" rows="3" placeholder="Écris la remarque (ex. « Très bon accueil des clients pendant le match »)"></textarea>
               <div class="row"><button id="hrAdd" class="primary">Ajouter la remarque</button><span class="muted">La date et l'heure sont enregistrées automatiquement.</span></div>
             </div>
+            <div class="hr-form hr-late">
+              <h4>⏰ Retard</h4>
+              <div class="row">
+                <label>Date <input type="date" id="lateDate"></label>
+                <label>Arrivé à <input type="time" id="lateTime"></label>
+              </div>
+              <p class="late-planned" id="latePlanned">Choisis la date : l'outil retrouve l'heure prévue dans l'horaire.</p>
+              <input type="text" id="lateComment" class="wide" placeholder="Commentaire (facultatif, ex. « bouchons sur le ring »)">
+              <div class="row"><button id="lateAdd" class="primary">Enregistrer le retard</button><span class="muted">Ajouté en remarque négative avec la date et les heures.</span></div>
+            </div>
             <div class="hr-filter viewswitch">
               <button data-f="all" class="on">Toutes</button><button data-f="positive">Positives</button><button data-f="negative">Négatives</button>
             </div>
