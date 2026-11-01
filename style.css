@@ -384,3 +384,33 @@ body.readonly .ztable td.zcell { cursor: default; }
 #zTeamSave.pulse { box-shadow: 0 0 0 3px rgba(79, 70, 229, .25); }
 body.readonly #zTeamCard .row button, body.readonly #zTeamRows select, body.readonly #zTeamRows input { pointer-events: none; }
 body.readonly #zTeamCard .row:last-child { display: none; }
+
+/* Main courante */
+.log-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.log-bar .monthnav h2 { min-width: 190px; }
+.log-types { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
+.log-types button { display: flex; align-items: center; gap: 8px; padding: 12px; border-radius: 12px; text-align: left; font-weight: 600; font-size: 13px; min-height: 52px; }
+.log-types button span { font-size: 20px; }
+.log-types button.on { border-color: var(--accent); background: var(--surface-2); box-shadow: 0 0 0 2px var(--accent) inset; }
+#logForm { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+#logForm h4 { margin: 0 0 10px; font-size: 14px; }
+#logForm label.block { display: block; margin: 12px 0 6px; font-size: 12px; color: var(--muted); font-weight: 600; }
+#logForm textarea { display: block; width: 100%; margin-top: 6px; font: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--line); resize: vertical; }
+.log-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.log-chips button { border-radius: 20px; padding: 7px 12px; font-size: 13px; }
+.log-chips button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.log-item { border: 1px solid var(--line); border-left: 5px solid #11734d; border-radius: 12px; padding: 12px 14px; margin-top: 10px; background: var(--surface); }
+.log-item.sev-moyenne { border-left-color: #9a5b00; }
+.log-item.sev-grave { border-left-color: #b42318; }
+.log-item p { margin: 8px 0 0; font-size: 14px; line-height: 1.45; }
+.log-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.log-time { font-size: 15px; }
+.log-sev { margin-left: auto; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+.log-action { color: var(--muted); }
+.log-follow { color: #9a5b00; font-weight: 700; }
+.log-item .row { margin-top: 10px; }
+@media (max-width: 700px) {
+  .log-types { grid-template-columns: 1fr 1fr; }
+  #logForm .row label { flex: 1 1 100%; }
+}
+body.readonly #logNew, body.readonly .log-item .row { display: none; }

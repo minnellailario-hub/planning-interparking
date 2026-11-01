@@ -126,6 +126,7 @@ function render() {
   renderAbsences();
   // L'horaire a pu changer (maladie, autre compte…) : les zones du jour affiché se recalculent.
   if (document.body.dataset.page === 'zones') loadZones();
+  if (document.body.dataset.page === 'log' && !logForm) loadLog();
   if (data.account.role === 'admin') renderHr();
   renderMatches();
   renderSettings();
@@ -921,6 +922,139 @@ $('#zBox').addEventListener('click', e => {
   };
   setTimeout(() => document.addEventListener('click', function off(ev) { if (!m.contains(ev.target)) { m.remove(); document.removeEventListener('click', off); } }), 0);
 });
+
+// ----- Main courante : événements du jour et rapport PDF de fin de journée -----
+const LOG_ICONS = { accident: '🚗', client: '🗣️', panne: '🔧', objet: '🔑', securite: '🚓', proprete: '🧹', autre: '📝' };
+let logDate = localDay(), logData = null, logForm = null; // logForm : événement en cours d'écriture (id = null si nouveau)
+const nowHM = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+const lbl = (list, id) => (list.find(x => x.id === id) || {}).label || id;
+
+async function loadLog() {
+  const j = await call('/api/log', null, { month: logDate.slice(0, 7), date: logDate });
+  if (j.error) return toast(j.error);
+  logData = j.log; renderLog();
+}
+async function logCall(path, body) {
+  const j = await call(path, { month: logDate.slice(0, 7), date: logDate, ...body });
+  if (j.error) { toast(j.error); throw new Error(j.error); }
+  logData = j.log; renderLog(); return j;
+}
+function renderLog() {
+  const d = new Date(logDate + 'T12:00:00');
+  $('#lTitle').textContent = `${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  try { if (!$('#logChief').value) $('#logChief').value = localStorage.getItem('logChief') || (data && data.config.chef.name) || ''; } catch {}
+  const L = logData;
+  if (!L || L.date !== logDate) { $('#logList').innerHTML = '<p class="muted">Chargement…</p>'; return; }
+  const ro = document.body.classList.contains('readonly');
+  const edit = L.editable && !ro;
+  $('#lState').textContent = L.editable ? "Aujourd'hui · modifiable" : 'Journée figée';
+  $('#lState').className = 'chip ' + (L.editable ? 'z-Z2' : 'empty');
+  $('#logNew').hidden = !edit;
+  $('#logTypes').innerHTML = L.types.map(t => `<button data-type="${t.id}" class="${logForm && logForm.type === t.id ? 'on' : ''}"><span>${LOG_ICONS[t.id] || '📝'}</span>${esc(t.label)}</button>`).join('');
+  renderLogForm();
+  $('#logCount').textContent = L.entries.length ? `${L.entries.length} événement${L.entries.length > 1 ? 's' : ''}` : '';
+  $('#logList').innerHTML = L.entries.length ? L.entries.map(e => {
+    const sev = L.severities.find(s => s.id === e.severity) || {};
+    return `<div class="log-item sev-${e.severity}" data-id="${e.id}">
+      <div class="log-head"><b class="log-time">${esc(e.time)}</b><b>${LOG_ICONS[e.type] || ''} ${esc(lbl(L.types, e.type))}</b>
+        <span class="log-sev" style="background:#${sev.fill};color:#${sev.ink}">${esc(sev.label || '')}</span></div>
+      <div class="muted small">${esc(lbl(L.places, e.place))}${e.plate ? ' · Plaque ' + esc(e.plate) : ''}</div>
+      <p>${esc(e.text).replace(/\n/g, '<br>')}</p>
+      ${e.action ? `<p class="log-action"><b>Action prise :</b> ${esc(e.action).replace(/\n/g, '<br>')}</p>` : ''}
+      ${e.followUp ? '<p class="log-follow">► Suivi nécessaire</p>' : ''}
+      ${edit ? `<div class="row"><button class="log-edit">Modifier</button> <button class="ghost danger log-del">Supprimer</button></div>` : ''}
+    </div>`;
+  }).join('') : `<p class="muted">${L.editable ? 'Aucun événement pour le moment. Choisis un type ci-dessus pour en noter un.' : 'Aucun événement ce jour-là.'}</p>`;
+}
+function renderLogForm() {
+  const L = logData, f = logForm;
+  $('#logForm').hidden = !f;
+  if (!f) { $('#logForm').innerHTML = ''; return; }
+  const chips = (k, list, styled) => `<div class="log-chips">${list.map(x => `<button data-k="${k}" data-v="${x.id}" class="${f[k] === x.id ? 'on' : ''}"${styled && f[k] === x.id ? ` style="background:#${x.fill};color:#${x.ink};border-color:#${x.ink}"` : ''}>${esc(x.label)}</button>`).join('')}</div>`;
+  $('#logForm').innerHTML = `
+    <h4>${f.id ? 'Modifier' : 'Nouveau'} : ${LOG_ICONS[f.type] || ''} ${esc(lbl(L.types, f.type))}</h4>
+    <div class="row"><label>Heure <input type="time" data-k="time" value="${esc(f.time)}"></label>
+      <label>Plaque <input data-k="plate" value="${esc(f.plate)}" placeholder="1-ABC-234" maxlength="20" autocapitalize="characters"></label></div>
+    <label class="block">Lieu</label>${chips('place', L.places)}
+    <label class="block">Gravité</label>${chips('severity', L.severities, true)}
+    <label class="block">Ce qui s'est passé<textarea data-k="text" rows="3" maxlength="3000" placeholder="Ex. accrochage entre deux voitures près de l'ascenseur, pas de blessé">${esc(f.text)}</textarea></label>
+    <label class="block">Action prise<textarea data-k="action" rows="2" maxlength="2000" placeholder="Ex. constat amiable, zone balisée, technicien appelé">${esc(f.action)}</textarea></label>
+    <label class="check"><input type="checkbox" data-k="followUp" ${f.followUp ? 'checked' : ''}> Suivi nécessaire (à régler plus tard)</label>
+    <div class="row"><button id="logSave" class="primary">Enregistrer</button> <button id="logCancel" class="ghost">Annuler</button></div>`;
+}
+$('#logTypes').addEventListener('click', e => {
+  const b = e.target.closest('button[data-type]'); if (!b) return;
+  if (logForm && !logForm.id) logForm.type = b.dataset.type;
+  else logForm = { id: null, type: b.dataset.type, time: nowHM(), place: '', severity: 'faible', plate: '', text: '', action: '', followUp: false };
+  renderLog();
+  $('#logForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+$('#logForm').addEventListener('input', e => {
+  const k = e.target.dataset.k; if (!k || !logForm) return;
+  logForm[k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+});
+$('#logForm').addEventListener('click', async e => {
+  const chip = e.target.closest('button[data-k]');
+  if (chip) { logForm[chip.dataset.k] = chip.dataset.v; renderLogForm(); return; }
+  if (e.target.id === 'logCancel') { logForm = null; renderLog(); return; }
+  if (e.target.id !== 'logSave') return;
+  const f = logForm;
+  if (!f.place) return toast('Choisis le lieu');
+  if (!f.text.trim()) return toast("Décris ce qui s'est passé");
+  e.target.disabled = true;
+  try {
+    await logCall('/api/log/save', { id: f.id, entry: f });
+    logForm = null; renderLog(); toast('Événement enregistré');
+  } catch { e.target.disabled = false; }
+});
+$('#logList').addEventListener('click', async e => {
+  const item = e.target.closest('.log-item'); if (!item) return;
+  const entry = logData.entries.find(x => x.id === item.dataset.id); if (!entry) return;
+  if (e.target.closest('.log-edit')) {
+    logForm = { ...entry };
+    renderLog(); $('#logForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else if (e.target.closest('.log-del') && confirm(`Supprimer l'événement de ${entry.time} (${lbl(logData.types, entry.type)}) ?`)) {
+    await logCall('/api/log/delete', { id: entry.id }); toast('Événement supprimé');
+  }
+});
+function logGo(date) {
+  if (!date) return;
+  if (logForm && !confirm("L'événement en cours n'est pas enregistré. Changer de jour quand même ?")) return;
+  logForm = null; logDate = date; logData = null; renderLog(); loadLog();
+}
+$('#logOpen').onclick = () => { go('log'); renderLog(); loadLog(); };
+$('#lPrev').onclick = () => logGo(addDay(logDate, -1));
+$('#lNext').onclick = () => logGo(addDay(logDate, 1));
+$('#lToday').onclick = () => logGo(localDay());
+$('#logChief').onchange = e => { try { localStorage.setItem('logChief', e.target.value.trim()); } catch {} };
+// Rapport PDF : fabriqué dans la page (en ligne) ou par le serveur local.
+async function logPdf() {
+  const q = { month: logDate.slice(0, 7), date: logDate, chief: $('#logChief').value.trim() };
+  if (backend) {
+    const out = await backend.handle('GET', '/api/log-report.pdf', q, {});
+    if (!out.pdf) throw new Error((out.json && out.json.error) || 'Rapport impossible');
+    return new File([out.pdf], out.filename, { type: 'application/pdf' });
+  }
+  const r = await fetch('/api/log-report.pdf?' + new URLSearchParams(q));
+  if (!r.ok) throw new Error('Rapport impossible');
+  return new File([await r.arrayBuffer()], `main-courante-${logDate}.pdf`, { type: 'application/pdf' });
+}
+function saveFile(file) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(file); a.download = file.name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$('#logDownload').onclick = async () => { try { saveFile(await logPdf()); } catch (e) { toast(e.message); } };
+$('#logShare').onclick = async () => {
+  try {
+    const file = await logPdf();
+    const d = new Date(logDate + 'T12:00:00');
+    const title = `Main courante du ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    // Menu « Partager » du téléphone (mail, WhatsApp, Teams…) ; sinon le PDF est téléchargé.
+    if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title, text: `${title} — Interparking Westland` });
+    else { saveFile(file); toast('Partage non disponible ici : le PDF est téléchargé.'); }
+  } catch (e) { if (e.name !== 'AbortError') toast(e.message); }
+};
 
 // ----- Chef terrain : nom, horaire, jours -----
 const DOW_SHORT = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
