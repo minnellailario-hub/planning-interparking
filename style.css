@@ -249,10 +249,10 @@ button.link:hover { text-decoration: underline; }
   body.menu-open .scrim { display: block; position: fixed; inset: 0; background: rgba(22, 27, 51, .4); z-index: 25; }
   .menu-btn { display: inline-flex; }
   .topbar { padding: 12px 16px; gap: 10px; }
-  .page-title { flex: 1 1 calc(100% - 64px); }
+  .page-title { flex: 1 1 0; }
   .page-title h1 { font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .page-title p { display: none; }
-  .monthnav { order: 3; flex: 1 1 100%; justify-content: space-between; }
+  .topbar .monthnav { order: 3; flex: 1 1 100%; justify-content: space-between; }
   .actions { order: 4; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .actions::-webkit-scrollbar { display: none; }
   .actions > * { flex: 0 0 auto; white-space: nowrap; }
@@ -414,3 +414,94 @@ body.readonly #zTeamCard .row:last-child { display: none; }
   #logForm .row label { flex: 1 1 100%; }
 }
 body.readonly #logNew, body.readonly .log-item .row { display: none; }
+
+/* ===== Téléphone : mise en page compacte ===== */
+.zcards { display: grid; gap: 10px; padding: 0; }
+.zcard { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; box-shadow: var(--shadow); }
+.zcard-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.zcard-head b { font-size: 15px; }
+.zslot { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 10px; padding: 5px 0; border-top: 1px solid var(--line); position: relative; cursor: pointer; }
+.zslot.lock::after { content: "🔒"; position: absolute; right: 4px; top: 4px; font-size: 10px; }
+.zs-time { font-size: 13px; font-weight: 600; color: var(--muted); }
+.zs-code { display: flex; align-items: baseline; gap: 6px; border-radius: 8px; padding: 6px 10px; font-size: 13px; }
+.zs-code small { font-size: 11px; opacity: .85; }
+.zs-code b { white-space: nowrap; }
+.zline .zs-code { flex-wrap: wrap; row-gap: 0; }
+.zline { display: grid; grid-template-columns: 1fr 1.1fr; gap: 10px; align-items: center; padding: 4px 0; font-size: 14px; }
+#zTeamCard summary { cursor: pointer; list-style: none; margin: 0; }
+#zTeamCard summary::-webkit-details-marker { display: none; }
+#zTeamCard summary h3::before { content: "▸ "; color: var(--muted); }
+#zTeamCard[open] summary h3::before { content: "▾ "; }
+#zTeamCard[open] summary { margin-bottom: 8px; }
+#zTeamCard h3 .muted { font-weight: 500; }
+
+@media (max-width: 900px) {
+  /* En-tête : une ligne titre, une ligne mois + actions ; le reste de l'écran pour le contenu. */
+  .topbar { gap: 8px; padding: 10px 12px; }
+  .page-title h1 { font-size: 17px; }
+  .undo-btn { padding: 6px 10px; font-size: 13px; }
+  .topbar .monthnav { flex: 1 1 auto; min-width: 0; padding: 2px; }
+  .topbar .monthnav h2 { min-width: 0; font-size: 14px; }
+  .actions { flex: 0 0 auto; gap: 6px; }
+  .actions > * { padding: 8px 12px; }
+  .long, #print { display: none; }
+  /* Barres de page (zones, main courante) : le jour en entier, les boutons en dessous. */
+  .zones-bar, .log-bar { gap: 8px; }
+  .zones-bar .monthnav, .log-bar .monthnav { flex: 1 1 100%; justify-content: space-between; }
+  .zones-bar .monthnav h2, .log-bar .monthnav h2 { min-width: 0; }
+  .zones-bar > button, .zones-bar > input { flex: 1 1 auto; }
+  .zones-bar .viewswitch { order: 5; }
+  /* Tableaux larges : ils défilent dans leur carte, pas la page entière. */
+  .card table.list, .card table.stats { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .avail input { width: 34px; padding: 6px 0; }
+  .avail td, .avail th { padding: 5px 2px; }
+  .avail td:first-child { font-size: 11.5px; white-space: normal; min-width: 0; width: 56px; }
+}
+
+@media (max-width: 700px) {
+  body { -webkit-text-size-adjust: 100%; }
+  .page { padding: 12px 10px 40px; gap: 12px; }
+  .card { padding: 14px 12px; border-radius: 14px; }
+  .card h3 { font-size: 15px; }
+  /* Formulaires : le libellé au-dessus, le champ sur toute la largeur, des boutons faciles à toucher. */
+  .card .row > label:not(.check), .entries .row > label, dialog .row > label:not(.check) {
+    flex: 1 1 100%; display: flex; flex-direction: column; align-items: stretch; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .card .row > label:not(.check) > input, .card .row > label:not(.check) > select, .card .row > label:not(.check) > textarea,
+  .entries .row > label > input, .entries .row > label > select,
+  dialog .row > label:not(.check) > input, dialog .row > label:not(.check) > select { width: 100%; font-size: 16px; padding: 10px; color: var(--text); font-weight: 400; }
+  input, select, textarea { font-size: 16px; } /* évite le zoom automatique de l'iPhone */
+  .entries .row { position: relative; padding: 12px 40px 12px 12px; }
+  .entries .row > button[data-rm] { position: absolute; top: 6px; right: 6px; }
+  .row > button { min-height: 42px; }
+  .card .row > button.primary { flex: 1 1 auto; }
+  /* Horaire du mois : colonne des noms plus étroite pour voir plus de jours. */
+  #grid { font-size: 11px; }
+  #grid th.name, #grid td.name { min-width: 0; width: 86px; max-width: 86px; padding: 6px; white-space: normal; }
+  #grid .namebox { font-size: 12px; line-height: 1.2; }
+  #grid .edit-emp, #grid .edit-chef { display: none; }
+  #grid td.cell { min-width: 40px; height: 34px; }
+  #grid td.cell span { margin: 2px; padding: 5px 1px; }
+  #grid thead th { font-size: 12px; padding: 6px 1px 4px; }
+  .legend { font-size: 11px; gap: 6px 12px; }
+  /* Zones : menu de choix en bas de l'écran. */
+  .zmenu { position: fixed; left: 0 !important; right: 0; top: auto !important; bottom: 0; border-radius: 18px 18px 0 0; min-width: 0;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); box-shadow: 0 -10px 40px rgba(20, 28, 60, .2); }
+  .zmenu button { padding: 14px 12px; font-size: 15px; }
+  #zBox.card.flat { background: transparent; border: 0; box-shadow: none; }
+  /* Équipe : une carte par personne au lieu d'un tableau. */
+  #teamList, #teamList tbody { display: block; }
+  #teamList tr:first-child { display: none; }
+  #teamList { width: 100%; overflow: visible; }
+  #teamList tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; padding: 12px; margin-top: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+  #teamList td { padding: 0; border: 0; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 600; }
+  #teamList td:nth-child(1), #teamList td:nth-child(3) { grid-column: 1 / -1; }
+  #teamList td:nth-child(1)::before { content: "Nom"; } #teamList td:nth-child(2)::before { content: "Note"; }
+  #teamList td:nth-child(3)::before { content: "Week-end avec"; } #teamList td:nth-child(4)::before { content: "Arrivée"; }
+  #teamList td:nth-child(5)::before { content: "Départ"; } #teamList td:nth-child(6):empty { display: none; }
+  #teamList td { min-width: 0; }
+  #teamList td input, #teamList td select { width: 100%; min-width: 0; box-sizing: border-box; color: var(--text); font-weight: 400; }
+  /* Main courante et absences */
+  .log-types button { min-height: 56px; }
+  .abs-actions { white-space: nowrap; }
+  .toast { bottom: calc(16px + env(safe-area-inset-bottom)); }
+}

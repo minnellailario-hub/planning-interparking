@@ -794,6 +794,7 @@ function renderZones() {
   if (!z || z.date !== zDate) { $('#zBox').innerHTML = '<p class="muted pad">Chargement…</p>'; return; }
   if (z.closed) { $('#zBox').innerHTML = "<p class=\"muted pad\">Westland fermé ce jour-là. Si vous travaillez quand même, ajoute les personnes dans « Équipe du jour ».</p>"; return; }
   if (!z.people.length) { $('#zBox').innerHTML = '<p class="muted pad">Personne ne travaille ce jour-là. Ajoute les personnes dans « Équipe du jour » (ou génère le mois dans Horaire).</p>'; return; }
+  if (isPhone()) { $('#zBox').innerHTML = zonesCards(z); return; }
   const head = `<tr><th class="name">${zView === 'people' ? 'Personne' : 'Zone'}</th>${zView === 'people' ? '<th>Horaire</th>' : ''}${z.slots.map(s => `<th>${s.label}</th>`).join('')}${zView === 'people' ? '<th>Pause</th>' : ''}</tr>`;
   let body = '';
   if (zView === 'people') {
@@ -822,6 +823,29 @@ function renderZones() {
   }
   $('#zBox').innerHTML = `<table class="ztable">${head}${body}</table>`;
 }
+// Téléphone : des cartes au lieu du grand tableau (une par personne, ou une par créneau).
+const isPhone = () => matchMedia('(max-width: 700px)').matches;
+matchMedia('(max-width: 700px)').addEventListener('change', () => { if (zData) renderZones(); });
+const zCode = c => `<span class="zs-code z-${c}"><b>${c === 'D' ? 'Dispatch' : c === 'T' ? 'Toutes zones' : Z_LABEL[c]}</b><small>${Z_PLACE[c]}</small></span>`;
+function zonesCards(z) {
+  if (zView === 'people') return '<div class="zcards">' + z.people.map(p => `
+    <div class="zcard">
+      <div class="zcard-head"><b>${esc(p.name)}</b><span class="muted">${esc(p.shift)}${p.pause ? ` · ☕ ${p.pause.start}-${p.pause.end}` : ''}</span></div>
+      ${p.cells.map((c, s) => c ? `<div class="zslot zcell ${c.manual ? 'lock' : ''}" data-person="${p.id}" data-slot="${s}">
+        <span class="zs-time">${z.slots[s].label}</span>${c.code ? zCode(c.code) : ''}</div>` : '').join('')}
+    </div>`).join('') + '</div>';
+  const names = list => list.length ? list.map(esc).join(', ') : '<span class="muted">—</span>';
+  return '<div class="zcards">' + z.slots.map((sl, s) => {
+    const b = z.byZone[s];
+    const pauses = z.people.filter(p => p.pause && p.pause.slot === s).map(p => `☕ ${p.pause.start} ${esc(p.name)}`);
+    const zones = b.T.length
+      ? `<div class="zline">${zCode('T')}<span>${names(b.T)}</span></div>`
+      : ['Z1', 'Z2', 'Z3'].map(c => `<div class="zline">${zCode(c)}<span>${names(b[c])}</span></div>`).join('');
+    return `<div class="zcard"><div class="zcard-head"><b>${sl.label}</b></div>${zones}
+      <div class="zline">${zCode('D')}<span>${names(b.D)}</span></div>
+      ${pauses.length ? `<p class="muted small">${pauses.join(' · ')}</p>` : ''}</div>`;
+  }).join('') + '</div>';
+}
 // Équipe du jour : modifiable avant d'enregistrer (zTeamDirty) ; sinon recopiée de ce que le serveur utilise.
 const Z_SHIFTS = [['8-16', '8-16'], ['10-18', '10-18'], ['12-20', '12-20'], ['11-19', '11-19'], ['FOOT', 'Horaire foot']];
 let zTeam = [], zTeamDirty = false;
@@ -833,6 +857,9 @@ function renderZTeam() {
   const z = zData;
   $('#zTeamSrc').textContent = !z ? '' : z.custom ? 'Choisie à la main' : "Reprise de l'horaire de l'outil";
   $('#zTeamSrc').className = 'chip ' + (z && z.custom ? 'z-D' : 'empty');
+  $('#zTeamCount').textContent = zTeam.length ? `· ${zTeam.length} personne${zTeam.length > 1 ? 's' : ''}` : '';
+  // Repliée par défaut ; ouverte s'il n'y a personne ou si une modification n'est pas enregistrée.
+  if (zTeamDirty || (z && !z.people.length && !z.closed)) $('#zTeamCard').open = true;
   $('#zTeamUse').hidden = !(z && z.custom);
   $('#zTeamSave').classList.toggle('pulse', zTeamDirty);
   const emps = data.config.employees.filter(e => !e.end || e.end >= zDate);
@@ -908,7 +935,7 @@ $('#zReset').onclick = async () => {
 };
 // Clic sur une case : petit menu pour choisir la zone (ou revenir en automatique).
 $('#zBox').addEventListener('click', e => {
-  const td = e.target.closest('td.zcell[data-person]');
+  const td = e.target.closest('.zcell[data-person]');
   if (!td || document.body.classList.contains('readonly')) return;
   document.querySelector('.zmenu')?.remove();
   const m = document.createElement('div');
@@ -1182,8 +1209,9 @@ $('#next').onclick = () => { month = addMonth(month, 1); api('/api/state'); };
 $('#print').onclick = () => window.print();
 $('#generate').onclick = async e => {
   if (data.view.generated && !confirm('Régénérer le mois ? Les cases non verrouillées seront remplacées.')) return;
-  e.target.disabled = true; e.target.textContent = 'Calcul en cours…';
-  try { await api('/api/generate', {}); toast('Planning généré'); } finally { e.target.disabled = false; e.target.textContent = 'Générer le mois'; }
+  const b = $('#generate');
+  b.disabled = true; b.textContent = 'Calcul en cours…';
+  try { await api('/api/generate', {}); toast('Planning généré'); } finally { b.disabled = false; b.innerHTML = 'Générer<span class="long"> le mois</span>'; }
 };
 
 // ----- Connexion -----

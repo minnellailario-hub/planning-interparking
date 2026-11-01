@@ -93,7 +93,7 @@
         </div>
         <button id="undoBtn" class="undo-btn" hidden title="Annuler la dernière modification">↶ Annuler</button>
         <div class="actions">
-          <button id="generate" class="primary">Générer le mois</button>
+          <button id="generate" class="primary">Générer<span class="long"> le mois</span></button>
           <a id="csv" class="btn">Excel</a>
           <button id="print">Imprimer</button>
         </div>
@@ -325,8 +325,8 @@
           <button id="zReset" class="ghost" title="Enlever les changements faits à la main ce jour-là">Tout remettre en auto</button>
           <button id="zExport">Excel du jour</button>
         </div>
-        <div class="card" id="zTeamCard">
-          <div class="card-head"><h3>Équipe du jour</h3><span id="zTeamSrc" class="chip"></span></div>
+        <details class="card" id="zTeamCard">
+          <summary class="card-head"><h3>Équipe du jour <span id="zTeamCount" class="muted"></span></h3><span id="zTeamSrc" class="chip"></span></summary>
           <p class="muted">Qui travaille ce jour-là et à quelle heure. Par défaut, c'est l'horaire de l'outil ; si l'horaire est fait ailleurs, choisis les noms ici.</p>
           <div id="zTeamRows" class="entries"></div>
           <div class="row">
@@ -334,7 +334,7 @@
             <button id="zTeamSave" class="primary">Enregistrer l'équipe</button>
             <button id="zTeamUse" class="ghost">Reprendre l'horaire de l'outil</button>
           </div>
-        </div>
+        </details>
         <div class="card flat tablewrap" id="zBox"></div>
         <div class="legend" id="zLegend"></div>
       </section>
