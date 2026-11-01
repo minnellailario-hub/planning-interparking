@@ -983,6 +983,7 @@ function renderLog() {
   $('#logNew').hidden = !edit;
   $('#logTypes').innerHTML = L.types.map(t => `<button data-type="${t.id}" class="${logForm && logForm.type === t.id ? 'on' : ''}"><span>${LOG_ICONS[t.id] || '📝'}</span>${esc(t.label)}</button>`).join('');
   renderLogForm();
+  $('#logReformRow').hidden = document.body.classList.contains('readonly') || !L.entries.some(e => !e.textPro);
   $('#logCount').textContent = L.entries.length ? `${L.entries.length} événement${L.entries.length > 1 ? 's' : ''}` : '';
   $('#logList').innerHTML = L.entries.length ? L.entries.map(e => {
     const sev = L.severities.find(s => s.id === e.severity) || {};
@@ -1123,6 +1124,13 @@ function saveFile(file) {
   a.href = URL.createObjectURL(file); a.download = file.name; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
+$('#logReform').onclick = async e => {
+  const b = e.target; b.disabled = true; b.textContent = 'Reformulation en cours…';
+  try {
+    const j = await logCall('/api/log/reformulate', {});
+    toast(j.reformError ? 'Reformulation impossible : ' + j.reformError : 'Événements reformulés');
+  } catch {} finally { b.disabled = false; b.textContent = '✨ Reformuler les événements pas encore reformulés'; }
+};
 $('#logDownload').onclick = async () => { try { saveFile(await logPdf()); } catch (e) { toast(e.message); } };
 $('#logShare').onclick = async () => {
   try {
