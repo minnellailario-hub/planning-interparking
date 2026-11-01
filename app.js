@@ -990,8 +990,14 @@ function renderLog() {
       <div class="log-head"><b class="log-time">${esc(e.time)}</b><b>${LOG_ICONS[e.type] || ''} ${esc(lbl(L.types, e.type))}</b>
         <span class="log-sev" style="background:#${sev.fill};color:#${sev.ink}">${esc(sev.label || '')}</span></div>
       <div class="muted small">${esc(lbl(L.places, e.place))}${e.plate ? ' · Plaque ' + esc(e.plate) : ''}</div>
-      <p>${esc(e.text).replace(/\n/g, '<br>')}</p>
-      ${e.action ? `<p class="log-action"><b>Action prise :</b> ${esc(e.action).replace(/\n/g, '<br>')}</p>` : ''}
+      ${(() => {
+        // Version reformulée (celle du rapport) ; « Mon texte » montre ce qui a été écrit ou dicté.
+        const br = s => esc(s).replace(/\n/g, '<br>');
+        const block = (t, a) => `<p>${br(t)}</p>${a ? `<p class="log-action"><b>Action prise :</b> ${br(a)}</p>` : ''}`;
+        if (!e.textPro) return block(e.text, e.action);
+        return `<div class="log-pro">${block(e.textPro, e.actionPro || e.action)}</div>
+          <details class="log-orig"><summary>✨ Reformulé pour le rapport · voir mon texte</summary>${block(e.text, e.action)}</details>`;
+      })()}
       ${e.followUp ? '<p class="log-follow">► Suivi nécessaire</p>' : ''}
       ${edit ? `<div class="row"><button class="log-edit">Modifier</button> <button class="ghost danger log-del">Supprimer</button></div>` : ''}
     </div>`;
@@ -1074,9 +1080,11 @@ $('#logForm').addEventListener('click', async e => {
   if (!f.text.trim()) return toast("Décris ce qui s'est passé");
   e.target.disabled = true;
   try {
-    await logCall('/api/log/save', { id: f.id, entry: f });
-    logForm = null; renderLog(); toast('Événement enregistré');
-  } catch { e.target.disabled = false; }
+    e.target.textContent = 'Enregistrement…';
+    const j = await logCall('/api/log/save', { id: f.id, entry: f });
+    logForm = null; renderLog();
+    toast(j.reformError ? `Événement enregistré (texte gardé tel quel : ${j.reformError})` : 'Événement enregistré');
+  } catch { e.target.disabled = false; e.target.textContent = 'Enregistrer'; }
 });
 $('#logList').addEventListener('click', async e => {
   const item = e.target.closest('.log-item'); if (!item) return;
