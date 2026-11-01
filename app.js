@@ -124,6 +124,8 @@ function render() {
   renderDashboard();
   renderAccount();
   renderAbsences();
+  // L'horaire a pu changer (maladie, autre compte…) : les zones du jour affiché se recalculent.
+  if (document.body.dataset.page === 'zones') loadZones();
   if (data.account.role === 'admin') renderHr();
   renderMatches();
   renderSettings();
@@ -760,6 +762,92 @@ entriesDialog({ prefix: 'form', endpoint: '/api/formation', withValue: false,
   describe: (name, s, period) => `${name} est en formation ${period}.` });
 entriesDialog({ prefix: 'req', endpoint: '/api/requests', withValue: true,
   describe: (name, s, period) => `${name} : ${(REQUEST_CHOICES.find(c => c[0] === s.value) || [, s.value])[1]} ${period}.` });
+
+// ----- Zones & dispatch : tournantes d'un jour (calculées par le serveur à partir de l'horaire) -----
+const localDay = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const addDay = (date, n) => { const d = new Date(date + 'T12:00:00'); d.setDate(d.getDate() + n); return localDay(d); };
+const Z_LABEL = { Z1: 'Zone 1', Z2: 'Zone 2', Z3: 'Zone 3', D: 'Dispatch' };
+const Z_PLACE = { Z1: 'Total-Delhaize', Z2: 'City-Crélan', Z3: 'Toit & sous-terrain', D: 'Bureau' };
+const DAY_NAMES = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+let zDate = localDay(), zView = 'people', zData = null;
+try { zView = localStorage.getItem('zView') || zView; } catch {}
+
+async function loadZones() {
+  const j = await call('/api/zones', null, { month: zDate.slice(0, 7), date: zDate });
+  if (j.error) return toast(j.error);
+  zData = j.zones; renderZones();
+}
+function renderZones() {
+  const d = new Date(zDate + 'T12:00:00');
+  $('#zTitle').textContent = `${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  $('#zDate').value = zDate;
+  $('#zvPeople').classList.toggle('on', zView === 'people');
+  $('#zvZones').classList.toggle('on', zView === 'zones');
+  $('#zLegend').innerHTML = ['Z1', 'Z2', 'Z3', 'D'].map(z => `<span><i class="z-${z}"></i>${Z_LABEL[z]} · ${Z_PLACE[z]}</span>`).join('') + '<span>☕ Pause 30 min</span><span>🔒 Changé à la main</span>';
+  const z = zData;
+  if (!z || z.date !== zDate) { $('#zBox').innerHTML = '<p class="muted pad">Chargement…</p>'; return; }
+  if (z.closed) { $('#zBox').innerHTML = '<p class="muted pad">Westland fermé ce jour-là.</p>'; return; }
+  if (!z.people.length) { $('#zBox').innerHTML = "<p class=\"muted pad\">Personne ne travaille ce jour-là dans l'horaire (mois pas encore généré ?).</p>"; return; }
+  const head = `<tr><th class="name">${zView === 'people' ? 'Personne' : 'Zone'}</th>${zView === 'people' ? '<th>Horaire</th>' : ''}${z.slots.map(s => `<th>${s.label}</th>`).join('')}${zView === 'people' ? '<th>Pause</th>' : ''}</tr>`;
+  let body = '';
+  if (zView === 'people') {
+    for (const p of z.people) {
+      body += `<tr><td class="name"><b>${esc(p.name)}</b></td><td class="muted">${esc(p.shift)}</td>`;
+      p.cells.forEach((c, s) => {
+        const pause = p.pause && p.pause.slot === s ? `<small class="z-pause">☕ ${p.pause.start}</small>` : '';
+        if (!c) { body += `<td class="zcell off">${pause}</td>`; return; }
+        body += `<td class="zcell ${c.manual ? 'lock' : ''}" data-person="${p.id}" data-slot="${s}">`
+          + (c.code ? `<span class="z-${c.code}"><b>${c.code === 'D' ? 'Dispatch' : c.code}</b><small>${Z_PLACE[c.code]}</small></span>` : '') + pause + '</td>';
+      });
+      body += `<td>${p.pause ? `${p.pause.start}-${p.pause.end}` : '<span class="muted">—</span>'}</td></tr>`;
+    }
+  } else {
+    for (const code of ['Z1', 'Z2', 'Z3', 'D'])
+      body += `<tr><td class="name"><span class="zname z-${code}"><b>${Z_LABEL[code]}</b><small>${Z_PLACE[code]}</small></span></td>`
+        + z.byZone.map(b => `<td class="zlist">${b[code].length ? b[code].map(n => `<div>${esc(n)}</div>`).join('') : '<span class="muted">—</span>'}</td>`).join('') + '</tr>';
+    body += '<tr><td class="name"><b>Pauses</b></td>' + z.slots.map((_, s) => `<td class="zlist">${z.people.filter(p => p.pause && p.pause.slot === s)
+      .sort((a, b) => a.pause.start.localeCompare(b.pause.start)).map(p => `<div>☕ ${p.pause.start} ${esc(p.name)}</div>`).join('') || '<span class="muted">—</span>'}</td>`).join('') + '</tr>';
+  }
+  $('#zBox').innerHTML = `<table class="ztable">${head}${body}</table>`;
+}
+async function zonesCell(body) {
+  const j = await api('/api/zones/cell', { date: zDate, ...body });
+  zData = j.zones; renderZones();
+}
+function zGo(date) { if (!date) return; zDate = date; zData = null; renderZones(); loadZones(); }
+$('#zonesOpen').onclick = () => { go('zones'); renderZones(); loadZones(); };
+$('#zPrev').onclick = () => zGo(addDay(zDate, -1));
+$('#zNext').onclick = () => zGo(addDay(zDate, 1));
+$('#zToday').onclick = () => zGo(localDay());
+$('#zDate').onchange = e => zGo(e.target.value);
+$('#zvPeople').onclick = () => { zView = 'people'; try { localStorage.setItem('zView', zView); } catch {} renderZones(); };
+$('#zvZones').onclick = () => { zView = 'zones'; try { localStorage.setItem('zView', zView); } catch {} renderZones(); };
+$('#zExport').onclick = () => downloadXlsx('/api/export-zones.xlsx', { month: zDate.slice(0, 7), date: zDate });
+$('#zReset').onclick = async () => {
+  if (!confirm('Enlever tous les changements faits à la main ce jour-là et tout recalculer ?')) return;
+  const j = await api('/api/zones/reset', { date: zDate });
+  zData = j.zones; renderZones(); toast('Zones remises en automatique');
+};
+// Clic sur une case : petit menu pour choisir la zone (ou revenir en automatique).
+$('#zBox').addEventListener('click', e => {
+  const td = e.target.closest('td.zcell[data-person]');
+  if (!td || document.body.classList.contains('readonly')) return;
+  document.querySelector('.zmenu')?.remove();
+  const m = document.createElement('div');
+  m.className = 'zmenu';
+  m.innerHTML = ['Z1', 'Z2', 'Z3', 'D'].map(z => `<button data-z="${z}"><i class="z-${z}"></i>${Z_LABEL[z]} <small>${Z_PLACE[z]}</small></button>`).join('')
+    + '<button data-z="">↺ Automatique</button>';
+  const r = td.getBoundingClientRect();
+  m.style.left = Math.min(r.left + window.scrollX, window.scrollX + document.documentElement.clientWidth - 230) + 'px';
+  m.style.top = (r.bottom + window.scrollY + 4) + 'px';
+  document.body.appendChild(m);
+  m.onclick = ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    m.remove();
+    zonesCell({ personId: td.dataset.person, slot: Number(td.dataset.slot), code: b.dataset.z || null });
+  };
+  setTimeout(() => document.addEventListener('click', function off(ev) { if (!m.contains(ev.target)) { m.remove(); document.removeEventListener('click', off); } }), 0);
+});
 
 // ----- Chef terrain : nom, horaire, jours -----
 const DOW_SHORT = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];

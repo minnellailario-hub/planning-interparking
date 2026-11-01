@@ -50,6 +50,7 @@
       <nav class="side-nav">
         <button class="nav" data-go="dashboard"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Tableau de bord</button>
         <button class="nav" data-go="planning"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Horaire</button>
+        <button class="nav" id="zonesOpen" data-go="zones"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Zones &amp; dispatch</button>
         <div class="nav-label">Absences &amp; demandes</div>
         <button class="nav" id="sickOpen" data-go="sick"><svg viewBox="0 0 24 24"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"/></svg>Maladie</button>
         <button class="nav" id="formOpen" data-go="formation"><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/></svg>Formation</button>
@@ -306,6 +307,27 @@
       </section>
 
       <!-- Statistiques -->
+      <!-- Zones & dispatch -->
+      <section class="page" data-page="zones" data-title="Zones &amp; dispatch" data-sub="Tournantes du jour, calculées à partir de l'horaire : 1 personne au dispatch, puis Zone 1, Zone 2 et Zone 3. Clique sur une case pour la changer : elle est verrouillée 🔒 et gardée.">
+        <div class="planning-bar zones-bar">
+          <div class="monthnav">
+            <button id="zPrev" class="icon-btn" aria-label="Jour précédent">‹</button>
+            <h2 id="zTitle"></h2>
+            <button id="zNext" class="icon-btn" aria-label="Jour suivant">›</button>
+          </div>
+          <input type="date" id="zDate" aria-label="Choisir le jour">
+          <button id="zToday">Aujourd'hui</button>
+          <div class="viewswitch" role="tablist">
+            <button id="zvPeople" role="tab">Par personne</button>
+            <button id="zvZones" role="tab">Par zone</button>
+          </div>
+          <button id="zReset" class="ghost" title="Enlever les changements faits à la main ce jour-là">Tout remettre en auto</button>
+          <button id="zExport">Excel du jour</button>
+        </div>
+        <div class="card flat tablewrap" id="zBox"></div>
+        <div class="legend" id="zLegend"></div>
+      </section>
+
       <section class="page" data-page="stats" data-title="Statistiques" data-sub="Compteurs du mois, rotation des matchs et des samedis.">
         <div class="card">
           <h3>Rotation des matchs ⚽</h3>

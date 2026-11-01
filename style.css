@@ -349,3 +349,32 @@ body.not-admin .nav[data-go="hr"], body.not-admin .admin-only { display: none !i
 .abs-wrap { overflow-x: auto; }
 .abs-wrap .list td { white-space: nowrap; }
 .abs-actions { text-align: right; }
+
+/* Zones & dispatch */
+.zones-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.zones-bar .monthnav h2 { min-width: 190px; }
+.zones-bar input[type=date] { padding: 7px 10px; }
+.z-Z1 { background: #dce8ff; color: #1d4ed8; }
+.z-Z2 { background: #dff3e8; color: #11734d; }
+.z-Z3 { background: #fff1d6; color: #9a5b00; }
+.z-D { background: #ece4ff; color: #5b3cc4; }
+.ztable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ztable th, .ztable td { border-bottom: 1px solid var(--line); border-left: 1px solid var(--line); padding: 6px; text-align: center; vertical-align: middle; }
+.ztable th { font-size: 12px; color: var(--muted); font-weight: 600; background: var(--surface-2); white-space: nowrap; }
+.ztable th.name, .ztable td.name { text-align: left; border-left: 0; padding-left: 14px; white-space: nowrap; min-width: 150px; }
+.ztable td.zcell { position: relative; min-width: 104px; height: 46px; cursor: pointer; }
+.ztable td.zcell.off { background: var(--closed); cursor: default; }
+.ztable td.zcell span, .zname { display: flex; flex-direction: column; align-items: center; border-radius: 8px; padding: 4px 6px; line-height: 1.2; }
+.zname { align-items: flex-start; }
+.ztable td.zcell span small, .zname small { font-size: 10px; font-weight: 500; opacity: .85; }
+.ztable td.zcell.lock::after { content: "🔒"; position: absolute; top: 1px; right: 3px; font-size: 9px; }
+.z-pause { display: block; margin-top: 3px; font-size: 11px; color: var(--muted); }
+.ztable td.zlist { text-align: left; min-width: 110px; line-height: 1.6; }
+.ztable .pad, #zBox .pad { padding: 18px 20px; margin: 0; }
+#zLegend i, .zmenu i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; margin-right: 6px; vertical-align: -2px; }
+.zmenu { position: absolute; z-index: 60; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; min-width: 220px; }
+.zmenu button { border: 0; background: transparent; text-align: left; padding: 8px 10px; border-radius: 8px; font-size: 13px; }
+.zmenu button:hover { background: var(--surface-2); }
+.zmenu small { color: var(--muted); }
+body.readonly #zReset { display: none; }
+body.readonly .ztable td.zcell { cursor: default; }
