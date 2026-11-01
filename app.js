@@ -648,12 +648,16 @@ $('#clear').onclick = () => confirm('Vider le mois (les cases verrouillées sont
 const today = () => new Date().toISOString().slice(0, 10);
 const REQUEST_CHOICES = [['8-16', '8-16'], ['10-18', '10-18'], ['12-20', '12-20'], ['REPOS', 'Repos'], ['CONGE', 'Congé'], ['RTT', 'RTT']];
 const activeEmps = () => data.config.employees.filter(e => !e.end || e.end >= today());
+// Maladie / formation : aussi le chef terrain et le chef de parc (identifiant fixe « chef-parc »).
+const chiefs = () => [{ id: data.config.chef.id, name: `${data.config.chef.name} (chef terrain)` },
+  ...(data.config.parkChief && data.config.parkChief.name ? [{ id: 'chef-parc', name: `${data.config.parkChief.name} (chef de parc)` }] : [])];
+const personName = id => (activeEmps().concat(data.config.employees, chiefs()).find(e => e.id === id) || {}).name || id;
 
-function entriesDialog({ prefix, endpoint, withValue, describe }) {
+function entriesDialog({ prefix, endpoint, withValue, describe, withChiefs }) {
   let rows = [];
   const el = id => $('#' + prefix + id);
   function render() {
-    const opts = activeEmps();
+    const opts = withChiefs ? [...activeEmps(), ...chiefs()] : activeEmps();
     // Formulaire vide au départ : on ajoute une ligne et on choisit l'employé (personne n'est pré-sélectionné).
     if (!rows.length) { el('Rows').innerHTML = '<p class="muted empty-rows">Aucun employé pour le moment. Clique sur le bouton ci-dessous pour en ajouter un.</p>'; return; }
     el('Rows').innerHTML = rows.map((s, i) => `
@@ -693,7 +697,7 @@ function entriesDialog({ prefix, endpoint, withValue, describe }) {
       month = rows.map(s => s.from).sort()[0].slice(0, 7);
       const r = await api(endpoint, { entries: rows, regenerate: el('Regen').checked });
       const { regenerated, changes } = r.result;
-      const nameOf = id => data.config.employees.find(x => x.id === id).name;
+      const nameOf = personName;
       const period = s => s.from === s.to ? `le ${fmtDate(s.from)}` : `du ${fmtDate(s.from)} au ${fmtDate(s.to)}`;
       let h = `<div class="ok-box">${rows.map(s => esc(describe(nameOf(s.empId), s, period(s)))).join('<br>')}`;
       h += regenerated.length ? '<br>Horaire recalculé.' : '<br>Horaire non recalculé (mois pas encore généré ou option décochée).';
@@ -706,7 +710,7 @@ function entriesDialog({ prefix, endpoint, withValue, describe }) {
 const ABSENCE_LISTS = [{ code: 'MALADIE', prefix: 'sick', word: 'maladie' }, { code: 'FORMATION', prefix: 'form', word: 'formation' }];
 let absEdit = null; // période en cours de modification : `${code}|${empId}|${from}`
 function renderAbsences() {
-  const nameOf = id => (data.config.employees.find(e => e.id === id) || {}).name || id;
+  const nameOf = personName;
   for (const { code, prefix, word } of ABSENCE_LISTS) {
     const list = (data.absences || []).filter(a => a.code === code);
     const el = $('#' + prefix + 'List');
@@ -727,7 +731,7 @@ function renderAbsences() {
 for (const { prefix, word } of ABSENCE_LISTS) $('#' + prefix + 'List').addEventListener('click', async e => {
   const tr = e.target.closest('tr[data-code]'); if (!tr) return;
   const a = { code: tr.dataset.code, empId: tr.dataset.emp, from: tr.dataset.from, to: tr.dataset.to };
-  const name = (data.config.employees.find(x => x.id === a.empId) || {}).name;
+  const name = personName(a.empId);
   const send = async (body, msg) => {
     e.target.disabled = true;
     try {
@@ -757,9 +761,9 @@ function changesHtml(head, { regenerated, changes }) {
   return h;
 }
 
-entriesDialog({ prefix: 'sick', endpoint: '/api/sick', withValue: false,
+entriesDialog({ prefix: 'sick', endpoint: '/api/sick', withValue: false, withChiefs: true,
   describe: (name, s, period) => `${name} est en maladie ${period}.` });
-entriesDialog({ prefix: 'form', endpoint: '/api/formation', withValue: false,
+entriesDialog({ prefix: 'form', endpoint: '/api/formation', withValue: false, withChiefs: true,
   describe: (name, s, period) => `${name} est en formation ${period}.` });
 entriesDialog({ prefix: 'req', endpoint: '/api/requests', withValue: true,
   describe: (name, s, period) => `${name} : ${(REQUEST_CHOICES.find(c => c[0] === s.value) || [, s.value])[1]} ${period}.` });
