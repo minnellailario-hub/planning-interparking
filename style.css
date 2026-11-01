@@ -380,3 +380,7 @@ body.readonly #zReset { display: none; }
 body.readonly .ztable td.zcell { cursor: default; }
 .z-T { background: repeating-linear-gradient(135deg, #dce8ff 0 10px, #dff3e8 10px 20px, #fff1d6 20px 30px); color: #344054; }
 .ztable td.zalone span { display: flex; flex-direction: column; align-items: center; text-align: center; border-radius: 8px; padding: 10px 8px; gap: 2px; }
+#zTeamCard .card-head { margin-bottom: 4px; }
+#zTeamSave.pulse { box-shadow: 0 0 0 3px rgba(79, 70, 229, .25); }
+body.readonly #zTeamCard .row button, body.readonly #zTeamRows select, body.readonly #zTeamRows input { pointer-events: none; }
+body.readonly #zTeamCard .row:last-child { display: none; }
