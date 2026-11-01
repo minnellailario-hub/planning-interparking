@@ -997,6 +997,41 @@ function renderLog() {
     </div>`;
   }).join('') : `<p class="muted">${L.editable ? 'Aucun événement pour le moment. Choisis un type ci-dessus pour en noter un.' : 'Aucun événement ce jour-là.'}</p>`;
 }
+// Dictée : on parle, le texte s'écrit dans le champ (reconnaissance vocale du navigateur, en français).
+let dict = null, dictK = null;
+const micButton = k => `<button type="button" class="mic ${dictK === k ? 'on' : ''}" data-mic="${k}">${dictK === k ? '■ Arrêter' : '🎤 Dicter'}</button>`;
+const refreshMics = () => document.querySelectorAll('#logForm .mic').forEach(b => { b.outerHTML = micButton(b.dataset.mic); });
+function stopDictation() { if (dict) try { dict.stop(); } catch {} }
+function startDictation(k) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return toast("Dictée pas disponible ici : utilise le micro 🎤 du clavier du téléphone.");
+  stopDictation();
+  const rec = new SR();
+  rec.lang = 'fr-BE'; rec.continuous = true; rec.interimResults = true;
+  const before = (logForm[k] || '').trim();
+  let done = '';
+  rec.onresult = ev => {
+    let live = '';
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      if (ev.results[i].isFinal) done += ev.results[i][0].transcript + ' '; else live += ev.results[i][0].transcript;
+    }
+    let said = (done + live).replace(/\s+/g, ' ').trim();
+    if (said && !before) said = said[0].toUpperCase() + said.slice(1);
+    const value = [before, said].filter(Boolean).join(' ');
+    if (!logForm) return;
+    logForm[k] = value;
+    const ta = document.querySelector(`#logForm textarea[data-k="${k}"]`);
+    if (ta) { ta.value = value; ta.scrollTop = ta.scrollHeight; }
+  };
+  rec.onerror = ev => {
+    if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') toast('Autorise le micro pour dicter (Réglages › Safari › Microphone), ou utilise le micro 🎤 du clavier.');
+    else if (ev.error !== 'aborted' && ev.error !== 'no-speech') toast('Dictée interrompue (' + ev.error + ')');
+  };
+  rec.onend = () => { if (dict === rec) { dict = null; dictK = null; refreshMics(); } };
+  dict = rec; dictK = k;
+  try { rec.start(); } catch { dict = null; dictK = null; toast('Impossible de lancer la dictée'); }
+  refreshMics();
+}
 function renderLogForm() {
   const L = logData, f = logForm;
   $('#logForm').hidden = !f;
@@ -1008,8 +1043,10 @@ function renderLogForm() {
       <label>Plaque <input data-k="plate" value="${esc(f.plate)}" placeholder="1-ABC-234" maxlength="20" autocapitalize="characters"></label></div>
     <label class="block">Lieu</label>${chips('place', L.places)}
     <label class="block">Gravité</label>${chips('severity', L.severities, true)}
-    <label class="block">Ce qui s'est passé<textarea data-k="text" rows="3" maxlength="3000" placeholder="Ex. accrochage entre deux voitures près de l'ascenseur, pas de blessé">${esc(f.text)}</textarea></label>
-    <label class="block">Action prise<textarea data-k="action" rows="2" maxlength="2000" placeholder="Ex. constat amiable, zone balisée, technicien appelé">${esc(f.action)}</textarea></label>
+    <div class="log-field"><div class="log-field-head"><span>Ce qui s'est passé</span>${micButton('text')}</div>
+      <textarea data-k="text" rows="3" maxlength="3000" placeholder="Écris ou touche « Dicter » et parle. Ex. accrochage entre deux voitures près de l'ascenseur, pas de blessé">${esc(f.text)}</textarea></div>
+    <div class="log-field"><div class="log-field-head"><span>Action prise</span>${micButton('action')}</div>
+      <textarea data-k="action" rows="2" maxlength="2000" placeholder="Ex. constat amiable, zone balisée, technicien appelé">${esc(f.action)}</textarea></div>
     <label class="check"><input type="checkbox" data-k="followUp" ${f.followUp ? 'checked' : ''}> Suivi nécessaire (à régler plus tard)</label>
     <div class="row"><button id="logSave" class="primary">Enregistrer</button> <button id="logCancel" class="ghost">Annuler</button></div>`;
 }
@@ -1025,10 +1062,13 @@ $('#logForm').addEventListener('input', e => {
   logForm[k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
 });
 $('#logForm').addEventListener('click', async e => {
+  const mic = e.target.closest('button[data-mic]');
+  if (mic) { if (dictK === mic.dataset.mic) stopDictation(); else startDictation(mic.dataset.mic); return; }
   const chip = e.target.closest('button[data-k]');
   if (chip) { logForm[chip.dataset.k] = chip.dataset.v; renderLogForm(); return; }
-  if (e.target.id === 'logCancel') { logForm = null; renderLog(); return; }
+  if (e.target.id === 'logCancel') { stopDictation(); logForm = null; renderLog(); return; }
   if (e.target.id !== 'logSave') return;
+  stopDictation();
   const f = logForm;
   if (!f.place) return toast('Choisis le lieu');
   if (!f.text.trim()) return toast("Décris ce qui s'est passé");
