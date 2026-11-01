@@ -385,7 +385,7 @@ body.readonly .ztable td.zcell { cursor: default; }
 body.readonly #zTeamCard .row button, body.readonly #zTeamRows select, body.readonly #zTeamRows input { pointer-events: none; }
 body.readonly #zTeamCard .row:last-child { display: none; }
 
-/* Main courante */
+/* Reporting */
 .log-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .log-bar .monthnav h2 { min-width: 190px; }
 .log-types { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
@@ -445,7 +445,7 @@ body.readonly #logNew, body.readonly .log-item .row { display: none; }
   .actions { flex: 0 0 auto; gap: 6px; }
   .actions > * { padding: 8px 12px; }
   .long, #print { display: none; }
-  /* Barres de page (zones, main courante) : le jour en entier, les boutons en dessous. */
+  /* Barres de page (zones, reporting) : le jour en entier, les boutons en dessous. */
   .zones-bar, .log-bar { gap: 8px; }
   .zones-bar .monthnav, .log-bar .monthnav { flex: 1 1 100%; justify-content: space-between; }
   .zones-bar .monthnav h2, .log-bar .monthnav h2 { min-width: 0; }
@@ -500,13 +500,13 @@ body.readonly #logNew, body.readonly .log-item .row { display: none; }
   #teamList td:nth-child(5)::before { content: "Départ"; } #teamList td:nth-child(6):empty { display: none; }
   #teamList td { min-width: 0; }
   #teamList td input, #teamList td select { width: 100%; min-width: 0; box-sizing: border-box; color: var(--text); font-weight: 400; }
-  /* Main courante et absences */
+  /* Reporting et absences */
   .log-types button { min-height: 56px; }
   .abs-actions { white-space: nowrap; }
   .toast { bottom: calc(16px + env(safe-area-inset-bottom)); }
 }
 
-/* Main courante : champs avec dictée */
+/* Reporting : champs avec dictée */
 .log-field { margin-top: 12px; }
 .log-field-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; color: var(--muted); font-weight: 600; }
 #logForm .log-field textarea { margin-top: 0; }

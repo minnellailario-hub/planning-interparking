@@ -954,7 +954,7 @@ $('#zBox').addEventListener('click', e => {
   setTimeout(() => document.addEventListener('click', function off(ev) { if (!m.contains(ev.target)) { m.remove(); document.removeEventListener('click', off); } }), 0);
 });
 
-// ----- Main courante : événements du jour et rapport PDF de fin de journée -----
+// ----- Reporting : événements du jour et rapport PDF de fin de journée -----
 const LOG_ICONS = { accident: '🚗', client: '🗣️', panne: '🔧', objet: '🔑', securite: '🚓', proprete: '🧹', autre: '📝' };
 let logDate = localDay(), logData = null, logForm = null; // logForm : événement en cours d'écriture (id = null si nouveau)
 const nowHM = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
@@ -1108,7 +1108,7 @@ async function logPdf() {
   }
   const r = await fetch('/api/log-report.pdf?' + new URLSearchParams(q));
   if (!r.ok) throw new Error('Rapport impossible');
-  return new File([await r.arrayBuffer()], `main-courante-${logDate}.pdf`, { type: 'application/pdf' });
+  return new File([await r.arrayBuffer()], `reporting-${logDate}.pdf`, { type: 'application/pdf' });
 }
 function saveFile(file) {
   const a = document.createElement('a');
@@ -1120,7 +1120,7 @@ $('#logShare').onclick = async () => {
   try {
     const file = await logPdf();
     const d = new Date(logDate + 'T12:00:00');
-    const title = `Main courante du ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    const title = `Reporting du ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
     // Menu « Partager » du téléphone (mail, WhatsApp, Teams…) ; sinon le PDF est téléchargé.
     if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title, text: `${title} — Interparking Westland` });
     else { saveFile(file); toast('Partage non disponible ici : le PDF est téléchargé.'); }
