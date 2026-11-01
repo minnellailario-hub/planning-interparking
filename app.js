@@ -135,10 +135,17 @@ function render() {
 }
 
 // ----- Tableau de bord -----
+// Nombre de personnes (pas de jours) absentes au moins un jour du mois pour ce motif ('ALL' : maladie, formation ou congé),
+// chef terrain compris, et chef de parc (qui n'a pas de ligne dans l'horaire) d'après la liste des absences.
+function absentPeople(v, code) {
+  const codes = code === 'ALL' ? ['MALADIE', 'FORMATION', 'CONGE'] : [code];
+  const who = new Set(v.rows.filter(r => Object.values(r.cells).some(c => c && c.kind === 'off' && codes.includes(c.code))).map(r => r.id));
+  for (const a of data.absences || []) if (a.empId === 'chef-parc' && codes.includes(a.code) && a.from.slice(0, 7) <= month && a.to.slice(0, 7) >= month) who.add(a.empId);
+  return who.size;
+}
 function renderDashboard() {
   const v = data.view;
   const today = new Date().toISOString().slice(0, 10);
-  const sum = k => v.stats.reduce((n, s) => n + (s[k] || 0), 0);
   const nextMatch = (data.matches || []).filter(m => m.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
   const nextOpen = (data.openings || []).filter(o => !o.ignored && o.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
   const students = v.days.reduce((n, d) => n + d.studentRows.filter(r => !r.none).length, 0);
@@ -148,7 +155,7 @@ function renderDashboard() {
     kpi(v.warnings.length ? 'bad' : 'good', 'Alertes du mois', v.generated ? v.warnings.length : '—', v.generated ? (v.warnings.length ? "à régler dans l'horaire" : 'tout est en ordre') : 'mois pas encore généré', 'planning'),
     kpi('foot', 'Prochain match', nextMatch ? fmtDate(nextMatch.date) : '—', nextMatch ? `${esc(nextMatch.opponent)} · ${nextMatch.time}` : 'aucun match prévu', 'calendar'),
     kpi('open', 'Prochain dimanche ouvert', nextOpen ? fmtDate(nextOpen.date) : '—', nextOpen ? esc(nextOpen.label) : 'aucun prévu', 'calendar'),
-    kpi('abs', 'Absences du mois', sum('MALADIE') + sum('FORMATION') + sum('CONGE'), `${sum('MALADIE')} maladie · ${sum('FORMATION')} formation · ${sum('CONGE')} congé`, 'sick'),
+    kpi('abs', 'Absents ce mois', absentPeople(v, 'ALL'), `${absentPeople(v, 'MALADIE')} en maladie · ${absentPeople(v, 'FORMATION')} en formation · ${absentPeople(v, 'CONGE')} en congé`, 'sick'),
     kpi('stud', 'Étudiants ce mois', students, 'jours-étudiant prévus', 'students'),
   ].join('');
   // Aujourd'hui, ou le premier jour ouvert du mois affiché si on regarde un autre mois.
