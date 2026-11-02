@@ -530,3 +530,7 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 #grid td.drag-over { outline: 3px solid var(--accent, #4f46e5); background: rgba(79, 70, 229, .12); }
 .drag-ghost { position: fixed; z-index: 1000; pointer-events: none; transform: translate(-50%, -120%) scale(1.15);
   box-shadow: 0 6px 18px rgba(0, 0, 0, .25); border-radius: 6px; padding: 4px 8px; }
+
+/* Équipe : erreur d'enregistrement et groupes trop remplis */
+.team-err { margin: 10px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--danger-soft); color: var(--danger); font-weight: 600; }
+#teamList tr.over select { border-color: var(--danger); background: var(--danger-soft); }

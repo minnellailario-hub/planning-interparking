@@ -1300,36 +1300,56 @@ function renderTeam() {
   $('#teamGroupsInfo').innerHTML = `<b>${used.size} groupe${used.size > 1 ? 's' : ''}</b> : chaque groupe a son week-end obligatoire toutes les ${used.size} semaines (2 personnes maximum par groupe).`
     + (over.length ? ` <span class="tag warn">${over.map(g => 'Groupe ' + (g + 1)).join(', ')} : plus de 2 personnes, choisis « + Nouveau groupe » pour l'une d'elles</span>` : '');
   $('#teamList').innerHTML = '<tr><th>Nom</th><th>Note</th><th>Week-end avec</th><th>Arrivée</th><th>Départ</th><th></th></tr>' + team.map((t, i) => `
-    <tr class="${t.end && t.end < today() ? 'gone' : ''}">
+    <tr class="${t.end && t.end < today() ? 'gone' : ''} ${activeMember(t) && over.includes(Number(t.group)) ? 'over' : ''}">
       <td><input type="text" data-i="${i}" data-k="name" value="${esc(t.name)}"></td>
       <td><input type="text" data-i="${i}" data-k="note" value="${esc(t.note || '')}" placeholder="ex. CDR"></td>
       <td><select data-i="${i}" data-k="group">${groupOptions(i)}</select></td>
       <td><input type="date" data-i="${i}" data-k="start" value="${t.start || ''}"></td>
       <td><input type="date" data-i="${i}" data-k="end" value="${t.end || ''}"></td>
-      <td>${t.id ? '' : `<button data-rm="${i}">Retirer</button>`}</td>
+      <td>${t.id ? `<button data-edit="${t.id}" title="Départ ou suppression de ${esc(t.name)}">Supprimer…</button>` : `<button data-rm="${i}">Retirer</button>`}</td>
     </tr>`).join('');
 }
-function loadTeam() {
+// Modifications pas encore enregistrées : on ne les écrase pas quand la page se redessine.
+let teamDirty = false;
+function loadTeam(force) {
+  if (teamDirty && !force) return;
   const c = data.config;
   team = c.employees.map(e => ({ ...e, group: c.rotation.groups.findIndex(g => g.includes(e.id)) }));
   $('#chefNameInput').value = c.chef.name;
+  teamDirty = false; $('#teamErr').hidden = true;
   renderTeam();
 }
-$('#openTeam').onclick = () => { loadTeam(); $('#teamDlg').showModal(); };
+$('#openTeam').onclick = () => { loadTeam(true); $('#teamDlg').showModal(); };
 $('#teamChefBtn').onclick = () => openChef();
 $('#teamList').addEventListener('change', e => {
   const { i, k } = e.target.dataset; if (i === undefined) return;
-  team[i][k] = e.target.value;
+  team[i][k] = e.target.value; teamDirty = true;
   if (k === 'group' || k === 'end' || k === 'name') renderTeam();
 });
 $('#teamList').addEventListener('click', e => {
+  const ed = e.target.closest('button[data-edit]');
+  // Personne déjà enregistrée : départ (garde l'historique) ou suppression définitive, dans la fiche de la personne.
+  if (ed) { teamDirty = false; openEmp(ed.dataset.edit); return; }
   const b = e.target.closest('button[data-rm]'); if (!b) return;
   team.splice(Number(b.dataset.rm), 1); renderTeam();
 });
-$('#teamAdd').onclick = () => { team.push({ name: '', note: '', group: 0, start: today() }); renderTeam(); $('#teamList tr:last-child input').focus(); };
+// Nouvelle personne : dans le premier groupe qui a encore de la place, sinon dans un nouveau groupe.
+$('#teamAdd').onclick = () => {
+  const n = groupCount();
+  let g = 0;
+  while (g < n && team.filter(t => Number(t.group) === g && activeMember(t)).length >= 2) g++;
+  team.push({ name: '', note: '', group: g, start: today() }); teamDirty = true;
+  renderTeam(); $('#teamList tr:last-child input').focus();
+};
 $('#teamSave').onclick = async () => {
-  await api('/api/team', { employees: team, chefName: $('#chefNameInput').value });
-  $('#teamDlg').close(); toast('Équipe enregistrée');
+  $('#teamErr').hidden = true;
+  try {
+    await api('/api/team', { employees: team, chefName: $('#chefNameInput').value });
+  } catch (err) {
+    $('#teamErr').textContent = `Pas enregistré : ${err.message}`; $('#teamErr').hidden = false;
+    return;
+  }
+  loadTeam(true); toast('Équipe enregistrée');
 };
 
 // ----- Actions -----
