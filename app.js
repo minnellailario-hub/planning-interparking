@@ -799,8 +799,8 @@ function renderZones() {
   $('#zLegend').innerHTML = ['Z1', 'Z2', 'Z3', 'D', 'T'].map(z => `<span><i class="z-${z}"></i>${Z_LABEL[z]} · ${Z_PLACE[z]}</span>`).join('') + '<span>☕ Pause 30 min</span><span>🔒 Changé à la main</span>';
   const z = zData;
   if (!z || z.date !== zDate) { $('#zBox').innerHTML = '<p class="muted pad">Chargement…</p>'; return; }
-  if (z.closed) { $('#zBox').innerHTML = "<p class=\"muted pad\">Westland fermé ce jour-là. Si vous travaillez quand même, ajoute les personnes dans « Équipe du jour ».</p>"; return; }
-  if (!z.people.length) { $('#zBox').innerHTML = '<p class="muted pad">Personne ne travaille ce jour-là. Ajoute les personnes dans « Équipe du jour » (ou génère le mois dans Horaire).</p>'; return; }
+  if (z.closed) { $('#zBox').innerHTML = "<p class=\"muted pad\">Westland fermé ce jour-là. Si vous travaillez quand même, ajoute les personnes dans « Équipe du jour » ci-dessus.</p>"; return; }
+  if (!z.people.length) { $('#zBox').innerHTML = "<p class=\"muted pad\">Pas encore d'équipe pour ce jour. Ajoute les personnes et leur horaire dans « Équipe du jour » ci-dessus, puis enregistre.</p>"; return; }
   if (isPhone()) { $('#zBox').innerHTML = zonesCards(z); return; }
   const head = `<tr><th class="name">${zView === 'people' ? 'Personne' : 'Zone'}</th>${zView === 'people' ? '<th>Horaire</th>' : ''}${z.slots.map(s => `<th>${s.label}</th>`).join('')}${zView === 'people' ? '<th>Pause</th>' : ''}</tr>`;
   let body = '';
@@ -862,11 +862,11 @@ function syncZTeam() {
 }
 function renderZTeam() {
   const z = zData;
-  $('#zTeamSrc').textContent = !z ? '' : z.custom ? 'Choisie à la main' : "Reprise de l'horaire de l'outil";
+  $('#zTeamSrc').textContent = !z ? '' : z.custom ? 'Enregistrée' : 'À faire';
   $('#zTeamSrc').className = 'chip ' + (z && z.custom ? 'z-D' : 'empty');
   $('#zTeamCount').textContent = zTeam.length ? `· ${zTeam.length} personne${zTeam.length > 1 ? 's' : ''}` : '';
   // Repliée par défaut ; ouverte s'il n'y a personne ou si une modification n'est pas enregistrée.
-  if (zTeamDirty || (z && !z.people.length && !z.closed)) $('#zTeamCard').open = true;
+  if (zTeamDirty || (z && !z.people.length)) $('#zTeamCard').open = true;
   $('#zTeamUse').hidden = !(z && z.custom);
   $('#zTeamSave').classList.toggle('pulse', zTeamDirty);
   const emps = data.config.employees.filter(e => !e.end || e.end >= zDate);
@@ -913,9 +913,19 @@ $('#zTeamSave').onclick = async () => {
   zTeamDirty = false; zData = j.zones; syncZTeam(); renderZones(); toast('Équipe du jour enregistrée');
 };
 $('#zTeamUse').onclick = async () => {
-  if (!confirm("Oublier l'équipe choisie à la main et reprendre l'horaire de l'outil pour ce jour ?")) return;
+  if (!confirm("Effacer l'équipe de ce jour (et les zones calculées) ?")) return;
   const j = await api('/api/zones/team', { date: zDate, team: null });
-  zTeamDirty = false; zData = j.zones; syncZTeam(); renderZones(); toast("Équipe reprise de l'horaire");
+  zTeamDirty = false; zData = j.zones; syncZTeam(); renderZones(); toast('Équipe du jour effacée');
+};
+// Reprend les personnes et les horaires de la veille (à enregistrer ensuite, après d'éventuels changements).
+$('#zTeamCopy').onclick = async () => {
+  const prev = addDay(zDate, -1);
+  const j = await call('/api/zones', null, { month: prev.slice(0, 7), date: prev });
+  if (j.error) return toast(j.error);
+  if (!j.zones.people.length) return toast("Pas d'équipe enregistrée la veille");
+  if (zTeam.length && !confirm("Remplacer l'équipe actuelle par celle de la veille ?")) return;
+  zTeam = j.zones.people.map(p => ({ id: p.id, name: p.name, shift: p.raw }));
+  zTeamDirty = true; renderZTeam(); toast("Équipe de la veille copiée : vérifie puis enregistre");
 };
 
 async function zonesCell(body) {

@@ -309,7 +309,7 @@
 
       <!-- Statistiques -->
       <!-- Zones & dispatch -->
-      <section class="page" data-page="zones" data-title="Zones &amp; dispatch" data-sub="Tournantes du jour, calculées à partir de l'horaire : 1 personne au dispatch, puis Zone 1, Zone 2 et Zone 3. Clique sur une case pour la changer : elle est verrouillée 🔒 et gardée.">
+      <section class="page" data-page="zones" data-title="Zones &amp; dispatch" data-sub="Ajoute l'équipe du jour avec les horaires : 1 personne au dispatch, puis Zone 1, Zone 2 et Zone 3. Clique sur une case pour la changer : elle est verrouillée 🔒 et gardée.">
         <div class="planning-bar zones-bar">
           <div class="monthnav">
             <button id="zPrev" class="icon-btn" aria-label="Jour précédent">‹</button>
@@ -325,14 +325,15 @@
           <button id="zReset" class="ghost" title="Enlever les changements faits à la main ce jour-là">Tout remettre en auto</button>
           <button id="zExport">Excel du jour</button>
         </div>
-        <details class="card" id="zTeamCard">
+        <details class="card" id="zTeamCard" open>
           <summary class="card-head"><h3>Équipe du jour <span id="zTeamCount" class="muted"></span></h3><span id="zTeamSrc" class="chip"></span></summary>
-          <p class="muted">Qui travaille ce jour-là et à quelle heure. Par défaut, c'est l'horaire de l'outil ; si l'horaire est fait ailleurs, choisis les noms ici.</p>
+          <p class="muted">Ajoute les personnes qui travaillent ce jour-là avec leur horaire, puis enregistre : les zones, le dispatch et les pauses se font tout seuls.</p>
           <div id="zTeamRows" class="entries"></div>
           <div class="row">
             <button id="zTeamAdd">+ Ajouter une personne</button>
+            <button id="zTeamCopy" class="ghost">Copier l'équipe de la veille</button>
             <button id="zTeamSave" class="primary">Enregistrer l'équipe</button>
-            <button id="zTeamUse" class="ghost">Reprendre l'horaire de l'outil</button>
+            <button id="zTeamUse" class="ghost danger">Effacer l'équipe du jour</button>
           </div>
         </details>
         <div class="card flat tablewrap" id="zBox"></div>
