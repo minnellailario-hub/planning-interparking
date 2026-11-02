@@ -523,14 +523,17 @@ body.readonly #logNew, body.readonly .log-item .row { display: none; }
 .log-orig p { color: var(--muted); }
 
 /* Échange de deux horaires par glisser-déposer (appui long) */
-#grid td.cell { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+#grid td.cell, #zBox .zcell, #zBox .zp { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 body.dragging, body.dragging * { cursor: grabbing !important; }
-#grid td.drag-src { opacity: .45; }
-#grid td.drag-ok { outline: 2px dashed var(--accent, #4f46e5); outline-offset: -3px; }
-#grid td.drag-over { outline: 3px solid var(--accent, #4f46e5); background: rgba(79, 70, 229, .12); }
+.drag-src { opacity: .45; }
+.drag-ok { outline: 2px dashed var(--accent, #4f46e5); outline-offset: -3px; }
+.drag-over { outline: 3px solid var(--accent, #4f46e5); background: rgba(79, 70, 229, .12); }
 .drag-ghost { position: fixed; z-index: 1000; pointer-events: none; transform: translate(-50%, -120%) scale(1.15);
   box-shadow: 0 6px 18px rgba(0, 0, 0, .25); border-radius: 6px; padding: 4px 8px; }
 
 /* Équipe : erreur d'enregistrement et groupes trop remplis */
 .team-err { margin: 10px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--danger-soft); color: var(--danger); font-weight: 600; }
 #teamList tr.over select { border-color: var(--danger); background: var(--danger-soft); }
+#zBox .zp { cursor: pointer; border-radius: 6px; padding: 1px 4px; margin: 0 -4px; }
+#zBox .zp:hover { background: var(--accent-soft); }
+#zBox .zp.lock span::after { content: " 🔒"; font-size: .75em; }

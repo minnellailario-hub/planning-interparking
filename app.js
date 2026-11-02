@@ -535,61 +535,71 @@ function showPop(td, h, emp, date) {
   };
 }
 
-// ----- Échange de deux horaires le même jour : appui long sur une case, puis glisser sur la case d'un collègue -----
-// Seulement entre deux employés (ou deux étudiants) du même jour ; les jours suivants ne sont pas recalculés.
-const drag = { timer: null, on: false, src: null, ghost: null, over: null, x: 0, y: 0, justDropped: false };
-const swapGroup = td => td.closest('tr.student') ? 'student' : td.closest('tr.chef') ? null : 'emp';
-const swappable = td => td && td.matches('#grid td.cell') && swapGroup(td) && !td.querySelector('.c-MALADIE, .c-FORMATION');
+// ----- Glisser-déposer par appui long (horaire et zones) -----
+// Appui long (0,4 s) sur un élément, puis on le lâche sur une cible permise. Un petit déplacement avant = défilement.
+// opts : { root, source(el) → élément à déplacer ou null, targets(src) → cibles permises, drop(src, target) }
+const drag = { timer: null, on: false, src: null, opts: null, ghost: null, over: null, x: 0, y: 0, justDropped: false };
 function dragEnd() {
   clearTimeout(drag.timer); drag.timer = null;
   if (drag.ghost) drag.ghost.remove();
-  document.querySelectorAll('#grid .drag-src, #grid .drag-ok, #grid .drag-over').forEach(x => x.classList.remove('drag-src', 'drag-ok', 'drag-over'));
+  document.querySelectorAll('.drag-src, .drag-ok, .drag-over').forEach(x => x.classList.remove('drag-src', 'drag-ok', 'drag-over'));
   document.body.classList.remove('dragging');
-  Object.assign(drag, { on: false, src: null, ghost: null, over: null });
+  Object.assign(drag, { on: false, src: null, opts: null, ghost: null, over: null });
 }
-$('#grid').addEventListener('pointerdown', e => {
-  if (document.body.classList.contains('readonly') || e.button > 0) return;
-  const td = e.target.closest('td.cell');
-  if (!swappable(td) || !td.textContent.trim()) return;
-  Object.assign(drag, { src: td, x: e.clientX, y: e.clientY });
-  drag.timer = setTimeout(() => {
-    drag.on = true; pop.hidden = true;
-    document.body.classList.add('dragging');
-    td.classList.add('drag-src');
-    const g = swapGroup(td);
-    document.querySelectorAll(`#grid td.cell[data-date="${td.dataset.date}"]`).forEach(x => {
-      if (x !== td && swapGroup(x) === g && swappable(x)) x.classList.add('drag-ok');
-    });
-    drag.ghost = td.firstElementChild.cloneNode(true);
-    drag.ghost.classList.add('drag-ghost');
-    document.body.appendChild(drag.ghost);
-    moveGhost(drag.x, drag.y);
-    if (navigator.vibrate) navigator.vibrate(30);
-  }, 400);
-});
+function longPressDrag(opts) {
+  opts.root.addEventListener('pointerdown', e => {
+    if (document.body.classList.contains('readonly') || e.button > 0) return;
+    const src = opts.source(e.target);
+    if (!src) return;
+    Object.assign(drag, { src, opts, x: e.clientX, y: e.clientY });
+    drag.timer = setTimeout(() => {
+      drag.on = true; pop.hidden = true; document.querySelector('.zmenu')?.remove();
+      document.body.classList.add('dragging');
+      src.classList.add('drag-src');
+      opts.targets(src).forEach(x => { if (x !== src) x.classList.add('drag-ok'); });
+      drag.ghost = (src.firstElementChild || src).cloneNode(true);
+      drag.ghost.classList.add('drag-ghost');
+      document.body.appendChild(drag.ghost);
+      moveGhost(drag.x, drag.y);
+      if (navigator.vibrate) try { navigator.vibrate(30); } catch {}
+    }, 400);
+  });
+  opts.root.addEventListener('contextmenu', e => { if (drag.src) e.preventDefault(); });
+}
 function moveGhost(x, y) { if (drag.ghost) { drag.ghost.style.left = x + 'px'; drag.ghost.style.top = y + 'px'; } }
 document.addEventListener('pointermove', e => {
   if (!drag.src) return;
   if (!drag.on) { if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 8) dragEnd(); return; } // c'est un défilement
   moveGhost(e.clientX, e.clientY);
-  const t = document.elementFromPoint(e.clientX, e.clientY)?.closest('#grid td.drag-ok') || null;
+  // La cible la plus précise sous le doigt (une personne dans une case de zone avant la case elle-même).
+  const t = document.elementFromPoint(e.clientX, e.clientY)?.closest('.drag-ok') || null;
   if (t !== drag.over) { drag.over?.classList.remove('drag-over'); t?.classList.add('drag-over'); drag.over = t; }
 });
 // Sur téléphone, empêche la page de défiler pendant qu'on glisse.
 document.addEventListener('touchmove', e => { if (drag.on) e.preventDefault(); }, { passive: false });
 document.addEventListener('pointerup', () => {
   if (!drag.src) return;
-  const { on, src, over } = drag;
+  const { on, src, over, opts } = drag;
   dragEnd();
   if (!on) return;
   drag.justDropped = true; setTimeout(() => { drag.justDropped = false; }, 50);
-  if (over) api('/api/swap', { date: src.dataset.date, a: src.dataset.emp, b: over.dataset.emp })
-    .then(() => toast('Horaires échangés. « Annuler » pour revenir en arrière.')).catch(() => {});
+  if (over) opts.drop(src, over);
 });
 document.addEventListener('pointercancel', () => { if (drag.src) dragEnd(); });
-$('#grid').addEventListener('contextmenu', e => { if (drag.src) e.preventDefault(); });
 // Le clic qui suit un dépôt n'ouvre pas le menu de la case.
 document.addEventListener('click', e => { if (drag.justDropped) { e.stopPropagation(); e.preventDefault(); } }, true);
+
+// Horaire : échange de deux horaires le même jour, seulement entre deux employés (ou deux étudiants) ;
+// les jours suivants ne sont pas recalculés.
+const swapGroup = td => td.closest('tr.student') ? 'student' : td.closest('tr.chef') ? null : 'emp';
+const swappable = td => td && td.matches('#grid td.cell') && swapGroup(td) && !td.querySelector('.c-MALADIE, .c-FORMATION');
+longPressDrag({
+  root: $('#grid'),
+  source: el => { const td = el.closest('td.cell'); return swappable(td) && td.textContent.trim() ? td : null; },
+  targets: td => [...document.querySelectorAll(`#grid td.cell[data-date="${td.dataset.date}"]`)].filter(x => swapGroup(x) === swapGroup(td) && swappable(x)),
+  drop: (src, over) => api('/api/swap', { date: src.dataset.date, a: src.dataset.emp, b: over.dataset.emp })
+    .then(() => toast('Horaires échangés. « Annuler » pour revenir en arrière.')).catch(() => {}),
+});
 
 // ----- Matchs -----
 function renderOpenings() {
@@ -873,13 +883,16 @@ function renderZones() {
     }
   } else {
     // Une personne seule sur le terrain : une seule case sur les 3 zones, elle choisit où aller.
-    const list = names => names.length ? names.map(n => `<div>${esc(n)}</div>`).join('') : '<span class="muted">—</span>';
+    // Chaque nom peut être glissé (appui long) sur un collègue du même créneau (échange) ou dans une autre zone.
+    const inZone = (code, s) => z.people.filter(p => p.cells[s] && p.cells[s].code === code);
+    const who = (p, s) => `<div class="zp ${p.cells[s].manual ? 'lock' : ''}" data-person="${p.id}" data-slot="${s}"><span>${esc(p.name)}</span></div>`;
+    const list = (code, s) => { const ps = inZone(code, s); return ps.length ? ps.map(p => who(p, s)).join('') : '<span class="muted">—</span>'; };
     for (const code of ['Z1', 'Z2', 'Z3', 'D'])
       body += `<tr><td class="name"><span class="zname z-${code}"><b>${Z_LABEL[code]}</b><small>${Z_PLACE[code]}</small></span></td>`
-        + z.byZone.map(b => {
-          if (code === 'D' || !b.T.length) return `<td class="zlist">${list(b[code])}</td>`;
+        + z.byZone.map((b, s) => {
+          if (code === 'D' || !b.T.length) return `<td class="zlist" data-zone="${code}" data-slot="${s}">${list(code, s)}</td>`;
           if (code !== 'Z1') return '';
-          return `<td class="zlist zalone" rowspan="3"><span class="z-T"><b>${b.T.map(esc).join(', ')}</b><small>Seul sur le terrain : couvre les 3 zones, il choisit où aller</small></span></td>`;
+          return `<td class="zlist zalone" rowspan="3"><span class="z-T">${inZone('T', s).map(p => `<div class="zp" data-person="${p.id}" data-slot="${s}"><b>${esc(p.name)}</b></div>`).join('')}<small>Seul sur le terrain : couvre les 3 zones, il choisit où aller</small></span></td>`;
         }).join('') + '</tr>';
     body += '<tr><td class="name"><b>Pauses</b></td>' + z.slots.map((_, s) => `<td class="zlist">${z.people.filter(p => p.pause && p.pause.slot === s)
       .sort((a, b) => a.pause.start.localeCompare(b.pause.start)).map(p => `<div>☕ ${p.pause.start} ${esc(p.name)}</div>`).join('') || '<span class="muted">—</span>'}</td>`).join('') + '</tr>';
@@ -1013,7 +1026,7 @@ $('#zReset').onclick = async () => {
 };
 // Clic sur une case : petit menu pour choisir la zone (ou revenir en automatique).
 $('#zBox').addEventListener('click', e => {
-  const td = e.target.closest('.zcell[data-person]');
+  const td = e.target.closest('.zcell[data-person], .zp[data-person]');
   if (!td || document.body.classList.contains('readonly')) return;
   document.querySelector('.zmenu')?.remove();
   const m = document.createElement('div');
@@ -1030,6 +1043,21 @@ $('#zBox').addEventListener('click', e => {
     zonesCell({ personId: td.dataset.person, slot: Number(td.dataset.slot), code: b.dataset.z || null });
   };
   setTimeout(() => document.addEventListener('click', function off(ev) { if (!m.contains(ev.target)) { m.remove(); document.removeEventListener('click', off); } }), 0);
+});
+
+// Glisser-déposer dans les zones (appui long), dans le même créneau :
+// sur un collègue = les deux échangent leur place ; sur une zone (vue « Par zone ») = la personne y va.
+longPressDrag({
+  root: $('#zBox'),
+  source: el => el.closest('.zcell[data-person], .zp[data-person]'),
+  targets: src => [...document.querySelectorAll(`#zBox [data-person][data-slot="${src.dataset.slot}"], #zBox td.zlist[data-zone][data-slot="${src.dataset.slot}"]`)]
+    .filter(x => x.dataset.person !== src.dataset.person && !(x.dataset.zone && x.contains(src))),
+  drop: async (src, over) => {
+    const body = { date: zDate, slot: Number(src.dataset.slot), a: src.dataset.person };
+    if (over.dataset.person) body.b = over.dataset.person; else body.zone = over.dataset.zone;
+    const j = await api('/api/zones/swap', body).catch(() => null);
+    if (j) { zData = j.zones; renderZones(); toast(body.b ? 'Places échangées.' : 'Personne déplacée.'); }
+  },
 });
 
 // ----- Reporting : événements du jour et rapport PDF de fin de journée -----
