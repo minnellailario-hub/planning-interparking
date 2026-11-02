@@ -937,6 +937,7 @@ function renderZTeam() {
     return `<div class="row">
       <label>Personne <select data-i="${i}" data-k="who">${t.id ? '' : '<option value="" selected disabled>— Choisir —</option>'}
         <optgroup label="Employés">${emps.map(e => opt(e.id, e.name)).join('')}</optgroup>
+        <optgroup label="Chef terrain">${opt(data.config.chef.id, data.config.chef.name)}</optgroup>
         <optgroup label="Étudiants">${studs.map(s => opt(s, 'Student ' + s.slice(8))).join('')}</optgroup>
         <option value="__other" ${other ? 'selected' : ''}>Autre (renfort)…</option></select></label>
       ${other ? `<label>Nom <input data-i="${i}" data-k="name" value="${esc(t.name || '')}" placeholder="Nom et prénom" maxlength="40"></label>` : ''}
@@ -950,7 +951,11 @@ $('#zTeamRows').addEventListener('change', e => {
   const t = zTeam[i];
   if (k === 'who') {
     if (e.target.value === '__other') { t.id = 'x-'; t.name = ''; }
-    else { t.id = e.target.value; delete t.name; }
+    else {
+      t.id = e.target.value; delete t.name;
+      // Chef terrain : son horaire habituel par défaut.
+      if (t.id === data.config.chef.id && Z_SHIFTS.some(s => s[0] === data.config.chef.shift)) t.shift = data.config.chef.shift;
+    }
   } else t[k] = e.target.value;
   zTeamDirty = true; renderZTeam();
   if (k === 'who' && t.id === 'x-') document.querySelector(`#zTeamRows input[data-i="${i}"]`)?.focus();
