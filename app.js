@@ -535,6 +535,62 @@ function showPop(td, h, emp, date) {
   };
 }
 
+// ----- Échange de deux horaires le même jour : appui long sur une case, puis glisser sur la case d'un collègue -----
+// Seulement entre deux employés (ou deux étudiants) du même jour ; les jours suivants ne sont pas recalculés.
+const drag = { timer: null, on: false, src: null, ghost: null, over: null, x: 0, y: 0, justDropped: false };
+const swapGroup = td => td.closest('tr.student') ? 'student' : td.closest('tr.chef') ? null : 'emp';
+const swappable = td => td && td.matches('#grid td.cell') && swapGroup(td) && !td.querySelector('.c-MALADIE, .c-FORMATION');
+function dragEnd() {
+  clearTimeout(drag.timer); drag.timer = null;
+  if (drag.ghost) drag.ghost.remove();
+  document.querySelectorAll('#grid .drag-src, #grid .drag-ok, #grid .drag-over').forEach(x => x.classList.remove('drag-src', 'drag-ok', 'drag-over'));
+  document.body.classList.remove('dragging');
+  Object.assign(drag, { on: false, src: null, ghost: null, over: null });
+}
+$('#grid').addEventListener('pointerdown', e => {
+  if (document.body.classList.contains('readonly') || e.button > 0) return;
+  const td = e.target.closest('td.cell');
+  if (!swappable(td) || !td.textContent.trim()) return;
+  Object.assign(drag, { src: td, x: e.clientX, y: e.clientY });
+  drag.timer = setTimeout(() => {
+    drag.on = true; pop.hidden = true;
+    document.body.classList.add('dragging');
+    td.classList.add('drag-src');
+    const g = swapGroup(td);
+    document.querySelectorAll(`#grid td.cell[data-date="${td.dataset.date}"]`).forEach(x => {
+      if (x !== td && swapGroup(x) === g && swappable(x)) x.classList.add('drag-ok');
+    });
+    drag.ghost = td.firstElementChild.cloneNode(true);
+    drag.ghost.classList.add('drag-ghost');
+    document.body.appendChild(drag.ghost);
+    moveGhost(drag.x, drag.y);
+    if (navigator.vibrate) navigator.vibrate(30);
+  }, 400);
+});
+function moveGhost(x, y) { if (drag.ghost) { drag.ghost.style.left = x + 'px'; drag.ghost.style.top = y + 'px'; } }
+document.addEventListener('pointermove', e => {
+  if (!drag.src) return;
+  if (!drag.on) { if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 8) dragEnd(); return; } // c'est un défilement
+  moveGhost(e.clientX, e.clientY);
+  const t = document.elementFromPoint(e.clientX, e.clientY)?.closest('#grid td.drag-ok') || null;
+  if (t !== drag.over) { drag.over?.classList.remove('drag-over'); t?.classList.add('drag-over'); drag.over = t; }
+});
+// Sur téléphone, empêche la page de défiler pendant qu'on glisse.
+document.addEventListener('touchmove', e => { if (drag.on) e.preventDefault(); }, { passive: false });
+document.addEventListener('pointerup', () => {
+  if (!drag.src) return;
+  const { on, src, over } = drag;
+  dragEnd();
+  if (!on) return;
+  drag.justDropped = true; setTimeout(() => { drag.justDropped = false; }, 50);
+  if (over) api('/api/swap', { date: src.dataset.date, a: src.dataset.emp, b: over.dataset.emp })
+    .then(() => toast('Horaires échangés. « Annuler » pour revenir en arrière.')).catch(() => {});
+});
+document.addEventListener('pointercancel', () => { if (drag.src) dragEnd(); });
+$('#grid').addEventListener('contextmenu', e => { if (drag.src) e.preventDefault(); });
+// Le clic qui suit un dépôt n'ouvre pas le menu de la case.
+document.addEventListener('click', e => { if (drag.justDropped) { e.stopPropagation(); e.preventDefault(); } }, true);
+
 // ----- Matchs -----
 function renderOpenings() {
   const info = data.openingsInfo;
