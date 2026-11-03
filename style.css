@@ -537,3 +537,11 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 #zBox .zp { cursor: pointer; border-radius: 6px; padding: 1px 4px; margin: 0 -4px; }
 #zBox .zp:hover { background: var(--accent-soft); }
 #zBox .zp.lock span::after { content: " 🔒"; font-size: .75em; }
+
+/* Horaire fixe */
+.fixed-bar { flex-wrap: wrap; }
+.fixed-bar #fxExport { margin-left: auto; }
+#fxBox .fx-title { margin: 4px 4px 12px; font-size: 18px; }
+#fxBox .zcell { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+#fxNote:empty { display: none; }
+@media (max-width: 700px) { .fixed-bar #fxExport { margin-left: 0; width: 100%; } #fxTypes { overflow-x: auto; max-width: 100%; } }

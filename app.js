@@ -1060,6 +1060,79 @@ longPressDrag({
   },
 });
 
+// ----- Horaire fixe : un tableau par type de journée, par horaire (8-16, 10-18, 12-20 A…), à imprimer -----
+let fxType = 'jour4', fxData = null;
+try { fxType = localStorage.getItem('fxType') || fxType; } catch {}
+async function loadFixed() {
+  const j = await call('/api/fixed', null, { month });
+  if (j.error) return toast(j.error);
+  fxData = j.fixed; renderFixed();
+}
+function renderFixed() {
+  if (!fxData) { $('#fxBox').innerHTML = '<p class="muted pad">Chargement…</p>'; return; }
+  const z = fxData.find(p => p.id === fxType) || fxData[0];
+  fxType = z.id;
+  $('#fxTypes').innerHTML = fxData.map(p => `<button role="tab" data-fx="${p.id}" class="${p.id === z.id ? 'on' : ''}">${esc(p.title.split(' (')[0])}</button>`).join('');
+  $('#fxLegend').innerHTML = ['Z1', 'Z2', 'Z3', 'D', 'T'].map(c => `<span><i class="z-${c}"></i>${Z_LABEL[c]} · ${Z_PLACE[c]}</span>`).join('') + '<span>☕ Pause 30 min</span><span>🔒 Changé à la main</span>';
+  $('#fxNote').textContent = z.roles.some(r => / [A-C]$/.test(r)) ? "Même horaire à plusieurs (A, B, C) : ils se mettent d'accord en arrivant sur qui prend quelle ligne." : '';
+  let h = `<h3 class="fx-title">${esc(z.title)}</h3><table class="ztable"><tr><th class="name">Horaire</th>${z.slots.map(s => `<th>${s.label}</th>`).join('')}<th>Pause</th></tr>`;
+  z.people.forEach((p, k) => {
+    h += `<tr><td class="name"><b>${esc(p.name)}</b></td>`;
+    p.cells.forEach((c, s) => {
+      const pause = p.pause && p.pause.slot === s ? `<small class="z-pause">☕ ${p.pause.start}</small>` : '';
+      if (!c) { h += `<td class="zcell off">${pause}</td>`; return; }
+      h += `<td class="zcell ${c.manual ? 'lock' : ''}" data-role="${k}" data-slot="${s}">`
+        + (c.code ? `<span class="z-${c.code}"><b>${c.code === 'D' ? 'Dispatch' : c.code === 'T' ? 'Toutes zones' : c.code}</b><small>${Z_PLACE[c.code]}</small></span>` : '') + pause + '</td>';
+    });
+    h += `<td>${p.pause ? `${p.pause.start}-${p.pause.end}` : '<span class="muted">—</span>'}</td></tr>`;
+  });
+  $('#fxBox').innerHTML = h + '</table>';
+}
+async function fixedCell(body) {
+  const j = await api('/api/fixed/cell', { plan: fxType, ...body });
+  fxData = j.fixed; renderFixed();
+}
+$('#fixedOpen').onclick = () => { go('fixed'); renderFixed(); loadFixed(); };
+$('#fxTypes').addEventListener('click', e => {
+  const b = e.target.closest('[data-fx]'); if (!b) return;
+  fxType = b.dataset.fx; try { localStorage.setItem('fxType', fxType); } catch {}
+  renderFixed();
+});
+$('#fxReset').onclick = async () => {
+  if (!confirm('Enlever les changements faits à la main sur ce tableau et tout recalculer ?')) return;
+  const j = await api('/api/fixed/reset', { plan: fxType });
+  fxData = j.fixed; renderFixed(); toast('Tableau remis en automatique');
+};
+$('#fxExport').onclick = () => downloadXlsx('/api/export-fixed.xlsx', {});
+// Clic sur une case : choisir la zone (ou revenir en automatique).
+$('#fxBox').addEventListener('click', e => {
+  const td = e.target.closest('.zcell[data-role]');
+  if (!td || document.body.classList.contains('readonly')) return;
+  document.querySelector('.zmenu')?.remove();
+  const m = document.createElement('div');
+  m.className = 'zmenu';
+  m.innerHTML = ['Z1', 'Z2', 'Z3', 'D', 'T'].map(c => `<button data-z="${c}"><i class="z-${c}"></i>${Z_LABEL[c]} <small>${Z_PLACE[c]}</small></button>`).join('')
+    + '<button data-z="">↺ Automatique</button>';
+  const r = td.getBoundingClientRect();
+  m.style.left = Math.min(r.left + window.scrollX, window.scrollX + document.documentElement.clientWidth - 230) + 'px';
+  m.style.top = (r.bottom + window.scrollY + 4) + 'px';
+  document.body.appendChild(m);
+  m.onclick = ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    m.remove();
+    fixedCell({ role: Number(td.dataset.role), slot: Number(td.dataset.slot), code: b.dataset.z || null });
+  };
+  setTimeout(() => document.addEventListener('click', function off(ev) { if (!m.contains(ev.target)) { m.remove(); document.removeEventListener('click', off); } }), 0);
+});
+// Appui long puis lâcher sur un autre horaire du même créneau : les deux échangent leur place.
+longPressDrag({
+  root: $('#fxBox'),
+  source: el => el.closest('.zcell[data-role]'),
+  targets: src => [...document.querySelectorAll(`#fxBox .zcell[data-role][data-slot="${src.dataset.slot}"]`)].filter(x => x !== src),
+  drop: (src, over) => fixedCell({ role: Number(src.dataset.role), slot: Number(src.dataset.slot), swap: Number(over.dataset.role) })
+    .then(() => toast('Places échangées.')).catch(() => {}),
+});
+
 // ----- Reporting : événements du jour et rapport PDF de fin de journée -----
 const LOG_ICONS = { accident: '🚗', client: '🗣️', panne: '🔧', objet: '🔑', securite: '🚓', proprete: '🧹', autre: '📝' };
 let logDate = localDay(), logData = null, logForm = null; // logForm : événement en cours d'écriture (id = null si nouveau)
