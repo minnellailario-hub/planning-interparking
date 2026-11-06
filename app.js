@@ -1,7 +1,7 @@
 'use strict';
 const $ = s => document.querySelector(s);
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-const OFF = { REPOS: 'Repos', WE: 'Week-end', RTT: 'RTT', RECUP: 'Récup foot', CONGE: 'Congé', MALADIE: 'Maladie', FORMATION: 'Formation' };
+const OFF = { REPOS: 'Repos', WE: 'Week-end', RTT: 'RTT', RECUP: 'Récup', CONGE: 'Congé', MALADIE: 'Maladie', FORMATION: 'Formation' };
 const SHORT = { REPOS: 'R', WE: 'WE', RTT: 'RTT', RECUP: 'Réc', CONGE: 'CG', MALADIE: 'M', FORMATION: 'For' };
 
 let month = (() => {
@@ -59,10 +59,11 @@ function render() {
   const colCls = d => [d.dow === 1 ? 'monday' : '', d.closed ? 'closed' : '', d.dow === 6 ? 'sat' : ''].join(' ');
   let h = '<thead><tr><th class="name">Employé</th>';
   for (const d of v.days) {
-    const title = [d.closed ? 'Fermé' : '', d.weGroup.length ? 'Week-end : ' + d.weGroup.join(', ') : '',
+    const title = [d.holiday ? `Férié : ${d.holiday}${d.closed ? '' : ' (rouvert)'}` : d.closed ? 'Fermé' : '', d.weGroup.length ? 'Week-end : ' + d.weGroup.join(', ') : '',
       d.match ? `Anderlecht – ${d.match.opponent} (${d.match.competition}) ${d.match.time}${d.match.confirmed ? '' : ' – heure à confirmer'}` : ''].filter(Boolean).join('\n');
     h += `<th class="${colCls(d)}" data-date="${d.date}" title="${esc(title)}"><span class="d">${d.dowLabel}</span><br>${d.day}`;
     if (d.openSunday) h += `<span class="o">Ouvert</span>`;
+    if (d.holiday) h += `<span class="f">Férié</span>`;
     if (d.match) h += `<span class="m ${d.match.confirmed ? '' : 'tbc'}">⚽ ${d.match.time}</span>`;
     h += '</th>';
   }
@@ -96,7 +97,7 @@ function render() {
   $('#grid').innerHTML = h;
 
   $('#legend').innerHTML = [['8-16', '8-16'], ['10-18', '10-18'], ['12-20', '12-20'], ['FOOT', '⚽ Horaire foot'], ['CHEF', 'Chef terrain'],
-    ['REPOS', 'R = Repos'], ['WE', 'WE = Week-end'], ['RTT', 'RTT'], ['RECUP', 'Réc = Récup foot'], ['CONGE', 'CG = Congé'], ['MALADIE', 'M = Maladie'], ['FORMATION', 'For = Formation']]
+    ['REPOS', 'R = Repos'], ['WE', 'WE = Week-end'], ['RTT', 'RTT'], ['RECUP', 'Réc = Récup (dimanche ou férié)'], ['CONGE', 'CG = Congé'], ['MALADIE', 'M = Maladie'], ['FORMATION', 'For = Formation']]
     .map(([c, l]) => `<span><span class="sw c-${c}">&nbsp;</span>${l}</span>`).join('');
 
   $('#warnings').innerHTML = !v.generated ? '<li class="ok">Mois pas encore généré.</li>'
@@ -440,6 +441,7 @@ function renderDays() {
     }
     const badges = [
       d.openSunday ? '<span class="badge open">Ouvert</span>' : '',
+      d.holiday ? `<span class="badge holiday">Férié : ${esc(d.holiday)}${d.closed ? '' : ' (rouvert)'}</span>` : '',
       d.closed && !d.openSunday ? '<span class="badge">Fermé</span>' : '',
       d.match ? `<span class="badge foot">⚽ ${d.match.time} ${esc(d.match.opponent)}</span>` : '',
       d.weGroup.length ? `<span class="badge">Week-end : ${esc(d.weGroup.join(', '))}</span>` : '',
@@ -490,7 +492,8 @@ document.addEventListener('click', e => {
   if (th) {
     const d = data.view.days.find(x => x.date === th.dataset.date);
     if (d.dow === 0) return;
-    if (confirm(d.closed ? `Rouvrir le ${fmtDate(d.date)} ?` : `Marquer le ${fmtDate(d.date)} comme jour de fermeture ?`))
+    const what = d.holiday ? ` (férié : ${d.holiday})` : '';
+    if (confirm(d.closed ? `Rouvrir le ${fmtDate(d.date)}${what} ?` : `Marquer le ${fmtDate(d.date)}${what} comme jour de fermeture ?`))
       api('/api/config', { toggleClosed: d.date });
     return;
   }

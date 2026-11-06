@@ -130,6 +130,7 @@ label.check { margin: 10px 0; }
 #grid thead th .m { display: block; font-size: 10px; color: var(--foot-ink); background: var(--foot); border-radius: 6px; margin: 3px 2px 0; padding: 1px 2px; }
 #grid thead th .m.tbc { outline: 1px dashed var(--foot-ink); }
 #grid thead th .o { display: block; font-size: 10px; color: var(--rtt-ink); background: var(--rtt); border-radius: 6px; margin: 3px 2px 0; padding: 1px 2px; }
+#grid thead th .f { display: block; font-size: 10px; color: var(--danger); background: var(--danger-soft); border-radius: 6px; margin: 3px 2px 0; padding: 1px 2px; }
 #grid .monday { border-left: 2px solid var(--line-strong); }
 #grid .closed { background: var(--closed); }
 #grid .sat { background: #fafbff; }
@@ -175,6 +176,7 @@ label.check { margin: 10px 0; }
 .daycard .warn { margin: 10px 0 0; font-size: 12px; color: var(--danger); }
 .badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: var(--off); color: var(--muted); font-weight: 500; }
 .badge.open { background: var(--rtt); color: var(--rtt-ink); }
+.badge.holiday { background: var(--danger-soft); color: var(--danger); }
 .badge.foot { background: var(--foot); color: var(--foot-ink); }
 .chip { font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px; border: 0; }
 .chip.empty { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted); font-weight: 500; }
