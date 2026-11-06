@@ -130,6 +130,8 @@ label.check { margin: 10px 0; }
 #grid thead th .m { display: block; font-size: 10px; color: var(--foot-ink); background: var(--foot); border-radius: 6px; margin: 3px 2px 0; padding: 1px 2px; }
 #grid thead th .m.tbc { outline: 1px dashed var(--foot-ink); }
 #grid thead th .o { display: block; font-size: 10px; color: var(--rtt-ink); background: var(--rtt); border-radius: 6px; margin: 3px 2px 0; padding: 1px 2px; }
+#grid .outside { opacity: .45; }
+#grid thead th.outside { opacity: .6; }
 #grid thead th .f { display: block; font-size: 10px; color: var(--danger); background: var(--danger-soft); border-radius: 6px; margin: 3px 2px 0; padding: 1px 2px; }
 #grid .monday { border-left: 2px solid var(--line-strong); }
 #grid .closed { background: var(--closed); }

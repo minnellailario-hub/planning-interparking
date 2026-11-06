@@ -56,9 +56,11 @@ function render() {
   $('#syncBar').hidden = !data.syncError;
   $('#syncBar').textContent = data.syncError || '';
 
-  const colCls = d => [d.dow === 1 ? 'monday' : '', d.closed ? 'closed' : '', d.dow === 6 ? 'sat' : ''].join(' ');
+  // Semaines complètes (lundi au dimanche) : les jours d'un autre mois sont grisés.
+  const gd = v.allDays || v.days;
+  const colCls = d => [d.dow === 1 ? 'monday' : '', d.closed ? 'closed' : '', d.dow === 6 ? 'sat' : '', d.outside ? 'outside' : ''].join(' ');
   let h = '<thead><tr><th class="name">Employé</th>';
-  for (const d of v.days) {
+  for (const d of gd) {
     const title = [d.holiday ? `Férié : ${d.holiday}${d.closed ? '' : ' (rouvert)'}` : d.closed ? 'Fermé' : '', d.weGroup.length ? 'Week-end : ' + d.weGroup.join(', ') : '',
       d.match ? `Anderlecht – ${d.match.opponent} (${d.match.competition}) ${d.match.time}${d.match.confirmed ? '' : ' – heure à confirmer'}` : ''].filter(Boolean).join('\n');
     h += `<th class="${colCls(d)}" data-date="${d.date}" title="${esc(title)}"><span class="d">${d.dowLabel}</span><br>${d.day}`;
@@ -69,9 +71,9 @@ function render() {
   }
   h += '</tr></thead><tbody>';
   for (const r of v.rows) {
-    if (r.isChef) h += `<tr class="addrow"><td class="name"><button class="add-emp">+ Ajouter un employé</button></td><td colspan="${v.days.length}"></td></tr>`;
+    if (r.isChef) h += `<tr class="addrow"><td class="name"><button class="add-emp">+ Ajouter un employé</button></td><td colspan="${gd.length}"></td></tr>`;
     h += `<tr class="${r.isChef ? 'chef sep' : ''}"><td class="name"><div class="namebox"><span>${esc(r.name)}${r.note ? `<small>${esc(r.note)}</small>` : ''}</span>${r.isChef ? `<button class="edit-chef ghost" title="Modifier le chef terrain (nom, horaire, jours)">✎</button>` : `<button class="edit-emp ghost" data-id="${r.id}" title="Modifier ou supprimer ${esc(r.name)}">✎</button>`}</div></td>`;
-    for (const d of v.days) {
+    for (const d of gd) {
       const c = r.cells[d.date];
       h += `<td class="cell ${colCls(d)} ${c && c.locked ? 'lock' : ''}" data-emp="${r.id}" data-date="${d.date}">${cellHtml(c, r.isChef)}</td>`;
     }
@@ -80,7 +82,7 @@ function render() {
   // Étudiants : une ligne par étudiant ; en pointillé quand l'outil l'a ajouté tout seul.
   v.studentRows.forEach((r, k) => {
     h += `<tr class="student ${k === 0 ? 'sep' : ''}"><td class="name">${esc(r.name)}${k === 0 ? '<small>Étudiants</small>' : ''}</td>`;
-    for (const d of v.days) {
+    for (const d of gd) {
       const c = r.cells[d.date];
       const inner = !c ? '' : c.kind === 'off' ? '<span class="c-NONE">—</span>' : `<span class="c-STUDENT ${c.auto ? 'auto' : ''}">${esc(c.label)}</span>`;
       h += `<td class="cell ${colCls(d)} ${c && c.locked ? 'lock' : ''}" data-emp="${r.id}" data-date="${d.date}">${inner}</td>`;
@@ -88,7 +90,7 @@ function render() {
     h += '</tr>';
   });
   h += '<tr class="sum"><td class="name">Présents</td>';
-  for (const d of v.days) {
+  for (const d of gd) {
     if (d.closed && !d.present) { h += `<td class="${colCls(d)}"></td>`; continue; }
     const tot = d.present + d.students.length;
     h += `<td class="${colCls(d)} ${d.missing || d.warnings.length ? 'bad' : ''}" title="${esc(d.warnings.join('\n'))}">${tot}${d.need ? '/' + d.need : ''}</td>`;
@@ -490,7 +492,7 @@ const pop = $('#popover');
 document.addEventListener('click', e => {
   const th = e.target.closest('#grid thead th[data-date]');
   if (th) {
-    const d = data.view.days.find(x => x.date === th.dataset.date);
+    const d = (data.view.allDays || data.view.days).find(x => x.date === th.dataset.date);
     if (d.dow === 0) return;
     const what = d.holiday ? ` (férié : ${d.holiday})` : '';
     if (confirm(d.closed ? `Rouvrir le ${fmtDate(d.date)}${what} ?` : `Marquer le ${fmtDate(d.date)}${what} comme jour de fermeture ?`))
@@ -508,7 +510,7 @@ document.addEventListener('click', e => {
 function openPop(td) {
   if (document.body.classList.contains('readonly')) return; // lecteur : consultation seulement
   const { emp, date } = td.dataset;
-  const day = data.view.days.find(x => x.date === date);
+  const day = (data.view.allDays || data.view.days).find(x => x.date === date);
   const row = data.view.rows.find(r => r.id === emp) || data.view.studentRows.find(r => r.id === emp);
   const opts = row.isChef ? [data.config.chef.shift] : day.openSunday ? ['11-19'] : ['8-16', '10-18', '12-20'];
   if (day.match && !row.isChef) opts.push('FOOT');
