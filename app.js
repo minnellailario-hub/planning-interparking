@@ -931,7 +931,7 @@ function syncZTeam() {
 }
 function renderZTeam() {
   const z = zData;
-  $('#zTeamSrc').textContent = !z ? '' : z.custom ? 'Enregistrée' : 'À faire';
+  $('#zTeamSrc').textContent = !z ? '' : z.custom ? 'Enregistrée' : z.people.length ? 'Horaire du jour' : 'À faire';
   $('#zTeamSrc').className = 'chip ' + (z && z.custom ? 'z-D' : 'empty');
   $('#zTeamCount').textContent = zTeam.length ? `· ${zTeam.length} personne${zTeam.length > 1 ? 's' : ''}` : '';
   // Repliée par défaut ; ouverte s'il n'y a personne ou si une modification n'est pas enregistrée.
@@ -987,16 +987,16 @@ $('#zTeamSave').onclick = async () => {
   zTeamDirty = false; zData = j.zones; syncZTeam(); renderZones(); toast('Équipe du jour enregistrée');
 };
 $('#zTeamUse').onclick = async () => {
-  if (!confirm("Effacer l'équipe de ce jour (et les zones calculées) ?")) return;
+  if (!confirm("Effacer l'équipe enregistrée et reprendre l'horaire du jour de l'outil ?")) return;
   const j = await api('/api/zones/team', { date: zDate, team: null });
-  zTeamDirty = false; zData = j.zones; syncZTeam(); renderZones(); toast('Équipe du jour effacée');
+  zTeamDirty = false; zData = j.zones; syncZTeam(); renderZones(); toast("Horaire du jour repris");
 };
 // Reprend les personnes et les horaires de la veille (à enregistrer ensuite, après d'éventuels changements).
 $('#zTeamCopy').onclick = async () => {
   const prev = addDay(zDate, -1);
   const j = await call('/api/zones', null, { month: prev.slice(0, 7), date: prev });
   if (j.error) return toast(j.error);
-  if (!j.zones.people.length) return toast("Pas d'équipe enregistrée la veille");
+  if (!j.zones.people.length) return toast("Personne au travail la veille");
   if (zTeam.length && !confirm("Remplacer l'équipe actuelle par celle de la veille ?")) return;
   zTeam = j.zones.people.map(p => ({ id: p.id, name: p.name, shift: p.raw }));
   zTeamDirty = true; renderZTeam(); toast("Équipe de la veille copiée : vérifie puis enregistre");
