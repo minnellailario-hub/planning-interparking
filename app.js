@@ -204,7 +204,7 @@ function renderHr() {
   const mine = notes.filter(n => emp && n.empId === emp.id && (hrFilter === 'all' || n.type === hrFilter)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   $('#hrNotes').innerHTML = mine.length ? mine.map(n => `<li class="hr-note ${n.type}">
       <div class="hr-note-head"><span class="tag ${n.type}">${n.late ? '⏰ Retard · ' + n.late.minutes + ' min' : n.type === 'positive' ? '👍 Positif' : '👎 Négatif'}</span>
-        <span class="muted">${hrWhen(n.createdAt)}${n.author ? ' · ' + esc(n.author) : ''}</span>
+        <span class="muted">${hrWhen(n.createdAt)}${n.author ? ' · par ' + esc(n.author) : ''}</span>
         <button class="ghost hr-del" data-del="${n.id}" title="Supprimer la remarque">✕</button></div>
       <p>${esc(n.text).replace(/\n/g, '<br>')}</p></li>`).join('') : '<li class="muted">Aucune remarque pour le moment.</li>';
 }
@@ -220,7 +220,7 @@ function renderHours(emp) {
   $('#hoursList').innerHTML = list.length ? '<tr><th>Date</th><th>Type</th><th>Durée</th><th>Effet</th><th>Commentaire</th><th>Ajouté</th><th></th></tr>' + list.map(h => {
     const [label, f] = HOUR_KINDS[h.kind] || [h.kind, 0], eff = h.minutes * f;
     return `<tr><td>${fmtDate(h.date)}/${h.date.slice(2, 4)}</td><td><span class="tag ${f > 0 ? 'positive' : 'negative'}">${label}</span></td><td>${hm(h.minutes)}</td>
-      <td class="${eff > 0 ? 'eff-pos' : 'eff-neg'}">${eff > 0 ? '+' : ''}${hm(eff)}</td><td>${esc(h.comment || '')}</td><td class="muted">${hrWhen(h.createdAt)}</td>
+      <td class="${eff > 0 ? 'eff-pos' : 'eff-neg'}">${eff > 0 ? '+' : ''}${hm(eff)}</td><td>${esc(h.comment || '')}</td><td class="muted">${hrWhen(h.createdAt)}${h.author ? '<br>par ' + esc(h.author) : ''}</td>
       <td><button class="ghost" data-hdel="${h.id}" title="Supprimer">✕</button></td></tr>`;
   }).join('') : '<tr><td class="muted">Aucune heure enregistrée.</td></tr>';
   showHoursPreview();
@@ -1184,6 +1184,7 @@ function renderLog() {
           <details class="log-orig"><summary>✨ Reformulé pour le rapport · voir mon texte</summary>${block(e.text, e.action)}</details>`;
       })()}
       ${e.followUp ? '<p class="log-follow">► Suivi nécessaire</p>' : ''}
+      ${e.author || e.updatedBy ? `<p class="muted small log-by">${e.author ? 'Noté par ' + esc(e.author) : ''}${e.updatedBy && e.updatedBy !== e.author ? (e.author ? ' · ' : '') + 'modifié par ' + esc(e.updatedBy) : ''}</p>` : ''}
       ${edit ? `<div class="row"><button class="log-edit">Modifier</button> <button class="ghost danger log-del">Supprimer</button></div>` : ''}
     </div>`;
   }).join('') : `<p class="muted">${L.editable ? 'Aucun événement pour le moment. Choisis un type ci-dessus pour en noter un.' : 'Aucun événement ce jour-là.'}</p>`;
