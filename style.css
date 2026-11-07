@@ -549,3 +549,56 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 #fxBox .zcell { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 #fxNote:empty { display: none; }
 @media (max-width: 700px) { .fixed-bar #fxExport { margin-left: 0; width: 100%; } #fxTypes { overflow-x: auto; max-width: 100%; } }
+
+/* Zones & dispatch : onglets et écran « Maintenant » */
+.zpane[hidden] { display: none !important; }
+.zday-bar { margin-top: 0; }
+.znow-head { font-size: 16px; padding: 4px 2px 12px; }
+.znow-head b.soon { color: var(--danger); }
+.znow-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.znow-tools button { padding: 11px 16px; font-size: 15px; }
+.znow-events { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.znow-chip { background: var(--danger-soft); color: var(--danger); border-radius: 999px; padding: 5px 10px; font-size: 13px; font-weight: 600; }
+.znow-chip .link { border: 0; background: none; padding: 0 0 0 6px; color: inherit; text-decoration: underline; font-size: 12px; font-weight: 400; }
+.znow-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.znow-grid.alone { grid-template-columns: 3fr 1fr; }
+.znow-card { border-radius: 16px; padding: 14px; min-height: 140px; display: flex; flex-direction: column; gap: 10px; border: 2px solid transparent; }
+.znow-card.z-T { background: repeating-linear-gradient(135deg, #dce8ff 0 14px, #dff3e8 14px 28px, #fff1d6 28px 42px); }
+.znow-card.empty, .znow-card.pauseonly { background: var(--danger-soft) !important; color: var(--danger); border-color: var(--danger); animation: znowPulse 1.6s ease-in-out infinite; }
+@keyframes znowPulse { 50% { border-color: #f4c7c3; } }
+.znow-zone b { display: block; font-size: 18px; }
+.znow-zone small { font-size: 12px; opacity: .85; }
+.znow-people { display: flex; flex-direction: column; gap: 6px; }
+.znow-person { text-align: left; font-size: 16px; font-weight: 700; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, .85); color: #101828; border: 1px solid rgba(0, 0, 0, .06); }
+.znow-person small { display: block; font-weight: 500; font-size: 12px; color: #9a5b00; }
+.znow-person.pause { opacity: .7; border-style: dashed; }
+.znow-warn { margin: auto 0 0; font-weight: 700; font-size: 13px; }
+.znow-warn-inline { color: var(--danger); font-weight: 600; }
+.znow-side { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+.znow-side .card { margin: 0; }
+.znow-side h3 { margin: 0 0 8px; font-size: 15px; }
+.znow-next ul, .ze-diff { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.znow-pauses p { margin: 4px 0; }
+/* Fenêtre remarque / imprévu */
+.zsheet { max-width: 520px; }
+.zs-field { display: flex; flex-direction: column; gap: 4px; margin: 10px 0; font-weight: 600; font-size: 13px; }
+.zs-field select, .zs-field input, .zs-field textarea { font-size: 16px; font-weight: 400; }
+.zs-motifs { display: grid; gap: 8px; margin: 12px 0; }
+.zs-motifs.two { grid-template-columns: 1fr 1fr; }
+.zs-motifs button { text-align: left; padding: 12px 14px; font-size: 15px; border-radius: 12px; }
+.zs-motifs button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.zs-recid { background: #fff1d6; color: #9a5b00; border-radius: 10px; padding: 8px 12px; margin: 8px 0; }
+.zs-actions { margin-top: 14px; }
+.zsheet label.check { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+@media (max-width: 900px) {
+  .znow-grid, .znow-grid.alone { grid-template-columns: 1fr 1fr; }
+  .znow-side { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  .ztabs { width: 100%; } .ztabs button { flex: 1; }
+  .znow-card { min-height: 110px; padding: 12px; }
+  .znow-tools button { flex: 1; }
+  .zsheet { width: 100%; max-width: none; margin: auto 0 0; border-radius: 18px 18px 0 0; max-height: 92vh; overflow: auto; }
+  .zs-motifs.two { grid-template-columns: 1fr; }
+}
+.znow-card.short { background: #fff1d6 !important; color: #9a5b00; border-color: #f5c46b; }

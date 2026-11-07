@@ -311,7 +311,7 @@
 
       <!-- Statistiques -->
       <!-- Zones & dispatch -->
-      <section class="page" data-page="zones" data-title="Zones &amp; dispatch" data-sub="Ajoute l'équipe du jour avec les horaires : 1 personne au dispatch, puis Zone 1, Zone 2 et Zone 3. Clique sur une case pour la changer : elle est verrouillée 🔒 et gardée.">
+      <section class="page" data-page="zones" data-title="Zones &amp; dispatch" data-sub="Sur le terrain : qui doit être où maintenant, les pauses, les imprévus et les remarques. La journée complète et l'équipe sont dans les autres onglets.">
         <div class="planning-bar zones-bar">
           <div class="monthnav">
             <button id="zPrev" class="icon-btn" aria-label="Jour précédent">‹</button>
@@ -320,26 +320,46 @@
           </div>
           <input type="date" id="zDate" aria-label="Choisir le jour">
           <button id="zToday">Aujourd'hui</button>
-          <div class="viewswitch" role="tablist">
-            <button id="zvPeople" role="tab">Par personne</button>
-            <button id="zvZones" role="tab">Par zone</button>
+          <div class="viewswitch ztabs" role="tablist">
+            <button id="ztNow" role="tab" data-ztab="now">Maintenant</button>
+            <button id="ztDay" role="tab" data-ztab="day">Journée</button>
+            <button id="ztTeam" role="tab" data-ztab="team">Équipe</button>
           </div>
-          <button id="zReset" class="ghost" title="Enlever les changements faits à la main ce jour-là">Tout remettre en auto</button>
-          <button id="zExport">Excel du jour</button>
         </div>
-        <details class="card" id="zTeamCard" open>
-          <summary class="card-head"><h3>Équipe du jour <span id="zTeamCount" class="muted"></span></h3><span id="zTeamSrc" class="chip"></span></summary>
-          <p class="muted">L'équipe est reprise de l'horaire du jour : les zones, le dispatch et les pauses se font tout seuls. Pour changer l'équipe, modifie-la puis enregistre. Le chef terrain fait un seul créneau de dispatch dans la journée.</p>
-          <div id="zTeamRows" class="entries"></div>
-          <div class="row">
-            <button id="zTeamAdd">+ Ajouter une personne</button>
-            <button id="zTeamCopy" class="ghost">Copier l'équipe de la veille</button>
-            <button id="zTeamSave" class="primary">Enregistrer l'équipe</button>
-            <button id="zTeamUse" class="ghost danger">Reprendre l'horaire du jour</button>
+
+        <!-- Maintenant : le créneau en cours, sur le terrain -->
+        <div id="zNowPane" class="zpane">
+          <div id="zNow"></div>
+        </div>
+
+        <!-- Journée : le tableau complet -->
+        <div id="zDayPane" class="zpane" hidden>
+          <div class="planning-bar zday-bar">
+            <div class="viewswitch" role="tablist">
+              <button id="zvPeople" role="tab">Par personne</button>
+              <button id="zvZones" role="tab">Par zone</button>
+            </div>
+            <button id="zReset" class="ghost" title="Enlever les changements faits à la main ce jour-là">Tout remettre en auto</button>
+            <button id="zExport">Excel du jour</button>
           </div>
-        </details>
-        <div class="card flat tablewrap" id="zBox"></div>
-        <div class="legend" id="zLegend"></div>
+          <div class="card flat tablewrap" id="zBox"></div>
+          <div class="legend" id="zLegend"></div>
+        </div>
+
+        <!-- Équipe du jour -->
+        <div id="zTeamPane" class="zpane" hidden>
+          <div class="card" id="zTeamCard">
+            <div class="card-head"><h3>Équipe du jour <span id="zTeamCount" class="muted"></span></h3><span id="zTeamSrc" class="chip"></span></div>
+            <p class="muted">L'équipe est reprise de l'horaire du jour : les zones, le dispatch et les pauses se font tout seuls. Pour changer l'équipe, modifie-la puis enregistre. Le chef terrain fait un seul créneau de dispatch dans la journée. Pour un absent ou un retard le jour même, utilise plutôt « Imprévu » dans l'onglet Maintenant.</p>
+            <div id="zTeamRows" class="entries"></div>
+            <div class="row">
+              <button id="zTeamAdd">+ Ajouter une personne</button>
+              <button id="zTeamCopy" class="ghost">Copier l'équipe de la veille</button>
+              <button id="zTeamSave" class="primary">Enregistrer l'équipe</button>
+              <button id="zTeamUse" class="ghost danger">Reprendre l'horaire du jour</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- Horaire fixe : à imprimer et plastifier, par horaire et non par prénom -->
@@ -452,6 +472,9 @@
   <div id="popover" class="popover" hidden></div>
 
   <!-- Fenêtres -->
+  <!-- Zones : remarque terrain et imprévu (contenu rempli par app.js) -->
+  <dialog id="zSheet" class="zsheet"><div id="zSheetBody"></div></dialog>
+
   <dialog id="chefDlg">
     <form method="dialog" class="dlg-head"><h3>Chef terrain</h3><button class="ghost">✕</button></form>
     <p class="muted">Le chef terrain ne compte pas dans le minimum de personnes par jour.</p>

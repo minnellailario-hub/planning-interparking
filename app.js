@@ -543,54 +543,75 @@ function showPop(td, h, emp, date) {
 // ----- Glisser-déposer par appui long (horaire et zones) -----
 // Appui long (0,4 s) sur un élément, puis on le lâche sur une cible permise. Un petit déplacement avant = défilement.
 // opts : { root, source(el) → élément à déplacer ou null, targets(src) → cibles permises, drop(src, target) }
-const drag = { timer: null, on: false, src: null, opts: null, ghost: null, over: null, x: 0, y: 0, justDropped: false };
+// Souris : événements « pointer ». Doigt (téléphone) : événements « touch », car Android et l'iPhone coupent les
+// événements « pointer » pendant un appui long (menu, défilement), ce qui annulait le glisser.
+const drag = { timer: null, on: false, src: null, opts: null, ghost: null, over: null, x: 0, y: 0, touch: false, justDropped: false };
 function dragEnd() {
   clearTimeout(drag.timer); drag.timer = null;
   if (drag.ghost) drag.ghost.remove();
   document.querySelectorAll('.drag-src, .drag-ok, .drag-over').forEach(x => x.classList.remove('drag-src', 'drag-ok', 'drag-over'));
   document.body.classList.remove('dragging');
-  Object.assign(drag, { on: false, src: null, opts: null, ghost: null, over: null });
+  Object.assign(drag, { on: false, src: null, opts: null, ghost: null, over: null, touch: false });
 }
-function longPressDrag(opts) {
-  opts.root.addEventListener('pointerdown', e => {
-    if (document.body.classList.contains('readonly') || e.button > 0) return;
-    const src = opts.source(e.target);
-    if (!src) return;
-    Object.assign(drag, { src, opts, x: e.clientX, y: e.clientY });
-    drag.timer = setTimeout(() => {
-      drag.on = true; pop.hidden = true; document.querySelector('.zmenu')?.remove();
-      document.body.classList.add('dragging');
-      src.classList.add('drag-src');
-      opts.targets(src).forEach(x => { if (x !== src) x.classList.add('drag-ok'); });
-      drag.ghost = (src.firstElementChild || src).cloneNode(true);
-      drag.ghost.classList.add('drag-ghost');
-      document.body.appendChild(drag.ghost);
-      moveGhost(drag.x, drag.y);
-      if (navigator.vibrate) try { navigator.vibrate(30); } catch {}
-    }, 400);
-  });
-  opts.root.addEventListener('contextmenu', e => { if (drag.src) e.preventDefault(); });
+function dragStart(opts, target, x, y, touch) {
+  if (document.body.classList.contains('readonly') || drag.src) return;
+  const src = opts.source(target);
+  if (!src) return;
+  Object.assign(drag, { src, opts, x, y, touch });
+  drag.timer = setTimeout(() => {
+    drag.on = true; pop.hidden = true; document.querySelector('.zmenu')?.remove();
+    document.body.classList.add('dragging');
+    src.classList.add('drag-src');
+    opts.targets(src).forEach(el => { if (el !== src) el.classList.add('drag-ok'); });
+    drag.ghost = (src.firstElementChild || src).cloneNode(true);
+    drag.ghost.classList.add('drag-ghost');
+    document.body.appendChild(drag.ghost);
+    moveGhost(drag.x, drag.y);
+    if (navigator.vibrate) try { navigator.vibrate(30); } catch {}
+  }, 400);
 }
-function moveGhost(x, y) { if (drag.ghost) { drag.ghost.style.left = x + 'px'; drag.ghost.style.top = y + 'px'; } }
-document.addEventListener('pointermove', e => {
-  if (!drag.src) return;
-  if (!drag.on) { if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 8) dragEnd(); return; } // c'est un défilement
-  moveGhost(e.clientX, e.clientY);
+function dragMove(x, y) {
+  if (!drag.on) { if (Math.hypot(x - drag.x, y - drag.y) > 8) dragEnd(); return; } // c'est un défilement
+  drag.x = x; drag.y = y;
+  moveGhost(x, y);
   // La cible la plus précise sous le doigt (une personne dans une case de zone avant la case elle-même).
-  const t = document.elementFromPoint(e.clientX, e.clientY)?.closest('.drag-ok') || null;
+  const t = document.elementFromPoint(x, y)?.closest('.drag-ok') || null;
   if (t !== drag.over) { drag.over?.classList.remove('drag-over'); t?.classList.add('drag-over'); drag.over = t; }
-});
-// Sur téléphone, empêche la page de défiler pendant qu'on glisse.
-document.addEventListener('touchmove', e => { if (drag.on) e.preventDefault(); }, { passive: false });
-document.addEventListener('pointerup', () => {
-  if (!drag.src) return;
+}
+function dragDrop() {
   const { on, src, over, opts } = drag;
   dragEnd();
   if (!on) return;
-  drag.justDropped = true; setTimeout(() => { drag.justDropped = false; }, 50);
+  drag.justDropped = true; setTimeout(() => { drag.justDropped = false; }, 400);
   if (over) opts.drop(src, over);
-});
-document.addEventListener('pointercancel', () => { if (drag.src) dragEnd(); });
+}
+function longPressDrag(opts) {
+  opts.root.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'touch' || e.button > 0) return; // le doigt passe par touchstart
+    dragStart(opts, e.target, e.clientX, e.clientY, false);
+  });
+  opts.root.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) { if (drag.src) dragEnd(); return; }
+    const t = e.touches[0];
+    dragStart(opts, e.target, t.clientX, t.clientY, true);
+  }, { passive: true });
+}
+function moveGhost(x, y) { if (drag.ghost) { drag.ghost.style.left = x + 'px'; drag.ghost.style.top = y + 'px'; } }
+document.addEventListener('pointermove', e => { if (drag.src && !drag.touch) dragMove(e.clientX, e.clientY); });
+document.addEventListener('pointerup', () => { if (drag.src && !drag.touch) dragDrop(); });
+document.addEventListener('pointercancel', () => { if (drag.src && !drag.touch) dragEnd(); });
+// Doigt : une fois le glisser lancé, la page ne défile plus (preventDefault), et on suit le doigt.
+document.addEventListener('touchmove', e => {
+  if (!drag.src || !drag.touch) return;
+  const t = e.touches[0];
+  if (drag.on) e.preventDefault();
+  dragMove(t.clientX, t.clientY);
+}, { passive: false });
+document.addEventListener('touchend', e => { if (drag.src && drag.touch) { if (drag.on) e.preventDefault(); dragDrop(); } }, { passive: false });
+document.addEventListener('touchcancel', () => { if (drag.src && drag.touch) dragEnd(); });
+// Appui long sur téléphone : pas de menu du navigateur ni de sélection de texte pendant le glisser.
+document.addEventListener('contextmenu', e => { if (drag.src) e.preventDefault(); });
+document.addEventListener('selectstart', e => { if (drag.src) e.preventDefault(); });
 // Le clic qui suit un dépôt n'ouvre pas le menu de la case.
 document.addEventListener('click', e => { if (drag.justDropped) { e.stopPropagation(); e.preventDefault(); } }, true);
 
@@ -852,21 +873,23 @@ const addDay = (date, n) => { const d = new Date(date + 'T12:00:00'); d.setDate(
 const Z_LABEL = { Z1: 'Zone 1', Z2: 'Zone 2', Z3: 'Zone 3', D: 'Dispatch', T: 'Toutes les zones' };
 const Z_PLACE = { Z1: 'Total-Delhaize', Z2: 'City-Crélan', Z3: 'Toit & sous-terrain', D: 'Bureau', T: 'Seul sur le terrain' };
 const DAY_NAMES = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-let zDate = localDay(), zView = 'people', zData = null;
+let zDate = localDay(), zView = 'people', zData = null, zTab = 'now', zCounts = null;
 try { zView = localStorage.getItem('zView') || zView; } catch {}
 
 async function loadZones() {
   const j = await call('/api/zones', null, { month: zDate.slice(0, 7), date: zDate });
   if (j.error) return toast(j.error);
-  zData = j.zones; syncZTeam(); renderZones();
+  zData = j.zones; zCounts = j.fieldCounts || null; syncZTeam(); renderZones();
 }
 function renderZones() {
+  setZTab(zTab);
   const d = new Date(zDate + 'T12:00:00');
   $('#zTitle').textContent = `${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
   $('#zDate').value = zDate;
   $('#zvPeople').classList.toggle('on', zView === 'people');
   $('#zvZones').classList.toggle('on', zView === 'zones');
   if (data) renderZTeam();
+  if (zTab === 'now') renderNow();
   $('#zLegend').innerHTML = ['Z1', 'Z2', 'Z3', 'D', 'T'].map(z => `<span><i class="z-${z}"></i>${Z_LABEL[z]} · ${Z_PLACE[z]}</span>`).join('') + '<span>☕ Pause 30 min</span><span>🔒 Changé à la main</span>';
   const z = zData;
   if (!z || z.date !== zDate) { $('#zBox').innerHTML = '<p class="muted pad">Chargement…</p>'; return; }
@@ -1016,10 +1039,10 @@ function zGo(date) {
   if (zTeamDirty && !confirm("L'équipe du jour n'est pas enregistrée. Changer de jour quand même ?")) return renderZones();
   zTeamDirty = false; zTeam = []; zDate = date; zData = null; renderZones(); loadZones();
 }
-$('#zonesOpen').onclick = () => { go('zones'); renderZones(); loadZones(); };
+$('#zonesOpen').onclick = () => { go('zones'); if (zDate === localDay()) zTab = 'now'; renderZones(); loadZones(); };
 $('#zPrev').onclick = () => zGo(addDay(zDate, -1));
 $('#zNext').onclick = () => zGo(addDay(zDate, 1));
-$('#zToday').onclick = () => zGo(localDay());
+$('#zToday').onclick = () => { zTab = 'now'; zGo(localDay()); };
 $('#zDate').onchange = e => zGo(e.target.value);
 $('#zvPeople').onclick = () => { zView = 'people'; try { localStorage.setItem('zView', zView); } catch {} renderZones(); };
 $('#zvZones').onclick = () => { zView = 'zones'; try { localStorage.setItem('zView', zView); } catch {} renderZones(); };
@@ -1064,6 +1087,257 @@ longPressDrag({
     if (j) { zData = j.zones; renderZones(); toast(body.b ? 'Places échangées.' : 'Personne déplacée.'); }
   },
 });
+
+// ----- Zones : onglet « Maintenant » (le créneau en cours, sur le terrain) -----
+// Heure du téléphone / du PC (en Belgique) : créneau en cours, rotation, pauses, zones vides.
+const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+const hhmm = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+const toMin = s => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
+const isAdmin = () => data && data.account && data.account.role === 'admin';
+const canRemark = id => isAdmin() && data.config.employees.some(e => e.id === id);
+function setZTab(t) {
+  zTab = t;
+  for (const [k, pane] of [['now', '#zNowPane'], ['day', '#zDayPane'], ['team', '#zTeamPane']]) {
+    $(pane).hidden = k !== t;
+    document.querySelector(`.ztabs [data-ztab="${k}"]`).classList.toggle('on', k === t);
+  }
+}
+document.querySelector('.ztabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-ztab]'); if (!b) return;
+  setZTab(b.dataset.ztab); renderZones();
+});
+
+function renderNow() {
+  const z = zData, box = $('#zNow');
+  if (!z || z.date !== zDate) { box.innerHTML = '<p class="muted pad">Chargement…</p>'; return; }
+  const today = zDate === localDay();
+  const absents = (z.absent || []).map(a => `<span class="znow-chip">🚫 ${esc(a.name)} absent <button class="link" data-clear="${a.id}">annuler</button></span>`);
+  const lates = z.people.filter(p => p.arrive).map(p => `<span class="znow-chip">⏰ ${esc(p.name)} arrive à ${p.arrive} <button class="link" data-clear="${p.id}">annuler</button></span>`);
+  const tools = `<div class="znow-tools">
+      <button class="primary" id="znEvent">⚠️ Imprévu (absent, retard)</button>
+      ${isAdmin() ? '<button id="znRemark">✍️ Faire une remarque</button>' : ''}
+    </div>${absents.length || lates.length ? `<div class="znow-events">${[...absents, ...lates].join('')}</div>` : ''}`;
+  if (z.closed || !z.people.length) {
+    box.innerHTML = `<div class="card"><p class="muted">${z.closed ? 'Westland fermé ce jour-là.' : "Personne dans l'équipe de ce jour."} Regarde l'onglet « Équipe » pour ajouter du monde.</p></div>` + (z.people.length || (z.absent || []).length ? tools : '');
+    return;
+  }
+  // Créneau affiché : celui en cours aujourd'hui ; avant l'ouverture le premier ; un autre jour, le premier aussi.
+  const m = nowMin(), slots = z.slots;
+  let k = today ? slots.findIndex(s => m >= s.start * 60 && m < (s.start + 2) * 60) : 0;
+  const before = today && m < slots[0].start * 60, after = today && m >= (slots[slots.length - 1].start + 2) * 60;
+  if (k < 0) k = after ? slots.length - 1 : 0;
+  const sl = slots[k], end = (sl.start + 2) * 60;
+  let head;
+  if (!today) head = `<b>${esc($('#zTitle').textContent)}</b> · ce n'est pas aujourd'hui : voici le premier créneau (${sl.label}).`;
+  else if (before) head = `Pas encore commencé · premier créneau <b>${sl.label}</b> dans <b>${fmtDelay(slots[0].start * 60 - m)}</b>`;
+  else if (after) head = 'Journée terminée · dernier créneau affiché.';
+  else head = `Créneau <b>${sl.label}</b> · ${k < slots.length - 1 ? 'rotation' : 'fermeture'} dans <b class="${end - m <= 10 ? 'soon' : ''}">${fmtDelay(end - m)}</b>`;
+
+  const inSlot = code => z.people.filter(p => p.cells[k] && p.cells[k].code === code);
+  const fieldCount = z.people.filter(p => p.cells[k] && p.cells[k].code && p.cells[k].code !== 'D').length;
+  const onPause = p => today && !before && !after && p.pause && m >= toMin(p.pause.start) && m < toMin(p.pause.end);
+  const person = p => {
+    const pause = onPause(p);
+    return `<button class="znow-person ${pause ? 'pause' : ''}" data-person="${p.id}">${esc(p.name)}${pause ? ` <small>☕ pause jusqu'à ${p.pause.end}</small>` : ''}</button>`;
+  };
+  const card = (code, people) => {
+    const there = people.filter(p => !onPause(p));
+    // Zone vide parce qu'il n'y a pas assez de monde dans ce créneau : en orange ; sinon (absent, pause) : en rouge.
+    const short = !people.length && code !== 'D' && fieldCount < 3;
+    const state = short ? 'short' : !people.length ? 'empty' : !there.length ? 'pauseonly' : '';
+    const warn = short ? '<p class="znow-warn">Pas assez de monde : zone pas couverte</p>' : !people.length ? '<p class="znow-warn">⚠️ Personne dans cette zone</p>' : !there.length ? '<p class="znow-warn">⚠️ Zone vide pendant la pause</p>' : '';
+    return `<div class="znow-card z-${code} ${state}"><div class="znow-zone"><b>${Z_LABEL[code]}</b><small>${Z_PLACE[code]}</small></div>
+      <div class="znow-people">${people.map(person).join('')}</div>${warn}</div>`;
+  };
+  const alone = inSlot('T');
+  const cards = (alone.length ? [card('T', alone)] : ['Z1', 'Z2', 'Z3'].map(c => card(c, inSlot(c)))).concat(card('D', inSlot('D'))).join('');
+
+  // Prochain créneau : qui change de place, qui arrive, qui part.
+  let next = '';
+  if (k < slots.length - 1) {
+    const n = k + 1, place = c => c ? (c.code === 'D' ? 'Dispatch' : c.code === 'T' ? 'Toutes zones' : Z_LABEL[c.code]) : null;
+    const rows = z.people.map(p => {
+      const a = place(p.cells[k]), b = place(p.cells[n]);
+      if (!a && !b) return '';
+      if (a && !b) return `<li><b>${esc(p.name)}</b> : termine</li>`;
+      if (!a && b) return `<li><b>${esc(p.name)}</b> : arrive → <b>${b}</b></li>`;
+      return a === b ? `<li class="muted">${esc(p.name)} : reste ${a}</li>` : `<li><b>${esc(p.name)}</b> : ${a} → <b>${b}</b></li>`;
+    }).filter(Boolean);
+    next = `<div class="card znow-next"><h3>À ${slots[n].start}h (${slots[n].label})</h3><ul>${rows.join('')}</ul></div>`;
+  }
+  // Pauses : en cours, puis les suivantes de la journée.
+  const pauses = z.people.filter(p => p.pause).sort((a, b) => a.pause.start.localeCompare(b.pause.start));
+  const pNow = pauses.filter(onPause), pNext = pauses.filter(p => !today || toMin(p.pause.start) > m);
+  const pauseCard = `<div class="card znow-pauses"><h3>☕ Pauses</h3>
+    ${pNow.length ? `<p><b>En pause :</b> ${pNow.map(p => `${esc(p.name)} jusqu'à ${p.pause.end}`).join(', ')}</p>` : ''}
+    ${pNext.length ? `<p><b>${today ? 'Ensuite' : 'Pauses du jour'} :</b> ${pNext.map(p => `${p.pause.start} ${esc(p.name)}`).join(' · ')}</p>` : (pNow.length ? '' : '<p class="muted">Plus de pause aujourd\'hui.</p>')}
+  </div>`;
+  box.innerHTML = `<div class="znow-head">${head}</div>${tools}<div class="znow-grid ${alone.length ? 'alone' : ''}">${cards}</div>
+    <div class="znow-side">${next}${pauseCard}</div>
+    ${isAdmin() ? '<p class="muted small">Touche un nom pour faire une remarque.</p>' : ''}`;
+}
+const fmtDelay = n => n >= 60 ? `${Math.floor(n / 60)} h ${String(n % 60).padStart(2, '0')}` : `${n} min`;
+// Mise à jour de l'heure toutes les 20 secondes quand l'onglet « Maintenant » est ouvert.
+setInterval(() => { if (document.body.dataset.page === 'zones' && zTab === 'now' && zData && !$('#zSheet').open) renderNow(); }, 20000);
+
+$('#zNow').addEventListener('click', e => {
+  const c = e.target.closest('[data-clear]');
+  if (c) return clearEvent(c.dataset.clear);
+  if (e.target.closest('#znEvent')) return openEventSheet();
+  if (e.target.closest('#znRemark')) return openRemarkSheet(null);
+  const p = e.target.closest('.znow-person');
+  if (p) openRemarkSheet(p.dataset.person);
+});
+async function clearEvent(id) {
+  const name = (zData.absent || []).concat(zData.people).find(p => p.id === id)?.name || id;
+  if (!confirm(`Annuler l'imprévu de ${name} ? Les créneaux pas encore passés seront recalculés.`)) return;
+  const j = await api('/api/zones/event', { date: zDate, personId: id, kind: 'clear' }).catch(() => null);
+  if (j) { zData = j.zones; zCounts = j.fieldCounts; renderZones(); toast('Imprévu annulé'); }
+}
+
+// ----- Remarque terrain : motif en 2 touches, texte libre (ou dicté), « dit oralement », récidive -----
+const sheet = $('#zSheet');
+let remark = null; // { personId, motif, colleague, text, told, time, slot }
+function currentSlot() {
+  if (zDate !== localDay()) return null;
+  const m = nowMin(), k = zData.slots.findIndex(s => m >= s.start * 60 && m < (s.start + 2) * 60);
+  return k < 0 ? null : k;
+}
+function openRemarkSheet(personId, motif = null, time = null) {
+  if (!isAdmin()) return toast('Les remarques sont réservées aux administrateurs.');
+  if (personId && !canRemark(personId)) return toast('Remarque possible seulement pour un employé (pas un étudiant ni un renfort).');
+  remark = { personId, motif, colleague: '', text: '', told: false, time: time || hhmm(nowMin()), slot: currentSlot() };
+  renderRemark(); sheet.showModal();
+}
+function renderRemark() {
+  const r = remark, z = zData;
+  const emps = z.people.filter(p => canRemark(p.id));
+  const p = z.people.find(x => x.id === r.personId);
+  const cnt = r.personId && zCounts ? zCounts[r.personId] : null;
+  const cell = p && r.slot !== null ? p.cells[r.slot] : null;
+  const motifs = [['zone', 'Pas à sa place / mauvaise zone'], ['talk', "Dans la zone d'un collègue à discuter (pas visible des clients)"], ['late', 'Retard']];
+  const others = z.people.filter(x => x.id !== r.personId && (r.slot === null || x.cells[r.slot]));
+  $('#zSheetBody').innerHTML = `
+    <div class="dlg-head"><h3>✍️ Remarque terrain</h3><button class="ghost" data-close>✕</button></div>
+    <label class="zs-field">Personne <select data-r="personId"><option value="">— Choisir —</option>${emps.map(e => `<option value="${e.id}" ${e.id === r.personId ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select></label>
+    ${p ? `<p class="muted small">${cell && cell.code ? `Prévu maintenant : <b>${cell.code === 'D' ? 'Dispatch' : Z_LABEL[cell.code]}</b> (${z.slots[r.slot].label})` : 'Pas dans un créneau en ce moment.'}</p>` : ''}
+    ${cnt && (cnt.week || cnt.month) ? `<p class="zs-recid">🔁 Déjà <b>${cnt.week}</b> fois cette semaine, <b>${cnt.month}</b> fois ce mois-ci</p>` : ''}
+    <div class="zs-motifs">${motifs.map(([v, l]) => `<button type="button" data-motif="${v}" class="${r.motif === v ? 'on' : ''}">${l}</button>`).join('')}</div>
+    ${r.motif === 'talk' ? `<label class="zs-field">Avec qui ? <select data-r="colleague"><option value="">— Un collègue —</option>${others.map(o => `<option value="${o.id}" ${o.id === r.colleague ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select></label>
+      <p class="muted small">La remarque ne concerne que la personne qui a quitté sa zone.</p>` : ''}
+    ${r.motif === 'late' ? `<label class="zs-field">Arrivé à <input type="time" data-r="time" value="${r.time}"></label>` : ''}
+    <label class="zs-field">Détail (facultatif) <textarea data-r="text" rows="3" placeholder="Ce que tu as vu…">${esc(r.text)}</textarea></label>
+    <div class="row"><button type="button" class="mic" id="zsMic">${zDict ? '■ Arrêter' : '🎤 Dicter'}</button>
+      <label class="check"><input type="checkbox" data-r="told" ${r.told ? 'checked' : ''}> Dit oralement à la personne</label></div>
+    <div class="row zs-actions"><button class="primary" id="zsSave" ${r.personId && r.motif ? '' : 'disabled'}>Enregistrer la remarque</button><button class="ghost" data-close>Annuler</button></div>
+    <p class="muted small">Elle va dans la RH de la personne et dans le Reporting du jour. Seuls les administrateurs la voient.</p>`;
+}
+// Dictée pour le détail de la remarque.
+let zDict = null;
+function zDictate() {
+  if (zDict) { try { zDict.stop(); } catch {} return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return toast('Dictée pas disponible ici : utilise le micro 🎤 du clavier du téléphone.');
+  const rec = new SR(); rec.lang = 'fr-BE'; rec.continuous = true; rec.interimResults = true;
+  const before = remark.text.trim(); let done = '';
+  rec.onresult = e2 => {
+    let live = '';
+    for (let i = e2.resultIndex; i < e2.results.length; i++) { if (e2.results[i].isFinal) done += e2.results[i][0].transcript + ' '; else live += e2.results[i][0].transcript; }
+    remark.text = [before, (done + live).replace(/\s+/g, ' ').trim()].filter(Boolean).join(' ');
+    const ta = document.querySelector('#zSheetBody textarea[data-r="text"]'); if (ta) ta.value = remark.text;
+  };
+  rec.onerror = e2 => { if (e2.error === 'not-allowed') toast('Autorise le micro pour dicter, ou utilise le micro 🎤 du clavier.'); };
+  rec.onend = () => { zDict = null; const b = $('#zsMic'); if (b) b.textContent = '🎤 Dicter'; };
+  zDict = rec;
+  try { rec.start(); $('#zsMic').textContent = '■ Arrêter'; } catch { zDict = null; }
+}
+sheet.addEventListener('close', () => { if (zDict) try { zDict.stop(); } catch {} remark = null; zEv = null; });
+$('#zSheetBody').addEventListener('input', e => {
+  const k = e.target.dataset.r;
+  if (remark && k === 'text') remark.text = e.target.value;
+  if (zEv && e.target.dataset.e === 'time') zEv.time = e.target.value;
+});
+$('#zSheetBody').addEventListener('change', e => {
+  const k = e.target.dataset.r;
+  if (remark && k) {
+    remark[k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    if (k === 'personId') renderRemark();
+  }
+  const ke = e.target.dataset.e;
+  if (zEv && ke) { zEv[ke] = e.target.value; zEv.preview = null; renderEvent(); }
+});
+$('#zSheetBody').addEventListener('click', async e => {
+  if (e.target.closest('[data-close]')) return sheet.close();
+  if (remark) {
+    const mo = e.target.closest('[data-motif]');
+    if (mo) { remark.motif = mo.dataset.motif; return renderRemark(); }
+    if (e.target.closest('#zsMic')) return zDictate();
+    if (e.target.closest('#zsSave')) {
+      const r = remark;
+      if (r.motif === 'talk' && !r.colleague && !confirm('Aucun collègue choisi. Enregistrer quand même ?')) return;
+      const j = await api('/api/hr/field', { date: zDate, personId: r.personId, motif: r.motif, colleague: r.colleague, text: r.text, told: r.told, time: r.time, slot: r.slot }).catch(() => null);
+      if (j) { zData = j.zones; zCounts = j.fieldCounts; sheet.close(); renderZones(); toast('Remarque enregistrée (RH et Reporting du jour)'); }
+    }
+    return;
+  }
+  if (zEv) {
+    const k = e.target.closest('[data-kind]');
+    if (k) { zEv.kind = k.dataset.kind; zEv.preview = null; return renderEvent(); }
+    if (e.target.closest('#zeSee')) return previewEvent();
+    if (e.target.closest('#zeApply')) return applyEvent();
+  }
+});
+
+// ----- Imprévu : absent ou arrive en retard → avant / après, puis on valide -----
+let zEv = null; // { personId, kind, time, preview }
+function openEventSheet() {
+  zEv = { personId: '', kind: 'absent', time: hhmm(nowMin()), preview: null };
+  renderEvent(); sheet.showModal();
+}
+function eventDiff(before, after) {
+  const today = zDate === localDay(), m = nowMin(), out = [];
+  const place = c => c && c.code ? (c.code === 'D' ? 'Dispatch' : c.code === 'T' ? 'Toutes zones' : Z_LABEL[c.code]) : '—';
+  before.slots.forEach((s, k) => {
+    if (today && (s.start + 2) * 60 <= m) return; // créneau déjà passé : il ne bouge pas
+    const lines = [];
+    for (const p of before.people) {
+      const q = after.people.find(x => x.id === p.id);
+      const a = place(p.cells[k]), b = place(q ? q.cells[k] : null);
+      if (a !== b) lines.push(`${esc(p.name)} : ${a} → <b>${b}</b>`);
+    }
+    for (const q of after.people) if (!before.people.some(p => p.id === q.id) && q.cells[k]) lines.push(`${esc(q.name)} : — → <b>${place(q.cells[k])}</b>`);
+    const empty = ['Z1', 'Z2', 'Z3'].filter(c => !after.people.some(q => q.cells[k] && (q.cells[k].code === c || q.cells[k].code === 'T')));
+    if (lines.length || empty.length) out.push(`<li><b>${s.label}</b>${lines.length ? ' · ' + lines.join(' · ') : ''}${empty.length ? ` <span class="znow-warn-inline">⚠️ ${empty.map(c => Z_LABEL[c]).join(', ')} sans personne</span>` : ''}</li>`);
+  });
+  return out.length ? `<ul class="ze-diff">${out.join('')}</ul>` : '<p class="muted">Aucun changement dans les créneaux à venir.</p>';
+}
+function renderEvent() {
+  const z = zData, e = zEv;
+  const team = z.people.filter(p => !p.arrive);
+  $('#zSheetBody').innerHTML = `
+    <div class="dlg-head"><h3>⚠️ Imprévu</h3><button class="ghost" data-close>✕</button></div>
+    <label class="zs-field">Qui ? <select data-e="personId"><option value="">— Choisir —</option>${team.map(p => `<option value="${p.id}" ${p.id === e.personId ? 'selected' : ''}>${esc(p.name)} (${esc(p.shift)})</option>`).join('')}</select></label>
+    <div class="zs-motifs two"><button type="button" data-kind="absent" class="${e.kind === 'absent' ? 'on' : ''}">🚫 Absent / pas venu</button><button type="button" data-kind="late" class="${e.kind === 'late' ? 'on' : ''}">⏰ Arrive en retard</button></div>
+    ${e.kind === 'late' ? `<label class="zs-field">Arrive (ou est arrivé) à <input type="time" data-e="time" value="${e.time}"></label>` : ''}
+    ${e.preview ? `<h4>Ce qui change</h4>${e.preview}<p class="muted small">Les créneaux déjà passés ne bougent pas.</p>` : ''}
+    <div class="row zs-actions">${e.preview
+      ? '<button class="primary" id="zeApply">Valider le changement</button>'
+      : `<button class="primary" id="zeSee" ${e.personId ? '' : 'disabled'}>Voir ce qui change</button>`}<button class="ghost" data-close>Annuler</button></div>`;
+}
+async function previewEvent() {
+  const j = await call('/api/zones/event/preview', { month: zDate.slice(0, 7), date: zDate, personId: zEv.personId, kind: zEv.kind, time: zEv.time });
+  if (j.error) return toast(j.error);
+  zEv.preview = eventDiff(j.before, j.after); renderEvent();
+}
+async function applyEvent() {
+  const e = zEv;
+  const j = await api('/api/zones/event', { date: zDate, personId: e.personId, kind: e.kind, time: e.time }).catch(() => null);
+  if (!j) return;
+  zData = j.zones; zCounts = j.fieldCounts; sheet.close(); renderZones();
+  toast(e.kind === 'absent' ? 'Absent enregistré : tournantes mises à jour' : 'Retard enregistré : tournantes mises à jour');
+  // Retard d'un employé : proposer la remarque « Retard » (avec l'heure d'arrivée).
+  if (e.kind === 'late' && canRemark(e.personId) && confirm('Faire aussi une remarque « Retard » (RH et Reporting) ?')) openRemarkSheet(e.personId, 'late', e.time);
+}
 
 // ----- Horaire fixe : un tableau par type de journée, par horaire (8-16, 10-18, 12-20 A…), à imprimer -----
 let fxType = 'jour4', fxData = null;
