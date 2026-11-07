@@ -900,7 +900,7 @@ function renderZones() {
   let body = '';
   if (zView === 'people') {
     for (const p of z.people) {
-      body += `<tr><td class="name"><b>${esc(p.name)}</b></td><td class="muted">${esc(p.shift)}</td>`;
+      body += `<tr><td class="name"><b>${esc(p.name)}</b></td><td class="muted">${esc((z.plan && z.plan.roleOf[p.id]) || p.shift)}</td>`;
       p.cells.forEach((c, s) => {
         const pause = p.pause && p.pause.slot === s ? `<small class="z-pause">☕ ${p.pause.start}</small>` : '';
         if (!c) { body += `<td class="zcell off">${pause}</td>`; return; }
@@ -1116,6 +1116,7 @@ function renderNow() {
   const tools = `<div class="znow-tools">
       <button class="primary" id="znEvent">⚠️ Imprévu (absent, retard)</button>
       ${isAdmin() ? '<button id="znRemark">✍️ Faire une remarque</button>' : ''}
+      <button id="znMsg">💬 Message du jour</button>
     </div>${absents.length || lates.length ? `<div class="znow-events">${[...absents, ...lates].join('')}</div>` : ''}`;
   if (z.closed || !z.people.length) {
     box.innerHTML = `<div class="card"><p class="muted">${z.closed ? 'Westland fermé ce jour-là.' : "Personne dans l'équipe de ce jour."} Regarde l'onglet « Équipe » pour ajouter du monde.</p></div>` + (z.people.length || (z.absent || []).length ? tools : '');
@@ -1138,7 +1139,8 @@ function renderNow() {
   const onPause = p => today && !before && !after && p.pause && m >= toMin(p.pause.start) && m < toMin(p.pause.end);
   const person = p => {
     const pause = onPause(p);
-    return `<button class="znow-person ${pause ? 'pause' : ''}" data-person="${p.id}">${esc(p.name)}${pause ? ` <small>☕ pause jusqu'à ${p.pause.end}</small>` : ''}</button>`;
+    const role = z.plan && z.plan.roleOf[p.id];
+    return `<button class="znow-person ${pause ? 'pause' : ''}" data-person="${p.id}">${esc(p.name)}${role ? ` <i class="znow-role">${esc(role)}</i>` : ''}${pause ? ` <small>☕ pause jusqu'à ${p.pause.end}</small>` : ''}</button>`;
   };
   const card = (code, people) => {
     const there = people.filter(p => !onPause(p));
@@ -1172,7 +1174,8 @@ function renderNow() {
     ${pNow.length ? `<p><b>En pause :</b> ${pNow.map(p => `${esc(p.name)} jusqu'à ${p.pause.end}`).join(', ')}</p>` : ''}
     ${pNext.length ? `<p><b>${today ? 'Ensuite' : 'Pauses du jour'} :</b> ${pNext.map(p => `${p.pause.start} ${esc(p.name)}`).join(' · ')}</p>` : (pNow.length ? '' : '<p class="muted">Plus de pause aujourd\'hui.</p>')}
   </div>`;
-  box.innerHTML = `<div class="znow-head">${head}</div>${tools}<div class="znow-grid ${alone.length ? 'alone' : ''}">${cards}</div>
+  const sheetInfo = z.plan ? `<p class="znow-plan">📋 Feuille <b>« ${esc(z.plan.title)} »</b> de l'horaire fixe</p>` : '<p class="znow-plan muted">Pas de feuille de l\'horaire fixe pour cette équipe : tournantes calculées pour le jour.</p>';
+  box.innerHTML = `<div class="znow-head">${head}</div>${sheetInfo}${tools}<div class="znow-grid ${alone.length ? 'alone' : ''}">${cards}</div>
     <div class="znow-side">${next}${pauseCard}</div>
     ${isAdmin() ? '<p class="muted small">Touche un nom pour faire une remarque.</p>' : ''}`;
 }
@@ -1185,6 +1188,7 @@ $('#zNow').addEventListener('click', e => {
   if (c) return clearEvent(c.dataset.clear);
   if (e.target.closest('#znEvent')) return openEventSheet();
   if (e.target.closest('#znRemark')) return openRemarkSheet(null);
+  if (e.target.closest('#znMsg')) return shareDayMessage();
   const p = e.target.closest('.znow-person');
   if (p) openRemarkSheet(p.dataset.person);
 });
@@ -1193,6 +1197,43 @@ async function clearEvent(id) {
   if (!confirm(`Annuler l'imprévu de ${name} ? Les créneaux pas encore passés seront recalculés.`)) return;
   const j = await api('/api/zones/event', { date: zDate, personId: id, kind: 'clear' }).catch(() => null);
   if (j) { zData = j.zones; zCounts = j.fieldCounts; renderZones(); toast('Imprévu annulé'); }
+}
+
+// ----- Message du jour : qui suit quelle ligne de la feuille (ou la journée de chacun), à envoyer au groupe -----
+function dayMessage() {
+  const z = zData, d = new Date(zDate + 'T12:00:00');
+  const place = c => c.code === 'D' ? 'Dispatch' : c.code === 'T' ? 'Toutes zones' : Z_LABEL[c.code];
+  const lines = [`📍 Zones & dispatch · ${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()].toLowerCase()}`];
+  if (z.plan) {
+    lines.push(`Feuille : « ${z.plan.title} » (horaire fixe)`, '');
+    const order = Object.entries(z.plan.roleOf).sort((a, b) => a[1].localeCompare(b[1], 'fr', { numeric: true }));
+    for (const [id, role] of order) {
+      const p = z.people.find(x => x.id === id);
+      if (p) lines.push(`• ${role} : ${p.name}${p.arrive ? ` (arrive à ${p.arrive})` : ''}`);
+    }
+  } else {
+    lines.push('');
+    for (const p of z.people) {
+      const route = p.cells.map((c, s) => c && c.code ? `${z.slots[s].start}h ${place(c)}` : null).filter(Boolean).join(' · ');
+      if (route) lines.push(`• ${p.name} (${p.shift}) : ${route}`);
+    }
+  }
+  const pauses = z.people.filter(p => p.pause).sort((a, b) => a.pause.start.localeCompare(b.pause.start));
+  if (pauses.length) lines.push('', '☕ Pauses : ' + pauses.map(p => `${p.pause.start} ${p.name}`).join(' · '));
+  if ((z.absent || []).length) lines.push('', '🚫 Absent : ' + z.absent.map(p => p.name).join(', '));
+  // Changements par rapport à la feuille (cases changées à la main, retards) : à suivre en priorité.
+  const changed = z.plan ? z.people.filter(p => p.cells.some(c => c && c.manual)) : [];
+  if (changed.length) lines.push('', '⚠️ Changé aujourd\'hui : ' + changed.map(p => p.name + ' (' + p.cells.map((c, s) => c && c.manual ? `${z.slots[s].start}h ${place(c)}` : null).filter(Boolean).join(', ') + ')').join(' · '));
+  return lines.join('\n');
+}
+async function shareDayMessage() {
+  if (!zData || !zData.people.length) return toast("Pas d'équipe ce jour-là");
+  const text = dayMessage();
+  if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+    try { await navigator.share({ text }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(text); toast('Message copié : colle-le dans le groupe WhatsApp'); }
+  catch { prompt('Copie ce message :', text); }
 }
 
 // ----- Remarque terrain : motif en 2 touches, texte libre (ou dicté), « dit oralement », récidive -----
