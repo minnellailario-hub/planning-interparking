@@ -366,9 +366,13 @@
       <section class="page" data-page="fixed" data-title="Horaire fixe" data-sub="Où aller à chaque heure selon son horaire, pour chaque type de journée : à imprimer et plastifier. Clique sur une case pour la changer, ou appui long pour échanger deux horaires.">
         <div class="planning-bar fixed-bar">
           <div class="viewswitch" role="tablist" id="fxTypes"></div>
+          <button id="fxNew">+ Créer un jour</button>
           <button id="fxReset" class="ghost" title="Enlever les changements faits à la main sur ce tableau">Remettre ce tableau en auto</button>
           <button id="fxExport" class="primary">Excel à imprimer (tous les tableaux)</button>
         </div>
+        <div class="card" id="fxForm" hidden></div>
+        <div class="row fx-custom" id="fxCustomBar" hidden><span class="chip">Jour créé à la main</span>
+          <button id="fxEdit">Modifier ce jour</button><button id="fxDelete" class="ghost danger">Supprimer ce jour</button></div>
         <div class="card flat tablewrap" id="fxBox"></div>
         <p class="muted" id="fxNote"></p>
         <div class="legend" id="fxLegend"></div>

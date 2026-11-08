@@ -1392,7 +1392,9 @@ function renderFixed() {
   if (!fxData) { $('#fxBox').innerHTML = '<p class="muted pad">Chargement…</p>'; return; }
   const z = fxData.find(p => p.id === fxType) || fxData[0];
   fxType = z.id;
-  $('#fxTypes').innerHTML = fxData.map(p => `<button role="tab" data-fx="${p.id}" class="${p.id === z.id ? 'on' : ''}">${esc(p.title.split(' (')[0])}</button>`).join('');
+  $('#fxTypes').innerHTML = fxData.map(p => `<button role="tab" data-fx="${p.id}" class="${p.id === z.id ? 'on' : ''}">${p.custom ? '✏️ ' : ''}${esc(p.title.split(' (')[0])}</button>`).join('');
+  $('#fxCustomBar').hidden = !z.custom || !!fxForm;
+  renderFxForm();
   $('#fxLegend').innerHTML = ['Z1', 'Z2', 'Z3', 'D', 'T'].map(c => `<span><i class="z-${c}"></i>${Z_LABEL[c]} · ${Z_PLACE[c]}</span>`).join('') + '<span>☕ Pause 30 min</span><span>🔒 Changé à la main</span>';
   $('#fxNote').textContent = z.roles.some(r => / [A-C]$/.test(r)) ? "Même horaire à plusieurs (A, B, C) : ils se mettent d'accord en arrivant sur qui prend quelle ligne." : '';
   let h = `<h3 class="fx-title">${esc(z.title)}</h3><table class="ztable"><tr><th class="name">Horaire</th>${z.slots.map(s => `<th>${s.label}</th>`).join('')}<th>Pause</th></tr>`;
@@ -1424,6 +1426,78 @@ $('#fxReset').onclick = async () => {
   fxData = j.fixed; renderFixed(); toast('Tableau remis en automatique');
 };
 $('#fxExport').onclick = () => downloadXlsx('/api/export-fixed.xlsx', {});
+
+// Jour créé à la main : nom, nombre de personnes par horaire (horaires connus, ou écrits à la main comme 9-17),
+// dimanche d'ouverture, ligne du chef terrain.
+const FX_SHIFTS = [['8-16', '8-16'], ['10-18', '10-18'], ['12-20', '12-20'], ['11-19', '11-19'], ['FOOT', 'Horaire foot (16h-fermeture)']];
+let fxForm = null; // { id, title, counts: {…}, extra: [{ shift, n }], sunday, chef }
+function openFxForm(plan) {
+  const counts = { ...((plan && plan.counts) || {}) };
+  const known = FX_SHIFTS.map(s => s[0]);
+  fxForm = {
+    id: plan ? plan.id : null, title: plan ? plan.title : '', sunday: plan ? plan.sunday : false, chef: plan ? plan.chef : true,
+    counts: Object.fromEntries(known.map(s => [s, counts[s] || 0])),
+    extra: Object.keys(counts).filter(s => !known.includes(s)).map(s => ({ shift: s, n: counts[s] })),
+  };
+  renderFixed();
+  $('#fxForm').scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+function renderFxForm() {
+  const f = fxForm, box = $('#fxForm');
+  box.hidden = !f;
+  if (!f) return;
+  const num = (k, v, i) => `<input type="number" min="0" max="8" value="${v}" data-fx-n="${k}" ${i !== undefined ? `data-i="${i}"` : ''}>`;
+  const total = Object.values(f.counts).reduce((a, x) => a + Number(x || 0), 0) + f.extra.reduce((a, x) => a + Number(x.n || 0), 0);
+  box.innerHTML = `<div class="card-head"><h3>${f.id ? 'Modifier le jour' : 'Créer un jour'}</h3><span class="chip">${total} personne${total > 1 ? 's' : ''}</span></div>
+    <label class="zs-field">Nom du jour <input data-fx-k="title" value="${esc(f.title)}" placeholder="ex. Samedi chargé" maxlength="50"></label>
+    <div class="fx-counts">${FX_SHIFTS.map(([s, l]) => `<label><span>${l}</span>${num(s, f.counts[s])}</label>`).join('')}
+      ${f.extra.map((x, i) => `<label class="fx-extra"><input data-fx-x="${i}" value="${esc(x.shift)}" placeholder="ex. 9-17" maxlength="5">${num('x', x.n, i)}<button class="ghost" data-fx-rm="${i}" title="Retirer">✕</button></label>`).join('')}
+    </div>
+    <button class="ghost" id="fxAddShift">+ Autre horaire (écrit à la main)</button>
+    <div class="row">
+      <label class="check"><input type="checkbox" data-fx-k="sunday" ${f.sunday ? 'checked' : ''}> Dimanche d'ouverture (11h-19h)</label>
+      <label class="check"><input type="checkbox" data-fx-k="chef" ${f.chef && !f.sunday ? 'checked' : ''} ${f.sunday ? 'disabled' : ''}> Ligne chef terrain (un bloc de dispatch)</label>
+    </div>
+    ${f.id ? '<p class="muted small">Si tu changes les horaires, les cases changées à la main sur ce tableau repartent en automatique.</p>' : ''}
+    <div class="row"><button class="primary" id="fxSave">Enregistrer</button><button class="ghost" id="fxCancel">Annuler</button></div>
+    <p class="muted small">Un vrai jour qui a exactement cette équipe suivra ce tableau dans « Zones & dispatch ».</p>`;
+}
+$('#fxNew').onclick = () => openFxForm(null);
+$('#fxEdit').onclick = () => openFxForm(fxData.find(p => p.id === fxType));
+$('#fxDelete').onclick = async () => {
+  const p = fxData.find(x => x.id === fxType);
+  if (!p || !confirm(`Supprimer le jour « ${p.title} » ? (« Annuler » en haut permet de revenir en arrière)`)) return;
+  const j = await api('/api/fixed/custom/delete', { id: p.id });
+  fxData = j.fixed; fxType = 'jour4'; renderFixed(); toast('Jour supprimé');
+};
+$('#fxForm').addEventListener('input', e => {
+  const f = fxForm; if (!f) return;
+  const t = e.target;
+  if (t.dataset.fxK === 'title') f.title = t.value;
+  if (t.dataset.fxN) { const v = Math.max(0, Math.min(8, Number(t.value) || 0)); if (t.dataset.fxN === 'x') f.extra[t.dataset.i].n = v; else f.counts[t.dataset.fxN] = v; }
+  if (t.dataset.fxX !== undefined) f.extra[t.dataset.fxX].shift = t.value.trim();
+});
+$('#fxForm').addEventListener('change', e => {
+  const f = fxForm; if (!f) return;
+  const k = e.target.dataset.fxK;
+  if (k === 'sunday' || k === 'chef') { f[k] = e.target.checked; renderFxForm(); }
+  if (e.target.dataset.fxN) renderFxForm();
+});
+$('#fxForm').addEventListener('click', async e => {
+  const f = fxForm; if (!f) return;
+  if (e.target.closest('#fxAddShift')) { f.extra.push({ shift: '', n: 1 }); renderFxForm(); return document.querySelector(`#fxForm [data-fx-x="${f.extra.length - 1}"]`)?.focus(); }
+  const rm = e.target.closest('[data-fx-rm]');
+  if (rm) { f.extra.splice(Number(rm.dataset.fxRm), 1); return renderFxForm(); }
+  if (e.target.closest('#fxCancel')) { fxForm = null; return renderFixed(); }
+  if (e.target.closest('#fxSave')) {
+    const counts = { ...f.counts };
+    for (const x of f.extra) if (x.shift && x.n) counts[x.shift] = (counts[x.shift] || 0) + Number(x.n);
+    const j = await api('/api/fixed/custom', { id: f.id, title: f.title, counts, sunday: f.sunday, chef: f.chef && !f.sunday }).catch(() => null);
+    if (!j) return;
+    fxForm = null; fxData = j.fixed; fxType = j.planId; try { localStorage.setItem('fxType', fxType); } catch {}
+    renderFixed(); toast(f.id ? 'Jour modifié' : 'Jour créé');
+  }
+});
 // Clic sur une case : choisir la zone (ou revenir en automatique).
 $('#fxBox').addEventListener('click', e => {
   const td = e.target.closest('.zcell[data-role]');

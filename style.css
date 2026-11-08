@@ -604,3 +604,11 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .znow-card.short { background: #fff1d6 !important; color: #9a5b00; border-color: #f5c46b; }
 .znow-plan { margin: -6px 2px 12px; font-size: 14px; }
 .znow-role { font-style: normal; font-weight: 600; font-size: 11px; background: rgba(0, 0, 0, .07); border-radius: 6px; padding: 1px 6px; margin-left: 4px; white-space: nowrap; }
+
+/* Horaire fixe : jour créé à la main */
+.fx-counts { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin: 10px 0; }
+.fx-counts label { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--bg, #f6f7fb); border-radius: 10px; padding: 8px 10px; font-weight: 600; font-size: 13px; }
+.fx-counts input[type=number] { width: 64px; font-size: 16px; text-align: center; }
+.fx-counts .fx-extra input:not([type=number]) { width: 80px; font-size: 15px; }
+.fx-custom { margin: 0 0 10px; align-items: center; }
+#fxForm label.check { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
