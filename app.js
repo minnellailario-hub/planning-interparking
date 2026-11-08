@@ -1124,10 +1124,10 @@ function renderNow() {
   }
   // Créneau affiché : celui en cours aujourd'hui ; avant l'ouverture le premier ; un autre jour, le premier aussi.
   const m = nowMin(), slots = z.slots;
-  let k = today ? slots.findIndex(s => m >= s.start * 60 && m < (s.start + 2) * 60) : 0;
-  const before = today && m < slots[0].start * 60, after = today && m >= (slots[slots.length - 1].start + 2) * 60;
+  let k = today ? slots.findIndex(s => m >= s.start * 60 && m < s.end * 60) : 0;
+  const before = today && m < slots[0].start * 60, after = today && m >= slots[slots.length - 1].end * 60;
   if (k < 0) k = after ? slots.length - 1 : 0;
-  const sl = slots[k], end = (sl.start + 2) * 60;
+  const sl = slots[k], end = sl.end * 60;
   let head;
   if (!today) head = `<b>${esc($('#zTitle').textContent)}</b> · ce n'est pas aujourd'hui : voici le premier créneau (${sl.label}).`;
   else if (before) head = `Pas encore commencé · premier créneau <b>${sl.label}</b> dans <b>${fmtDelay(slots[0].start * 60 - m)}</b>`;
@@ -1241,7 +1241,7 @@ const sheet = $('#zSheet');
 let remark = null; // { personId, motif, colleague, text, told, time, slot }
 function currentSlot() {
   if (zDate !== localDay()) return null;
-  const m = nowMin(), k = zData.slots.findIndex(s => m >= s.start * 60 && m < (s.start + 2) * 60);
+  const m = nowMin(), k = zData.slots.findIndex(s => m >= s.start * 60 && m < s.end * 60);
   return k < 0 ? null : k;
 }
 function openRemarkSheet(personId, motif = null, time = null) {
@@ -1339,7 +1339,7 @@ function eventDiff(before, after) {
   const today = zDate === localDay(), m = nowMin(), out = [];
   const place = c => c && c.code ? (c.code === 'D' ? 'Dispatch' : c.code === 'T' ? 'Toutes zones' : Z_LABEL[c.code]) : '—';
   before.slots.forEach((s, k) => {
-    if (today && (s.start + 2) * 60 <= m) return; // créneau déjà passé : il ne bouge pas
+    if (today && s.end * 60 <= m) return; // créneau déjà passé : il ne bouge pas
     const lines = [];
     for (const p of before.people) {
       const q = after.people.find(x => x.id === p.id);
