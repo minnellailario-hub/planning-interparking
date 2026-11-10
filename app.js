@@ -70,8 +70,9 @@ function render() {
     h += '</th>';
   }
   h += '</tr></thead><tbody>';
+  const firstEmp = v.rows.findIndex(r => !r.isChef && !r.isParkChief);
   v.rows.forEach((r, k) => {
-    h += `<tr class="${r.isChef ? 'chef' : k === 1 && v.rows[0].isChef ? 'sep' : ''}"><td class="name"><div class="namebox"><span>${esc(r.name)}${r.note ? `<small>${esc(r.note)}</small>` : ''}</span>${r.isChef ? `<button class="edit-chef ghost" title="Modifier le chef terrain (nom, horaire, jours)">✎</button>` : `<button class="edit-emp ghost" data-id="${r.id}" title="Modifier ou supprimer ${esc(r.name)}">✎</button>`}</div></td>`;
+    h += `<tr class="${r.isChef || r.isParkChief ? 'chef' : k === firstEmp && k > 0 ? 'sep' : ''}"><td class="name"><div class="namebox"><span>${esc(r.name)}${r.note ? `<small>${esc(r.note)}</small>` : ''}</span>${r.isChef || r.isParkChief ? `<button class="edit-chef ghost" title="Modifier le chef terrain et le chef de parc">✎</button>` : `<button class="edit-emp ghost" data-id="${r.id}" title="Modifier ou supprimer ${esc(r.name)}">✎</button>`}</div></td>`;
     for (const d of gd) {
       const c = r.cells[d.date];
       h += `<td class="cell ${colCls(d)} ${c && c.locked ? 'lock' : ''}" data-emp="${r.id}" data-date="${d.date}">${cellHtml(c, r.isChef)}</td>`;
@@ -440,7 +441,7 @@ function renderDays() {
       const c = r.cells[d.date];
       if (c && c.kind === 'work') { const k = r.isChef ? 'CHEF' : c.shift; (work[k] = work[k] || []).push(chip(r, c, d.date)); }
       else if (c) off.push(chip(r, c, d.date));
-      else if (!r.isChef && !d.closed) empty.push(`<button class="chip empty" data-emp="${r.id}" data-date="${d.date}">${esc(r.name)}</button>`);
+      else if (!r.isChef && !r.isParkChief && !d.closed) empty.push(`<button class="chip empty" data-emp="${r.id}" data-date="${d.date}">${esc(r.name)}</button>`);
     }
     const badges = [
       d.openSunday ? '<span class="badge open">Ouvert</span>' : '',
@@ -513,6 +514,13 @@ function openPop(td) {
   const { emp, date } = td.dataset;
   const day = (data.view.allDays || data.view.days).find(x => x.date === date);
   const row = data.view.rows.find(r => r.id === emp) || data.view.studentRows.find(r => r.id === emp);
+  if (row.isParkChief) {
+    // Chef de parc : CP (automatique) du lundi au vendredi, ou une absence.
+    let hp = `<div class="ttl">${esc(row.name)} – ${day.dowLabel} ${fmtDate(date)}</div>`;
+    for (const k of ['CONGE', 'MALADIE', 'FORMATION', 'REPOS', 'RTT']) hp += `<button data-v="${k}" class="c-${k}">${OFF[k]}</button>`;
+    hp += '<button data-v="auto" class="auto">CP (automatique)</button>';
+    return showPop(td, hp, emp, date);
+  }
   const opts = row.isChef ? [data.config.chef.shift] : day.openSunday ? ['11-19'] : ['8-16', '10-18', '12-20'];
   if (day.match && !row.isChef) opts.push('FOOT');
   let h = `<div class="ttl">${esc(row.name)} – ${day.dowLabel} ${fmtDate(date)}</div>`;

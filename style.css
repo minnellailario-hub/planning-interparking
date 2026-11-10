@@ -635,3 +635,6 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .inv-memo textarea { width: 100%; margin-top: 8px; font-size: 14px; }
 .inv-memo-preview { margin: 6px 0 0; }
 @media (max-width: 700px) { .inv-actions { margin-left: 0; width: 100%; } .inv-actions > * { flex: 1; text-align: center; } }
+
+/* Chef de parc : CP du lundi au vendredi */
+.c-CP { background: #e7ecf3; color: #344054; font-weight: 700; }
