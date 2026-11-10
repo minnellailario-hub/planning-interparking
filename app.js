@@ -1780,6 +1780,109 @@ $('#empDelete').onclick = () => {
     empAction({ action: 'delete' }, 'Employé supprimé');
 };
 
+// ----- Factures (administrateurs) : stockage des factures envoyées chaque mois, par site et par magasin -----
+let invMonth = addMonth(localDay().slice(0, 7), -1), invData = null, invMemoOpen = null;
+async function loadInvoices() {
+  const j = await call('/api/invoices', null, { month: invMonth });
+  if (j.error) { $('#invBox').innerHTML = `<p class="muted pad">${esc(j.error)}</p>`; return; }
+  invData = j.invoices; renderInvoices();
+}
+const invIcon = f => f.type === 'application/pdf' ? '📄' : '🖼️';
+const kb = n => n >= 1048576 ? `${(n / 1048576).toFixed(1)} Mo` : `${Math.max(1, Math.round(n / 1024))} Ko`;
+function renderInvoices() {
+  const [y, m] = invMonth.split('-').map(Number);
+  $('#invTitle').textContent = `${MONTHS[m - 1]} ${y}`;
+  const d = invData;
+  if (!d || d.month !== invMonth) { $('#invBox').innerHTML = '<p class="muted pad">Chargement…</p>'; return; }
+  $('#invBox').innerHTML = d.sites.map(site => {
+    const done = site.stores.filter(st => (d.files[st.id] || []).length).length;
+    return `<div class="card inv-site"><div class="card-head"><h3>${esc(site.name)}</h3><span class="chip">${done} / ${site.stores.length} magasins</span></div>
+      ${site.stores.map(st => {
+        const files = d.files[st.id] || [];
+        const memo = d.memos[st.id] || '';
+        const open = invMemoOpen === st.id;
+        return `<div class="inv-store ${files.length ? 'done' : ''}">
+          <div class="inv-head">
+            <b>${esc(st.name)}</b>
+            <span class="chip ${files.length ? 'z-D' : 'empty'}">${files.length ? `✓ ${files.length} fichier${files.length > 1 ? 's' : ''}` : 'À faire'}</span>
+            <span class="inv-actions">
+              <button class="ghost" data-memo="${st.id}">${open ? 'Fermer la fiche' : memo ? '📋 Fiche' : '📋 Ajouter une fiche'}</button>
+              <label class="btn primary inv-add">+ Ajouter<input type="file" accept="image/*,application/pdf" multiple data-up="${st.id}" ${st.other ? 'data-other="1"' : ''} hidden></label>
+            </span>
+          </div>
+          ${open ? `<div class="inv-memo"><textarea data-memo-text="${st.id}" rows="8" placeholder="Numéros SAP, règles de facturation, à qui envoyer…">${esc(memo)}</textarea>
+            <div class="row"><button class="primary" data-memo-save="${st.id}">Enregistrer la fiche</button></div></div>`
+            : memo ? `<p class="inv-memo-preview muted small">${esc(memo.split('\n').filter(Boolean).slice(0, 2).join(' · '))}${memo.split('\n').filter(Boolean).length > 2 ? '…' : ''}</p>` : ''}
+          ${files.length ? `<ul class="inv-files">${files.map(f => `<li>
+              <button class="link" data-open="${st.id}|${f.id}">${invIcon(f)} ${esc(f.label ? f.label + ' · ' : '')}${esc(f.name)}</button>
+              <span class="muted small">${kb(f.size)} · ${new Date(f.at).toLocaleDateString('fr-BE')}${f.by ? ' · ' + esc(f.by) : ''}</span>
+              <button class="ghost danger" data-del="${st.id}|${f.id}" title="Supprimer ce fichier">✕</button></li>`).join('')}</ul>` : ''}
+        </div>`;
+      }).join('')}</div>`;
+  }).join('');
+}
+// Appels des factures : ne redessinent pas le planning (réponse = les factures du mois seulement).
+async function invApi(path, body) {
+  const j = await call(path, body);
+  if (j.needLogin) { showLogin(); throw new Error(j.error); }
+  if (j.error) { toast(j.error); throw new Error(j.error); }
+  return j;
+}
+// Lecture d'un fichier choisi : en base64 pour l'envoyer.
+const readB64 = file => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = () => ko(new Error('Lecture du fichier impossible')); r.readAsDataURL(file); });
+$('#invBox').addEventListener('change', async e => {
+  const input = e.target.closest('input[data-up]'); if (!input || !input.files.length) return;
+  const store = input.dataset.up, files = [...input.files];
+  let label = '';
+  if (input.dataset.other) { label = (prompt('Facture pour qui ? (ex. nom du client)') || '').trim(); if (!label) { input.value = ''; return; } }
+  for (const [k, f] of files.entries()) {
+    if (f.size > 10 * 1024 * 1024) { toast(`${f.name} : trop lourd (10 Mo maximum)`); continue; }
+    toast(`Envoi ${files.length > 1 ? `${k + 1}/${files.length} ` : ''}: ${f.name}…`);
+    try {
+      const j = await invApi('/api/invoices/upload', { month: invMonth, store, name: f.name, type: f.type || (/\.pdf$/i.test(f.name) ? 'application/pdf' : ''), data: await readB64(f), label });
+      invData = j.invoices; renderInvoices();
+    } catch { input.value = ''; return; }
+  }
+  input.value = '';
+  toast(files.length > 1 ? 'Fichiers ajoutés' : 'Fichier ajouté');
+});
+$('#invBox').addEventListener('click', async e => {
+  const memo = e.target.closest('[data-memo]');
+  if (memo) { invMemoOpen = invMemoOpen === memo.dataset.memo ? null : memo.dataset.memo; renderInvoices(); return; }
+  const save = e.target.closest('[data-memo-save]');
+  if (save) {
+    const id = save.dataset.memoSave, text = document.querySelector(`[data-memo-text="${id}"]`).value;
+    const j = await invApi('/api/invoices/memo', { month: invMonth, store: id, text }).catch(() => null);
+    if (j) { invData = j.invoices; invMemoOpen = null; renderInvoices(); toast('Fiche enregistrée'); }
+    return;
+  }
+  const del = e.target.closest('[data-del]');
+  if (del) {
+    const [store, id] = del.dataset.del.split('|');
+    const f = (invData.files[store] || []).find(x => x.id === id);
+    if (!confirm(`Supprimer définitivement « ${f ? f.name : 'ce fichier'} » ? Il ne pourra pas être récupéré.`)) return;
+    const j = await invApi('/api/invoices/delete', { month: invMonth, store, id }).catch(() => null);
+    if (j) { invData = j.invoices; renderInvoices(); toast('Fichier supprimé'); }
+    return;
+  }
+  const open = e.target.closest('[data-open]');
+  if (open) {
+    const [store, id] = open.dataset.open.split('|');
+    const q = { month: invMonth, store, id };
+    if (!backend) { window.open('/api/invoices/file?' + new URLSearchParams(q), '_blank'); return; }
+    const w = window.open('', '_blank'); // ouverte tout de suite (sinon le navigateur bloque la fenêtre)
+    const out = await backend.handle('GET', '/api/invoices/file', q, {});
+    if (!out.file) { if (w) w.close(); return toast((out.json && out.json.error) || 'Ouverture impossible'); }
+    const url = URL.createObjectURL(new Blob([out.file], { type: out.type }));
+    if (w) w.location.href = url; else saveFile(new File([out.file], out.filename, { type: out.type }));
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+});
+function invGo(m) { invMonth = m; invData = null; invMemoOpen = null; renderInvoices(); loadInvoices(); }
+$('#invOpen').onclick = () => { go('invoices'); renderInvoices(); loadInvoices(); };
+$('#invPrev').onclick = () => invGo(addMonth(invMonth, -1));
+$('#invNext').onclick = () => invGo(addMonth(invMonth, 1));
+
 // ----- Roulement foot et dimanches d'ouverture (tour de rôle fixe, compteurs de la saison) -----
 function renderDuty() {
   const du = data.duty;
