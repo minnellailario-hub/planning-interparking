@@ -1799,20 +1799,28 @@ function renderInvoices() {
     return `<div class="card inv-site"><div class="card-head"><h3>${esc(site.name)}</h3><span class="chip">${done} / ${site.stores.length} magasins</span></div>
       ${site.stores.map(st => {
         const files = d.files[st.id] || [];
-        const memo = d.memos[st.id] || '';
-        const open = invMemoOpen === st.id;
+        // Modèle du magasin (numéros SAP, règles…) et fiche du mois, pré-remplie avec le modèle : on complète les chiffres.
+        const memo = d.memos[st.id] || '', note = (d.notes || {})[st.id] || '';
+        const open = invMemoOpen && invMemoOpen.split('|')[0] === st.id ? invMemoOpen.split('|')[1] : null;
+        const lines = s => s.split('\n').filter(x => x.trim());
         return `<div class="inv-store ${files.length ? 'done' : ''}">
           <div class="inv-head">
             <b>${esc(st.name)}</b>
             <span class="chip ${files.length ? 'z-D' : 'empty'}">${files.length ? `✓ ${files.length} fichier${files.length > 1 ? 's' : ''}` : 'À faire'}</span>
+            ${note ? '<span class="chip z-Z2">📝 fiche remplie</span>' : ''}
             <span class="inv-actions">
-              <button class="ghost" data-memo="${st.id}">${open ? 'Fermer la fiche' : memo ? '📋 Fiche' : '📋 Ajouter une fiche'}</button>
+              <button class="ghost" data-memo="${st.id}|note">${open === 'note' ? 'Fermer' : note ? '📝 Fiche du mois' : '📝 Remplir la fiche'}</button>
+              <button class="ghost" data-memo="${st.id}|tpl" title="Le modèle repris chaque mois">${open === 'tpl' ? 'Fermer' : memo ? '⚙️ Modèle' : '⚙️ Créer le modèle'}</button>
               <label class="btn primary inv-add">+ Ajouter<input type="file" accept="image/*,application/pdf" multiple data-up="${st.id}" ${st.other ? 'data-other="1"' : ''} hidden></label>
             </span>
           </div>
-          ${open ? `<div class="inv-memo"><textarea data-memo-text="${st.id}" rows="8" placeholder="Numéros SAP, règles de facturation, à qui envoyer…">${esc(memo)}</textarea>
-            <div class="row"><button class="primary" data-memo-save="${st.id}">Enregistrer la fiche</button></div></div>`
-            : memo ? `<p class="inv-memo-preview muted small">${esc(memo.split('\n').filter(Boolean).slice(0, 2).join(' · '))}${memo.split('\n').filter(Boolean).length > 2 ? '…' : ''}</p>` : ''}
+          ${open === 'note' ? `<div class="inv-memo"><p class="muted small">Fiche de ${esc(st.name)} pour ${esc($('#invTitle').textContent)}${note ? '' : memo ? ' : pré-remplie avec le modèle, complète les chiffres' : ''}.</p>
+              <textarea data-memo-text="${st.id}" rows="12" placeholder="Validations, réductions, montant à facturer…">${esc(note || memo)}</textarea>
+              <div class="row"><button class="primary" data-note-save="${st.id}">Enregistrer la fiche du mois</button></div></div>`
+            : open === 'tpl' ? `<div class="inv-memo"><p class="muted small">Modèle de ${esc(st.name)} : repris automatiquement dans la fiche de chaque mois.</p>
+              <textarea data-memo-text="${st.id}" rows="12" placeholder="Numéros SAP, règles de facturation, à qui envoyer…">${esc(memo)}</textarea>
+              <div class="row"><button class="primary" data-memo-save="${st.id}">Enregistrer le modèle</button></div></div>`
+            : note ? `<p class="inv-memo-preview muted small">📝 ${esc(lines(note).slice(0, 2).join(' · '))}${lines(note).length > 2 ? '…' : ''}</p>` : ''}
           ${files.length ? `<ul class="inv-files">${files.map(f => `<li>
               <button class="link" data-open="${st.id}|${f.id}">${invIcon(f)} ${esc(f.label ? f.label + ' · ' : '')}${esc(f.name)}</button>
               <span class="muted small">${kb(f.size)} · ${new Date(f.at).toLocaleDateString('fr-BE')}${f.by ? ' · ' + esc(f.by) : ''}</span>
@@ -1853,7 +1861,14 @@ $('#invBox').addEventListener('click', async e => {
   if (save) {
     const id = save.dataset.memoSave, text = document.querySelector(`[data-memo-text="${id}"]`).value;
     const j = await invApi('/api/invoices/memo', { month: invMonth, store: id, text }).catch(() => null);
-    if (j) { invData = j.invoices; invMemoOpen = null; renderInvoices(); toast('Fiche enregistrée'); }
+    if (j) { invData = j.invoices; invMemoOpen = null; renderInvoices(); toast('Modèle enregistré'); }
+    return;
+  }
+  const noteSave = e.target.closest('[data-note-save]');
+  if (noteSave) {
+    const id = noteSave.dataset.noteSave, text = document.querySelector(`[data-memo-text="${id}"]`).value;
+    const j = await invApi('/api/invoices/note', { month: invMonth, store: id, text }).catch(() => null);
+    if (j) { invData = j.invoices; invMemoOpen = null; renderInvoices(); toast('Fiche du mois enregistrée'); }
     return;
   }
   const del = e.target.closest('[data-del]');
