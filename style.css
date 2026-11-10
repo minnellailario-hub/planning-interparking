@@ -615,3 +615,9 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 
 /* Dispatch encadré en gras dans les tableaux (horaire fixe, zones du jour) */
 .ztable .zcell .z-D, .zslot .zs-code.z-D { outline: 3px solid #5b3cc4; outline-offset: -3px; }
+
+/* Statistiques : roulement foot et dimanches */
+.duty-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+#dutyFoot tr.next td, #dutySunday tr.next td { background: var(--accent-soft); font-weight: 600; }
+.duty-move { white-space: nowrap; }
+.duty-move button { padding: 2px 8px; }

@@ -117,10 +117,11 @@ function render() {
   }
   $('#stats').innerHTML = s;
 
-  // Rotation des matchs : du moins de matchs au plus, puis le plus ancien dernier match d'abord.
+  renderDuty();
+  // Matchs de la saison, par personne.
   const rot = v.stats.slice().sort((a, b) => a.footSeason - b.footSeason || (a.lastFoot || '').localeCompare(b.lastFoot || ''));
   $('#footStats').innerHTML = '<tr><th>Employé</th><th>Ce mois</th><th>Saison</th><th>Matchs de la saison</th></tr>'
-    + rot.map((st, k) => `<tr><td>${esc(st.name)}${k === 0 && v.stats.length > 1 ? ' <span class="badge foot">prochain</span>' : ''}</td><td>${st.foot}</td><td>${st.footSeason}</td>
+    + rot.map(st => `<tr><td>${esc(st.name)}</td><td>${st.foot}</td><td>${st.footSeason}</td>
       <td class="footlist">${st.footList.length ? st.footList.map(m => `<span>${fmtDate(m.date)}${m.opponent ? ' · ' + esc(m.opponent) : ''}</span>`).join('') : '—'}</td></tr>`).join('');
 
   renderDays();
@@ -1778,6 +1779,28 @@ $('#empDelete').onclick = () => {
   if (confirm(`Supprimer définitivement ${$('#empName').value} et tout son historique ? Cette action est irréversible.`))
     empAction({ action: 'delete' }, 'Employé supprimé');
 };
+
+// ----- Roulement foot et dimanches d'ouverture (tour de rôle fixe, compteurs de la saison) -----
+function renderDuty() {
+  const du = data.duty;
+  if (!du) return;
+  $('#dutySeason').textContent = `· saison ${du.season}`;
+  const row = id => du.rows.find(r => r.id === id) || { name: id, foot: 0, sunday: 0, holiday: 0 };
+  const ro = document.body.classList.contains('readonly');
+  const table = (kind, head, cells) => `<tr><th>#</th><th>${head}</th>${cells.map(c => `<th>${c[0]}</th>`).join('')}${ro ? '' : '<th></th>'}</tr>`
+    + du.order[kind].map((id, k) => `<tr class="${du.next[kind] === id ? 'next' : ''}"><td>${k + 1}</td><td>${esc(row(id).name)}${du.next[kind] === id ? ' <span class="badge foot">prochain</span>' : ''}</td>
+      ${cells.map(c => `<td>${row(id)[c[1]]}</td>`).join('')}
+      ${ro ? '' : `<td class="duty-move"><button class="ghost" data-duty="${kind}" data-i="${k}" data-d="-1" ${k ? '' : 'disabled'} title="Monter">↑</button><button class="ghost" data-duty="${kind}" data-i="${k}" data-d="1" ${k < du.order[kind].length - 1 ? '' : 'disabled'} title="Descendre">↓</button></td>`}</tr>`).join('');
+  $('#dutyFoot').innerHTML = table('foot', 'Ordre foot ⚽', [['Matchs', 'foot']]);
+  $('#dutySunday').innerHTML = table('sunday', 'Ordre dimanches', [['Dim. ouverture', 'sunday'], ['Fériés travaillés', 'holiday']]);
+}
+for (const id of ['#dutyFoot', '#dutySunday']) $(id).addEventListener('click', e => {
+  const b = e.target.closest('button[data-duty]'); if (!b) return;
+  const kind = b.dataset.duty, i = Number(b.dataset.i), j = i + Number(b.dataset.d);
+  const order = data.duty.order[kind].slice();
+  [order[i], order[j]] = [order[j], order[i]];
+  api('/api/config', { dutyOrder: { [kind]: order } }).then(() => toast('Ordre enregistré : régénère le mois pour l\'appliquer')).catch(() => {});
+});
 
 // ----- Équipe -----
 let team = [];

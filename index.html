@@ -412,10 +412,17 @@
         </div>
       </section>
 
-      <section class="page" data-page="stats" data-title="Statistiques" data-sub="Compteurs du mois, rotation des matchs et des samedis.">
+      <section class="page" data-page="stats" data-title="Statistiques" data-sub="Roulement des matchs et des dimanches d'ouverture, compteurs du mois.">
         <div class="card">
-          <h3>Rotation des matchs ⚽</h3>
-          <p class="muted">Chaque match va de préférence à quelqu'un de différent : celui qui en a fait le moins passe en premier.</p>
+          <h3>Roulement foot ⚽ et dimanches d'ouverture <span class="muted" id="dutySeason"></span></h3>
+          <p class="muted">Tour de rôle fixe : chaque match (et chaque dimanche d'ouverture) va au suivant de la liste, en sautant ceux qui sont absents ou en week-end obligatoire. Change l'ordre avec ↑ ↓ puis régénère le mois. Les compteurs repartent à zéro chaque saison (juillet → juin).</p>
+          <div class="duty-grid">
+            <div class="scroll-x"><table id="dutyFoot" class="stats"></table></div>
+            <div class="scroll-x"><table id="dutySunday" class="stats"></table></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Matchs de la saison ⚽</h3>
           <div class="scroll-x"><table id="footStats" class="stats"></table></div>
         </div>
         <div class="card">
