@@ -1875,7 +1875,7 @@ function agFormHtml() {
       ${f.allDay ? '' : field('De', `<input type="time" data-ag="start" value="${f.start}">`) + field('À', `<input type="time" data-ag="end" value="${f.end}">`)}
       ${t.fields.map(([k, l, ph]) => field(esc(l), `<input data-ag-f="${k}" value="${esc(f.fields[k] || '')}" placeholder="${esc(ph)}" maxlength="120">`, t.fields.length === 1 ? 'ag-wide' : '')).join('')}
       ${field('Lieu', `<input data-ag="location" value="${esc(f.location)}" maxlength="120">`, 'ag-wide')}
-      ${field('Détails <i>(facultatif)</i>', `<textarea data-ag="notes" rows="3" placeholder="Ce qui ira dans la description du rendez-vous">${esc(f.notes)}</textarea>`, 'ag-full')}
+      ${field('Commentaire <i>(facultatif)</i>', `<textarea data-ag="notes" rows="3" placeholder="Commentaire">${esc(f.notes)}</textarea>`, 'ag-full')}
     </div>
     <div class="ag-foot">
       <div class="ag-preview"><span>Titre dans Outlook</span><b id="agPreview">${esc(agTitle(f.type, f.fields)) || '—'}</b></div>
