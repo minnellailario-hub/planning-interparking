@@ -227,62 +227,71 @@
         <div id="invBox"></div>
       </section>
 
-      <section class="page" data-page="hr" data-title="RH" data-sub="Suivi de chaque personne de l'équipe : remarques et retards, heures supp et heures à faire.">
-        <div class="viewswitch hr-tabs">
-          <button data-tab="notes" class="on">📝 Remarques &amp; retards</button>
-          <button data-tab="hours">⏱ Heures supp / à faire</button>
-        </div>
-        <div class="hr-layout">
-          <div class="card hr-list">
-            <div class="card-head"><h3>Équipe</h3><button id="hrExportAll">Excel (toute l'équipe)</button></div>
-            <div id="hrPeople" class="hr-people"></div>
+      <section class="page" data-page="hr" data-title="RH" data-sub="Le dossier de chaque personne : remarques, retards et heures. Écris vite ou dicte, l'IA met au propre.">
+        <div class="hrx-bar no-print">
+          <div class="viewswitch" id="hrPeriod" role="tablist">
+            <button data-p="month" class="on">Ce mois</button><button data-p="3m">3 mois</button><button data-p="year">Année</button><button data-p="all">Tout</button>
           </div>
-          <div class="card hr-detail">
-            <div class="card-head"><div><h3 id="hrName"></h3><p class="muted" id="hrSummary"></p></div><button id="hrExportOne">Excel (cette personne)</button></div>
-            <div id="hrTabNotes">
-            <div class="hr-form">
-              <div class="hr-type" role="radiogroup">
-                <button id="hrPos" class="pos on" type="button">👍 Positif</button>
-                <button id="hrNeg" class="neg" type="button">👎 Négatif</button>
-              </div>
-              <textarea id="hrText" rows="3" placeholder="Écris la remarque (ex. « Très bon accueil des clients pendant le match »)"></textarea>
-              <div class="row"><button id="hrAdd" class="primary">Ajouter la remarque</button><span class="muted">La date et l'heure sont enregistrées automatiquement.</span></div>
-            </div>
-            <div class="hr-form hr-late">
-              <h4>⏰ Retard</h4>
-              <div class="row">
-                <label>Date <input type="date" id="lateDate"></label>
-                <label>Arrivé à <input type="time" id="lateTime"></label>
-              </div>
-              <p class="late-planned" id="latePlanned">Choisis la date : l'outil retrouve l'heure prévue dans l'horaire.</p>
-              <input type="text" id="lateComment" class="wide" placeholder="Commentaire (facultatif, ex. « bouchons sur le ring »)">
-              <div class="row"><button id="lateAdd" class="primary">Enregistrer le retard</button><span class="muted">Ajouté en remarque négative avec la date et les heures.</span></div>
-            </div>
-            <div class="hr-filter viewswitch">
-              <button data-f="all" class="on">Toutes</button><button data-f="positive">Positives</button><button data-f="negative">Négatives</button>
-            </div>
-            <ul id="hrNotes" class="hr-notes"></ul>
-            </div>
-            <div id="hrTabHours" hidden>
-              <div class="hours-balance" id="hoursBalance"></div>
-              <div class="hr-form">
-                <h4>Ajouter des heures</h4>
-                <div class="row">
+          <span class="hrx-period" id="hrPeriodText"></span>
+          <span class="hrx-exports"><button id="hrExportNotes" class="ghost">⬇ Remarques (Excel)</button><button id="hrExportHours" class="ghost">⬇ Heures (Excel)</button></span>
+        </div>
+
+        <!-- Toute l'équipe : une carte par personne -->
+        <div id="hrTeamWrap">
+          <div class="hrx-sum" id="hrTeamSum"></div>
+          <div class="hrx-grid" id="hrTeam"></div>
+        </div>
+
+        <!-- Fiche d'une personne -->
+        <div id="hrSheet" class="hrx-sheet" hidden>
+          <div class="hrx-sheet-bar no-print">
+            <button id="hrBack" class="ghost">← Toute l'équipe</button>
+            <span class="hrx-exports"><button id="hrPrint">🖨 Imprimer / PDF</button></span>
+          </div>
+          <div class="hrx-head" id="hrxHead"></div>
+          <div class="hrx-stats" id="hrxStats"></div>
+          <div class="hrx-cols">
+            <div class="hrx-main">
+              <div class="card hrx-compose no-print">
+                <h3>Ajouter au dossier</h3>
+                <div class="hrx-modes" id="hrxModes">
+                  <button type="button" data-mode="positive" class="pos on">👍 Positif</button>
+                  <button type="button" data-mode="negative" class="neg">👎 Négatif</button>
+                  <button type="button" data-mode="late" class="late">⏰ Retard</button>
+                  <button type="button" data-mode="hours" class="hours">⏱ Heures</button>
+                </div>
+                <div id="hrxLateF" class="hrx-fields" hidden>
+                  <label>Jour <input type="date" id="lateDate"></label>
+                  <label>Arrivé à <input type="time" id="lateTime"></label>
+                  <p class="late-planned" id="latePlanned"></p>
+                </div>
+                <div id="hrxHoursF" class="hrx-fields" hidden>
                   <label>Type <select id="hoursKind">
-                    <option value="supp">Heures supp (compte ×2 en récup)</option>
+                    <option value="supp">Heures supp (×2 en récup)</option>
                     <option value="afaire">Heures à faire</option>
                     <option value="recup">Récup prise</option>
                     <option value="rattrape">Heures à faire rattrapées</option>
                   </select></label>
-                  <label>Date <input type="date" id="hoursDate"></label>
+                  <label>Jour <input type="date" id="hoursDate"></label>
                   <label>Durée <input type="time" id="hoursDur" value="01:00" step="300"></label>
+                  <p class="late-planned ok" id="hoursPreview"></p>
                 </div>
-                <p class="late-planned ok" id="hoursPreview"></p>
-                <input type="text" id="hoursComment" class="wide" placeholder="Commentaire (facultatif, ex. « resté jusqu'à 21h pour le match »)">
-                <div class="row"><button id="hoursAdd" class="primary">Enregistrer</button><span class="muted">1 h supp = 2 h de récup. La date et l'heure d'ajout sont enregistrées.</span></div>
+                <textarea id="hrxText" rows="3"></textarea>
+                <div class="hrx-send">
+                  <span class="hrx-ai">✨ Écris comme ça vient : l'IA met ton texte au propre. Ce que tu as écrit reste dans « Mon texte ».</span>
+                  <button id="hrxSave" class="primary">Enregistrer</button>
+                </div>
               </div>
-              <div class="scroll-x"><table class="list" id="hoursList"></table></div>
+              <div class="card hrx-history">
+                <div class="hrx-tl-head"><h3>Historique</h3><div class="hrx-filter no-print" id="hrxFilter"></div></div>
+                <div id="hrxTodo"></div>
+                <div id="hrxTimeline"></div>
+              </div>
             </div>
+            <aside class="hrx-side">
+              <div class="card hrx-bilan" id="hrxBilan"></div>
+              <div class="card hrx-hours" id="hrxHours"></div>
+            </aside>
           </div>
         </div>
       </section>

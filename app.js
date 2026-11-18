@@ -207,101 +207,6 @@ function renderDashboard() {
   $('#dashUpcoming').innerHTML = events.length ? '<ul class="events">' + events.map(e => `<li><span class="ev-date">${fmtDate(e.date)}</span>${e.html}</li>`).join('') + '</ul>' : '<p class="muted">Rien de prévu.</p>';
 }
 
-// ----- RH : remarques par personne -----
-let hrSel = null, hrType = 'positive', hrFilter = 'all', hrTab = 'notes';
-// Heures supp / à faire : effet sur le solde (1 h supp = 2 h de récup).
-const HOUR_KINDS = { supp: ['Heures supp', 2], afaire: ['Heures à faire', -1], recup: ['Récup prise', -1], rattrape: ['Heures rattrapées', 1] };
-const hm = m => `${m < 0 ? '-' : ''}${Math.floor(Math.abs(m) / 60)}h${String(Math.abs(m) % 60).padStart(2, '0')}`;
-const balanceOf = id => ((data.hr && data.hr.hours) || []).filter(h => h.empId === id).reduce((m, h) => m + h.minutes * (HOUR_KINDS[h.kind] || [0, 0])[1], 0);
-const balanceText = m => m > 0 ? `+${hm(m)} à récupérer` : m < 0 ? `${hm(-m)} à faire` : 'à jour';
-const hrWhen = iso => new Date(iso).toLocaleString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-function renderHr() {
-  const emps = data.config.employees.filter(e => !e.end || e.end >= today());
-  const notes = (data.hr && data.hr.notes) || [];
-  if (!emps.some(e => e.id === hrSel)) hrSel = emps.length ? emps[0].id : null;
-  const count = (id, t) => notes.filter(n => n.empId === id && (!t || n.type === t)).length;
-  const lates = id => notes.filter(n => n.empId === id && n.late);
-  const lateMin = id => lates(id).reduce((m, n) => m + n.late.minutes, 0);
-  $('#hrPeople').innerHTML = emps.map(e => `<button class="hr-person ${e.id === hrSel ? 'on' : ''}" data-emp="${e.id}">
-      <span class="avatar">${esc(e.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase())}</span>
-      <span class="who"><b>${esc(e.name)}</b><small>${count(e.id)} remarque${count(e.id) > 1 ? 's' : ''}${lates(e.id).length ? ` · ⏰ ${lates(e.id).length} retard${lates(e.id).length > 1 ? 's' : ''}` : ''}</small></span>
-      ${hrTab === 'hours' ? `<span class="hr-counts"><span class="${balanceOf(e.id) > 0 ? 'pos' : balanceOf(e.id) < 0 ? 'neg' : ''}">${balanceOf(e.id) ? (balanceOf(e.id) > 0 ? '+' : '') + hm(balanceOf(e.id)) : '0h'}</span></span>`
-        : `<span class="hr-counts"><span class="pos">+${count(e.id, 'positive')}</span><span class="neg">−${count(e.id, 'negative')}</span></span>`}
-    </button>`).join('') || '<p class="muted">Aucun employé.</p>';
-  const emp = emps.find(e => e.id === hrSel);
-  $('#hrName').textContent = emp ? emp.name : '';
-  $('#hrSummary').textContent = emp ? `${count(emp.id, 'positive')} positive(s) · ${count(emp.id, 'negative')} négative(s)`
-    + (lates(emp.id).length ? ` · ⏰ ${lates(emp.id).length} retard(s), ${lateMin(emp.id)} min au total` : '') : '';
-  if (hrTab === 'hours' && emp) $('#hrSummary').textContent = `Solde : ${balanceText(balanceOf(emp.id))}`;
-  renderHours(emp);
-  const mine = notes.filter(n => emp && n.empId === emp.id && (hrFilter === 'all' || n.type === hrFilter)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  $('#hrNotes').innerHTML = mine.length ? mine.map(n => `<li class="hr-note ${n.type}">
-      <div class="hr-note-head"><span class="tag ${n.type}">${n.late ? '⏰ Retard · ' + n.late.minutes + ' min' : n.type === 'positive' ? '👍 Positif' : '👎 Négatif'}</span>
-        <span class="muted">${hrWhen(n.createdAt)}${n.author ? ' · par ' + esc(n.author) : ''}</span>
-        <button class="ghost hr-del" data-del="${n.id}" title="Supprimer la remarque">✕</button></div>
-      <p>${esc(n.text).replace(/\n/g, '<br>')}</p></li>`).join('') : '<li class="muted">Aucune remarque pour le moment.</li>';
-}
-function renderHours(emp) {
-  const list = ((data.hr && data.hr.hours) || []).filter(h => emp && h.empId === emp.id).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
-  const bal = emp ? balanceOf(emp.id) : 0;
-  const sum = k => list.filter(h => h.kind === k).reduce((m, h) => m + h.minutes, 0);
-  $('#hoursBalance').innerHTML = `<div class="bal ${bal > 0 ? 'pos' : bal < 0 ? 'neg' : ''}"><span>Solde</span><b>${balanceText(bal)}</b></div>
-    <div><span>Heures supp</span><b>${hm(sum('supp'))}</b><small>= ${hm(sum('supp') * 2)} de récup</small></div>
-    <div><span>Récup prise</span><b>${hm(sum('recup'))}</b></div>
-    <div><span>Heures à faire</span><b>${hm(sum('afaire'))}</b></div>
-    <div><span>Rattrapées</span><b>${hm(sum('rattrape'))}</b></div>`;
-  $('#hoursList').innerHTML = list.length ? '<tr><th>Date</th><th>Type</th><th>Durée</th><th>Effet</th><th>Commentaire</th><th>Ajouté</th><th></th></tr>' + list.map(h => {
-    const [label, f] = HOUR_KINDS[h.kind] || [h.kind, 0], eff = h.minutes * f;
-    return `<tr><td>${fmtDate(h.date)}/${h.date.slice(2, 4)}</td><td><span class="tag ${f > 0 ? 'positive' : 'negative'}">${label}</span></td><td>${hm(h.minutes)}</td>
-      <td class="${eff > 0 ? 'eff-pos' : 'eff-neg'}">${eff > 0 ? '+' : ''}${hm(eff)}</td><td>${esc(h.comment || '')}</td><td class="muted">${hrWhen(h.createdAt)}${h.author ? '<br>par ' + esc(h.author) : ''}</td>
-      <td><button class="ghost" data-hdel="${h.id}" title="Supprimer">✕</button></td></tr>`;
-  }).join('') : '<tr><td class="muted">Aucune heure enregistrée.</td></tr>';
-  showHoursPreview();
-}
-function hoursMinutes() { const m = $('#hoursDur').value.match(/^(\d{1,2}):(\d{2})/); return m ? Number(m[1]) * 60 + Number(m[2]) : 0; }
-function showHoursPreview() {
-  const k = HOUR_KINDS[$('#hoursKind').value], min = hoursMinutes();
-  $('#hoursPreview').textContent = !min ? 'Indique la durée.' : k[1] === 2 ? `${hm(min)} supp → +${hm(min * 2)} de récup sur le solde.`
-    : `${k[0]} : ${k[1] > 0 ? '+' : '−'}${hm(min)} sur le solde.`;
-}
-$('#hoursKind').onchange = showHoursPreview;
-$('#hoursDur').oninput = showHoursPreview;
-$('#hoursAdd').onclick = async () => {
-  if (!hrSel) return toast('Choisis un employé');
-  if (!$('#hoursDate').value) return toast('Choisis la date');
-  if (!hoursMinutes()) return toast('Indique la durée');
-  await api('/api/hr/hours/add', { empId: hrSel, kind: $('#hoursKind').value, date: $('#hoursDate').value, minutes: hoursMinutes(), comment: $('#hoursComment').value });
-  $('#hoursComment').value = ''; toast('Heures enregistrées');
-};
-$('#hoursList').addEventListener('click', e => {
-  const b = e.target.closest('[data-hdel]'); if (b && confirm('Supprimer cette ligne ?')) api('/api/hr/hours/delete', { id: b.dataset.hdel });
-});
-document.querySelectorAll('.hr-tabs button').forEach(b => b.onclick = () => {
-  hrTab = b.dataset.tab;
-  document.querySelectorAll('.hr-tabs button').forEach(x => x.classList.toggle('on', x === b));
-  $('#hrTabNotes').hidden = hrTab !== 'notes';
-  $('#hrTabHours').hidden = hrTab !== 'hours';
-  if (!$('#hoursDate').value) $('#hoursDate').value = today();
-  renderHr();
-});
-$('#hrPeople').addEventListener('click', e => { const b = e.target.closest('[data-emp]'); if (b) { hrSel = b.dataset.emp; renderHr(); checkLate(); } });
-const setHrType = t => { hrType = t; $('#hrPos').classList.toggle('on', t === 'positive'); $('#hrNeg').classList.toggle('on', t === 'negative'); };
-$('#hrPos').onclick = () => setHrType('positive');
-$('#hrNeg').onclick = () => setHrType('negative');
-$('#hrAdd').onclick = async () => {
-  if (!$('#hrText').value.trim()) return toast('Écris la remarque');
-  await api('/api/hr/add', { empId: hrSel, type: hrType, text: $('#hrText').value });
-  $('#hrText').value = ''; toast('Remarque ajoutée');
-};
-$('#hrNotes').addEventListener('click', e => {
-  const b = e.target.closest('[data-del]'); if (!b) return;
-  if (confirm('Supprimer cette remarque ?')) api('/api/hr/delete', { id: b.dataset.del });
-});
-document.querySelectorAll('.hr-filter button').forEach(b => b.onclick = () => {
-  hrFilter = b.dataset.f;
-  document.querySelectorAll('.hr-filter button').forEach(x => x.classList.toggle('on', x === b));
-  renderHr();
-});
 // Téléchargement d'un fichier Excel (en ligne : fabriqué dans la page ; en local : par le serveur).
 async function downloadXlsx(path, q) {
   if (!backend) { location.href = path + '?' + new URLSearchParams({ month, ...q }); return; }
@@ -313,12 +218,230 @@ async function downloadXlsx(path, q) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
+// ----- RH : le dossier de chaque personne (cartes de l'équipe, puis la fiche) -----
+// Ce qui est écrit vite (ou dicté) est remis au propre par l'IA ; « Mon texte » montre ce qui a été écrit.
+let hrSel = null, hrPeriod = 'month', hrFilter = 'all', hrMode = 'positive';
+const hrOrig = new Set(); // éléments dont on affiche le texte d'origine
+// Heures supp / à faire : effet sur le solde (1 h supp = 2 h de récup).
+const HOUR_KINDS = { supp: ['Heures supp', 2], afaire: ['Heures à faire', -1], recup: ['Récup prise', -1], rattrape: ['Heures rattrapées', 1] };
+const hm = m => `${m < 0 ? '-' : ''}${Math.floor(Math.abs(m) / 60)}h${String(Math.abs(m) % 60).padStart(2, '0')}`;
+const hrNotes = () => (data.hr && data.hr.notes) || [];
+const hrHours = () => (data.hr && data.hr.hours) || [];
+const balanceOf = id => hrHours().filter(h => h.empId === id).reduce((m, h) => m + h.minutes * (HOUR_KINDS[h.kind] || [0, 0])[1], 0);
+const balanceText = m => m > 0 ? `+${hm(m)} à récupérer` : m < 0 ? `${hm(-m)} à faire` : 'à jour';
+const hrEmps = () => data.config.employees.filter(e => !e.end || e.end >= today());
+const hrDateOf = n => (n.late && n.late.date) || (n.field && n.field.date) || localDay(new Date(n.createdAt));
+const hrKindOf = n => n.late ? 'late' : n.type === 'positive' ? 'positive' : 'negative';
+const hrTyped = n => n.typed !== undefined ? n.typed : (!n.late && !n.field) || String(n.text).includes('\n');
+const hrAv = id => 'c' + ([...String(id)].reduce((a, ch) => a + ch.charCodeAt(0), 0) % 6);
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const firstLine = s => String(s || '').split('\n')[0];
+const dayLong = d => new Date(d + 'T12:00:00').toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'short' });
+const hrWhen = iso => new Date(iso).toLocaleString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+const hrBy = x => x.author ? ' · par ' + esc(String(x.author).split('@')[0]) : '';
+function ago(iso) {
+  const days = Math.round((new Date(localDay() + 'T12:00:00') - new Date(localDay(new Date(iso)) + 'T12:00:00')) / 864e5);
+  return days <= 0 ? "aujourd'hui" : days === 1 ? 'hier' : days < 31 ? `il y a ${days} jours` : days < 365 ? `il y a ${Math.round(days / 30)} mois` : 'il y a plus d\'un an';
+}
+// Période choisie (cartes, chiffres, historique et bilan).
+function hrRange() {
+  const t = localDay(), y = t.slice(0, 4), ym = t.slice(0, 7), mn = s => MONTHS[Number(s.slice(5, 7)) - 1];
+  if (hrPeriod === 'month') return { from: ym + '-01', label: cap(mn(ym)) + ' ' + y, short: 'ce mois-ci' };
+  if (hrPeriod === '3m') { const s = addMonth(ym, -2); return { from: s + '-01', label: `${cap(mn(s))}${s.slice(0, 4) !== y ? ' ' + s.slice(0, 4) : ''} → ${mn(ym)} ${y}`, short: 'sur 3 mois' }; }
+  if (hrPeriod === 'year') return { from: y + '-01-01', label: 'Année ' + y, short: 'cette année' };
+  return { from: '0000-01-01', label: 'Depuis le début', short: 'depuis le début' };
+}
+function hrStats(id, r) {
+  const notes = hrNotes().filter(n => n.empId === id && hrDateOf(n) >= r.from);
+  const lates = notes.filter(n => n.late);
+  const all = hrNotes().filter(n => n.empId === id);
+  return { notes, pos: notes.filter(n => n.type === 'positive').length, neg: notes.filter(n => n.type !== 'positive' && !n.late).length,
+    late: lates.length, lateMin: lates.reduce((m, n) => m + n.late.minutes, 0),
+    lastAt: all.reduce((a, n) => n.createdAt > a ? n.createdAt : a, '') };
+}
+
+function renderHr() {
+  if (!data.hr) return;
+  if (hrSel && !hrEmps().some(e => e.id === hrSel)) hrSel = null;
+  document.querySelectorAll('#hrPeriod button').forEach(b => b.classList.toggle('on', b.dataset.p === hrPeriod));
+  $('#hrPeriodText').textContent = hrRange().label;
+  $('#hrTeamWrap').hidden = !!hrSel;
+  $('#hrSheet').hidden = !hrSel;
+  if (hrSel) renderHrSheet(); else renderHrTeam();
+}
+
+// Toute l'équipe : une carte par personne, avec ses chiffres et ses dernières notes.
+function renderHrTeam() {
+  const r = hrRange(), emps = hrEmps(), all = emps.map(e => ({ e, s: hrStats(e.id, r) }));
+  const tot = k => all.reduce((n, x) => n + x.s[k], 0);
+  $('#hrTeamSum').innerHTML = `<span><b>${emps.length}</b> personnes</span><span class="pos"><b>${tot('pos')}</b> positives</span>`
+    + `<span class="neg"><b>${tot('neg')}</b> négatives</span><span class="late"><b>${tot('late')}</b> retards${tot('lateMin') ? ` · ${tot('lateMin')} min` : ''}</span><span class="muted">${r.short}</span>`;
+  $('#hrTeam').innerHTML = all.map(({ e, s }) => {
+    const bal = balanceOf(e.id);
+    const last = s.notes.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 2);
+    return `<button type="button" class="hrx-card" data-emp="${e.id}">
+      <span class="hrx-card-top"><i class="hrx-av ${hrAv(e.id)}">${esc(initials(e.name))}</i>
+        <span class="who"><b>${esc(e.name)}</b><small>${esc(e.note || 'Agent')}</small></span>
+        <span class="hrx-bal ${bal > 0 ? 'pos' : bal < 0 ? 'neg' : ''}" title="Solde d'heures (depuis le début)">⏱ ${bal ? (bal > 0 ? '+' : '−') + hm(Math.abs(bal)) : 'à jour'}</span></span>
+      <span class="hrx-pills"><span class="pos ${s.pos ? '' : 'zero'}">👍 ${s.pos}</span><span class="neg ${s.neg ? '' : 'zero'}">👎 ${s.neg}</span><span class="late ${s.late ? '' : 'zero'}">⏰ ${s.late}${s.late ? ` · ${s.lateMin} min` : ''}</span></span>
+      <span class="hrx-last">${last.length ? last.map(n => `<span class="${hrKindOf(n)}">${esc(n.late ? `Retard de ${n.late.minutes} min · ${fmtDate(n.late.date)}` : firstLine(n.textPro || n.text))}</span>`).join('') : `<span class="none">Rien de noté ${r.short}.</span>`}</span>
+      <span class="hrx-foot"><span>${s.lastAt ? 'Dernière note ' + ago(s.lastAt) : 'Aucune note pour le moment'}</span><span class="go">Ouvrir le dossier →</span></span>
+    </button>`;
+  }).join('') || '<p class="muted">Aucun employé.</p>';
+}
+
+// Fiche d'une personne : en-tête, chiffres, bilan IA, solde d'heures et historique.
+function renderHrSheet() {
+  const e = hrEmps().find(x => x.id === hrSel); if (!e) return;
+  const r = hrRange(), s = hrStats(e.id, r), bal = balanceOf(e.id);
+  $('#hrxHead').innerHTML = `<i class="hrx-av xl ${hrAv(e.id)}">${esc(initials(e.name))}</i>
+    <div><h2>${esc(e.name)}</h2><p>${esc(e.note || 'Agent')}${e.start ? ` · depuis le ${e.start.split('-').reverse().join('/')}` : ''}</p>
+    <p class="print-only">Dossier RH · ${esc(r.label)} · imprimé le ${new Date().toLocaleDateString('fr-BE')}</p></div>`;
+  $('#hrxStats').innerHTML = `<div class="pos"><span>👍 Positives</span><b>${s.pos}</b><small>${r.short}</small></div>
+    <div class="neg"><span>👎 Négatives</span><b>${s.neg}</b><small>${r.short}</small></div>
+    <div class="late"><span>⏰ Retards</span><b>${s.late}</b><small>${s.late ? s.lateMin + ' min au total' : r.short}</small></div>
+    <div class="${bal > 0 ? 'pos' : bal < 0 ? 'neg' : ''}"><span>⏱ Heures</span><b>${bal ? (bal > 0 ? '+' : '−') + hm(Math.abs(bal)) : '0h'}</b><small>${balanceText(bal)}</small></div>`;
+  renderHrBilan(e, r);
+  renderHrHours(e);
+  renderHrTimeline(e, r, s);
+}
+
+function renderHrBilan(e, r) {
+  const b = data.hr.bilans && data.hr.bilans[e.id];
+  const btn = label => `<button class="${b ? 'ghost' : 'primary'} no-print" id="hrBilanGo">${label}</button>`;
+  const list = (cls, title, items) => items && items.length ? `<h4 class="${cls}">${title}</h4><ul class="${cls}">${items.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
+  $('#hrxBilan').classList.toggle('no-print', !b);
+  $('#hrxBilan').innerHTML = b ? `<div class="hrx-bilan-head"><h3>✨ Bilan</h3><small>${esc(b.label || '')} · ${b.count} note(s) · écrit le ${new Date(b.createdAt).toLocaleDateString('fr-BE')}</small></div>
+      <p class="resume">${esc(b.resume)}</p>
+      ${list('ok', 'Points forts', b.forts)}${list('warn', 'À améliorer', b.ameliorer)}${list('', "Pistes pour l'entretien", b.pistes)}
+      <p class="hint">Écrit par l'IA à partir du dossier : à relire avant l'entretien.</p>
+      ${btn(`↻ Refaire · ${esc(r.label)}`)}`
+    : `<div class="hrx-bilan-head"><h3>✨ Bilan pour un entretien</h3></div>
+      <p class="hint">L'IA lit les remarques de la période et écrit un résumé : points forts, points à améliorer et pistes à proposer.</p>
+      ${btn(`✨ Écrire le bilan · ${esc(r.label)}`)}`;
+}
+
+function renderHrHours(e) {
+  const list = hrHours().filter(h => h.empId === e.id);
+  const sum = k => list.filter(h => h.kind === k).reduce((m, h) => m + h.minutes, 0), bal = balanceOf(e.id);
+  $('#hrxHours').innerHTML = `<h3>Solde d'heures</h3>
+    <div class="hrx-balbig ${bal > 0 ? 'pos' : bal < 0 ? 'neg' : ''}"><b>${bal ? (bal > 0 ? '+' : '−') + hm(Math.abs(bal)) : '0h00'}</b><span>${balanceText(bal)}</span></div>
+    <dl><dt>Heures supp</dt><dd>${hm(sum('supp'))} <small>= ${hm(sum('supp') * 2)} de récup</small></dd>
+    <dt>Récup prise</dt><dd>${hm(sum('recup'))}</dd><dt>Heures à faire</dt><dd>${hm(sum('afaire'))}</dd><dt>Rattrapées</dt><dd>${hm(sum('rattrape'))}</dd></dl>
+    <p class="hint">Depuis le début. 1 h supp = 2 h de récup.</p>`;
+}
+
+function renderHrTimeline(e, r, s) {
+  const hours = hrHours().filter(h => h.empId === e.id && h.date >= r.from);
+  const items = [...s.notes.map(n => ({ kind: hrKindOf(n), date: hrDateOf(n), at: n.createdAt, n })), ...hours.map(h => ({ kind: 'hours', date: h.date, at: h.createdAt, h }))]
+    .sort((a, b) => b.date.localeCompare(a.date) || b.at.localeCompare(a.at));
+  const count = k => items.filter(it => k === 'all' || it.kind === k).length;
+  $('#hrxFilter').innerHTML = [['all', 'Tout'], ['positive', '👍'], ['negative', '👎'], ['late', '⏰'], ['hours', '⏱']]
+    .map(([k, l]) => `<button data-f="${k}" class="${hrFilter === k ? 'on' : ''}">${l} <small>${count(k)}</small></button>`).join('');
+  const todo = hrNotes().filter(n => n.empId === e.id && !n.textPro && hrTyped(n)).length + hrHours().filter(h => h.empId === e.id && !h.commentPro && String(h.comment || '').trim()).length;
+  $('#hrxTodo').innerHTML = todo ? `<div class="hrx-todo no-print"><span>✨ ${todo} texte${todo > 1 ? 's' : ''} pas encore mis au propre (écrits avant l'IA).</span><button id="hrReform" class="ghost">Mettre au propre</button></div>` : '';
+  const shown = items.filter(it => hrFilter === 'all' || it.kind === hrFilter);
+  if (!shown.length) { $('#hrxTimeline').innerHTML = `<div class="hrx-empty"><span>🗂</span><p>Rien ${hrFilter === 'all' ? '' : 'de ce type '}${r.short}.</p><small>Ajoute une remarque juste au-dessus.</small></div>`; return; }
+  let h = '', cur = '';
+  for (const it of shown) {
+    const m = it.date.slice(0, 7);
+    if (m !== cur) { if (cur) h += '</ol>'; cur = m; h += `<h4 class="hrx-month">${cap(MONTHS[Number(m.slice(5)) - 1])} ${m.slice(0, 4)}</h4><ol class="hrx-tl">`; }
+    h += it.h ? hourItem(it.h) : noteItem(it.n);
+  }
+  $('#hrxTimeline').innerHTML = h + '</ol>';
+}
+// Texte remis au propre, avec « Mon texte » pour revoir ce qui a été écrit.
+function proText(id, pro, orig) {
+  const show = pro && pro !== orig;
+  return `<p class="txt">${esc(show && !hrOrig.has(id) ? pro : orig).replace(/\n/g, '<br>')}</p>`
+    + (show ? `<button class="hrx-orig no-print" data-orig="${id}">${hrOrig.has(id) ? '✨ Version au propre' : '✎ Mon texte'}</button>` : '');
+}
+function noteItem(n) {
+  const k = hrKindOf(n);
+  const tag = n.late ? `⏰ Retard · ${n.late.minutes} min` : n.field ? '📍 Terrain' : k === 'positive' ? '👍 Positif' : '👎 Négatif';
+  return `<li class="hrx-item ${k}"><span class="dot"></span><div class="b">
+    <div class="meta"><span class="tag">${tag}</span><span class="when">${dayLong(hrDateOf(n))}</span>${n.textPro && n.textPro !== n.text ? '<span class="ai" title="Mis au propre par l\'IA">✨</span>' : ''}
+      <button class="ghost del no-print" data-del="${n.id}" title="Supprimer">✕</button></div>
+    ${proText(n.id, n.textPro, n.text)}
+    <small class="by">Noté le ${hrWhen(n.createdAt)}${hrBy(n)}</small></div></li>`;
+}
+function hourItem(h) {
+  const [label, f] = HOUR_KINDS[h.kind] || [h.kind, 0], eff = h.minutes * f;
+  return `<li class="hrx-item hours"><span class="dot"></span><div class="b">
+    <div class="meta"><span class="tag">⏱ ${label} · ${hm(h.minutes)}</span><span class="eff ${eff > 0 ? 'pos' : 'neg'}">${eff > 0 ? '+' : '−'}${hm(Math.abs(eff))} sur le solde</span><span class="when">${dayLong(h.date)}</span>
+      ${h.commentPro && h.commentPro !== h.comment ? '<span class="ai" title="Mis au propre par l\'IA">✨</span>' : ''}<button class="ghost del no-print" data-hdel="${h.id}" title="Supprimer">✕</button></div>
+    ${h.comment ? proText(h.id, h.commentPro, h.comment) : ''}
+    <small class="by">Noté le ${hrWhen(h.createdAt)}${hrBy(h)}</small></div></li>`;
+}
+
+// Période, ouverture d'une fiche, retour à l'équipe.
+$('#hrPeriod').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (b) { hrPeriod = b.dataset.p; renderHr(); } });
+$('#hrTeam').addEventListener('click', e => {
+  const b = e.target.closest('[data-emp]'); if (!b) return;
+  hrSel = b.dataset.emp; hrFilter = 'all'; hrOrig.clear();
+  $('#hrxText').value = ''; $('#lateTime').value = '';
+  renderHr(); hrSetMode(hrMode); scrollTo(0, 0);
+});
+$('#hrBack').onclick = () => { hrSel = null; renderHr(); scrollTo(0, 0); };
+$('#hrxFilter').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) { hrFilter = b.dataset.f; renderHr(); } });
+// Historique : supprimer, voir « Mon texte », remettre au propre les anciens textes.
+$('#hrxTimeline').addEventListener('click', e => {
+  const o = e.target.closest('[data-orig]');
+  if (o) { hrOrig.has(o.dataset.orig) ? hrOrig.delete(o.dataset.orig) : hrOrig.add(o.dataset.orig); return renderHr(); }
+  const d = e.target.closest('[data-del]');
+  if (d && confirm('Supprimer cette remarque du dossier ?')) api('/api/hr/delete', { id: d.dataset.del }).catch(() => {});
+  const h = e.target.closest('[data-hdel]');
+  if (h && confirm('Supprimer cette ligne d\'heures ?')) api('/api/hr/hours/delete', { id: h.dataset.hdel }).catch(() => {});
+});
+$('#hrxTodo').addEventListener('click', async e => {
+  const b = e.target.closest('#hrReform'); if (!b) return;
+  b.disabled = true; b.textContent = '✨ En cours…';
+  try {
+    const j = await api('/api/hr/reformulate', { empId: hrSel });
+    toast(j.reformError ? 'Mise au propre interrompue : ' + j.reformError : `${j.reformDone} texte(s) mis au propre`);
+  } catch {} finally { if (b.isConnected) { b.disabled = false; b.textContent = 'Mettre au propre'; } }
+});
+// Bilan IA de la période choisie.
+$('#hrxBilan').addEventListener('click', async e => {
+  const b = e.target.closest('#hrBilanGo'); if (!b) return;
+  const r = hrRange();
+  b.disabled = true; b.textContent = "✨ L'IA lit le dossier…";
+  try { await api('/api/hr/bilan', { empId: hrSel, from: r.from, to: localDay(), label: r.label }); toast('Bilan écrit'); }
+  catch {} finally { if (b.isConnected) { b.disabled = false; } }
+});
+
+// Ajouter au dossier : positif, négatif, retard ou heures (le texte passe par l'IA).
+const HR_PLACEHOLDER = {
+  positive: 'Ex. : a très bien géré la sortie du match, poli et efficace avec les clients',
+  negative: 'Ex. : encore au téléphone en zone 2 au lieu de surveiller les caisses',
+  late: 'Commentaire (facultatif), ex. : bouchons sur le ring, a prévenu à 11h50',
+  hours: 'Commentaire (facultatif), ex. : resté jusqu\'à 21h pour la sortie du match',
+};
+function hrSetMode(m) {
+  hrMode = m;
+  document.querySelectorAll('#hrxModes [data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  $('#hrxLateF').hidden = m !== 'late';
+  $('#hrxHoursF').hidden = m !== 'hours';
+  $('#hrxText').placeholder = HR_PLACEHOLDER[m];
+  if (m === 'late') { if (!$('#lateDate').value) $('#lateDate').value = localDay(); checkLate(); }
+  if (m === 'hours') { if (!$('#hoursDate').value) $('#hoursDate').value = localDay(); showHoursPreview(); }
+}
+$('#hrxModes').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) hrSetMode(b.dataset.mode); });
+hrSetMode('positive');
+function hoursMinutes() { const m = $('#hoursDur').value.match(/^(\d{1,2}):(\d{2})/); return m ? Number(m[1]) * 60 + Number(m[2]) : 0; }
+function showHoursPreview() {
+  const k = HOUR_KINDS[$('#hoursKind').value], min = hoursMinutes();
+  $('#hoursPreview').textContent = !min ? 'Indique la durée.' : k[1] === 2 ? `${hm(min)} supp → +${hm(min * 2)} de récup sur le solde.`
+    : `${k[0]} : ${k[1] > 0 ? '+' : '−'}${hm(min)} sur le solde.`;
+}
+$('#hoursKind').onchange = showHoursPreview;
+$('#hoursDur').oninput = showHoursPreview;
 // Retard : heure prévue lue dans l'horaire, minutes de retard calculées en direct.
 let latePlanned = null;
 async function checkLate() {
   latePlanned = null;
   const date = $('#lateDate').value;
-  if (!date || !hrSel) { $('#latePlanned').textContent = 'Choisis la date : l\'outil retrouve l\'heure prévue dans l\'horaire.'; $('#latePlanned').className = 'late-planned'; return; }
+  if (!date || !hrSel) { $('#latePlanned').textContent = 'Choisis le jour : l\'outil retrouve l\'heure prévue dans l\'horaire.'; $('#latePlanned').className = 'late-planned'; return; }
   const j = await call('/api/hr/late-check', { month, empId: hrSel, date });
   if (j.error) { $('#latePlanned').textContent = j.error; $('#latePlanned').className = 'late-planned bad'; return; }
   latePlanned = j.planned;
@@ -337,16 +460,39 @@ function showLateDelay() {
 }
 $('#lateDate').onchange = checkLate;
 $('#lateTime').oninput = showLateDelay;
-$('#lateAdd').onclick = async () => {
-  if (!$('#lateDate').value || !$('#lateTime').value) return toast('Indique la date et l\'heure d\'arrivée');
-  await api('/api/hr/late', { empId: hrSel, date: $('#lateDate').value, time: $('#lateTime').value, comment: $('#lateComment').value });
-  $('#lateTime').value = ''; $('#lateComment').value = ''; latePlanned = null; checkLate();
-  toast('Retard enregistré');
+$('#hrxSave').onclick = async () => {
+  const b = $('#hrxSave'), text = $('#hrxText').value.trim();
+  let path, body;
+  if (hrMode === 'positive' || hrMode === 'negative') {
+    if (!text) return toast('Écris la remarque');
+    path = '/api/hr/add'; body = { empId: hrSel, type: hrMode, text };
+  } else if (hrMode === 'late') {
+    if (!$('#lateDate').value || !$('#lateTime').value) return toast('Indique le jour et l\'heure d\'arrivée');
+    path = '/api/hr/late'; body = { empId: hrSel, date: $('#lateDate').value, time: $('#lateTime').value, comment: text };
+  } else {
+    if (!$('#hoursDate').value) return toast('Choisis le jour');
+    if (!hoursMinutes()) return toast('Indique la durée');
+    path = '/api/hr/hours/add'; body = { empId: hrSel, kind: $('#hoursKind').value, date: $('#hoursDate').value, minutes: hoursMinutes(), comment: text };
+  }
+  b.disabled = true; b.textContent = text ? '✨ Mise au propre…' : 'Enregistrement…';
+  try {
+    const j = await api(path, body);
+    $('#hrxText').value = '';
+    if (hrMode === 'late') { $('#lateTime').value = ''; checkLate(); }
+    hrFilter = 'all'; renderHr();
+    toast(j.reformError ? 'Enregistré (texte gardé tel quel : ' + j.reformError + ')' : 'Ajouté au dossier');
+  } catch {} finally { b.disabled = false; b.textContent = 'Enregistrer'; }
 };
-// Export : les remarques ou les heures, selon la sous-section ouverte.
-const hrExportPath = () => hrTab === 'hours' ? '/api/export-hours.xlsx' : '/api/export-hr.xlsx';
-$('#hrExportAll').onclick = () => downloadXlsx(hrExportPath(), {});
-$('#hrExportOne').onclick = () => hrSel && downloadXlsx(hrExportPath(), { emp: hrSel });
+// Imprimer la fiche (ou l'enregistrer en PDF depuis la fenêtre d'impression).
+$('#hrPrint').onclick = () => {
+  document.body.classList.add('print-hr');
+  const done = () => { document.body.classList.remove('print-hr'); removeEventListener('afterprint', done); };
+  addEventListener('afterprint', done);
+  print();
+};
+// Excel : toute l'équipe, ou seulement la personne ouverte.
+$('#hrExportNotes').onclick = () => downloadXlsx('/api/export-hr.xlsx', hrSel ? { emp: hrSel } : {});
+$('#hrExportHours').onclick = () => downloadXlsx('/api/export-hours.xlsx', hrSel ? { emp: hrSel } : {});
 
 // ----- Droits, annuler, historique, accès et sauvegardes -----
 let access = null;
