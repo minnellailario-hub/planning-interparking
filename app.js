@@ -221,6 +221,7 @@ async function downloadXlsx(path, q) {
 // ----- RH : le dossier de chaque personne (cartes de l'équipe, puis la fiche) -----
 // Ce qui est écrit vite (ou dicté) est remis au propre par l'IA ; « Mon texte » montre ce qui a été écrit.
 let hrSel = null, hrPeriod = 'month', hrFilter = 'all', hrMode = 'positive';
+let hrEdit = null; // élément en cours de modification : { id, hours, text, type }
 const hrOrig = new Set(); // éléments dont on affiche le texte d'origine
 // Heures supp / à faire : effet sur le solde (1 h supp = 2 h de récup).
 const HOUR_KINDS = { supp: ['Heures supp', 2], afaire: ['Heures à faire', -1], recup: ['Récup prise', -1], rattrape: ['Heures rattrapées', 1] };
@@ -295,8 +296,7 @@ function renderHrSheet() {
   const e = hrEmps().find(x => x.id === hrSel); if (!e) return;
   const r = hrRange(), s = hrStats(e.id, r), bal = balanceOf(e.id);
   $('#hrxHead').innerHTML = `<i class="hrx-av xl ${hrAv(e.id)}">${esc(initials(e.name))}</i>
-    <div><h2>${esc(e.name)}</h2><p>${esc(e.note || 'Agent')}${e.start ? ` · depuis le ${e.start.split('-').reverse().join('/')}` : ''}</p>
-    <p class="print-only">Dossier RH · ${esc(r.label)} · imprimé le ${new Date().toLocaleDateString('fr-BE')}</p></div>`;
+    <div><h2>${esc(e.name)}</h2><p>${esc(e.note || 'Agent')}${e.start ? ` · depuis le ${e.start.split('-').reverse().join('/')}` : ''}</p></div>`;
   $('#hrxStats').innerHTML = `<div class="pos"><span>👍 Positives</span><b>${s.pos}</b><small>${r.short}</small></div>
     <div class="neg"><span>👎 Négatives</span><b>${s.neg}</b><small>${r.short}</small></div>
     <div class="late"><span>⏰ Retards</span><b>${s.late}</b><small>${s.late ? s.lateMin + ' min au total' : r.short}</small></div>
@@ -356,36 +356,68 @@ function proText(id, pro, orig) {
   return `<p class="txt">${esc(show && !hrOrig.has(id) ? pro : orig).replace(/\n/g, '<br>')}</p>`
     + (show ? `<button class="hrx-orig no-print" data-orig="${id}">${hrOrig.has(id) ? '✨ Version au propre' : '✎ Mon texte'}</button>` : '');
 }
+// Éditeur d'une remarque ou d'un commentaire d'heures (dans l'historique).
+function editorHtml(canType) {
+  return `<div class="hrx-edit">
+    ${canType ? `<div class="hrx-edit-type"><button data-etype="positive" class="pos ${hrEdit.type === 'positive' ? 'on' : ''}">👍 Positif</button><button data-etype="negative" class="neg ${hrEdit.type === 'negative' ? 'on' : ''}">👎 Négatif</button></div>` : ''}
+    <textarea id="hrxEditText" rows="3" placeholder="${hrEdit.hours ? 'Commentaire' : 'Remarque'}">${esc(hrEdit.text)}</textarea>
+    <div class="hrx-edit-btns"><button class="primary" data-esave="ai">✨ Enregistrer et mettre au propre</button><button data-esave="raw">Enregistrer tel quel</button><button class="ghost" data-ecancel>Annuler</button></div>
+  </div>`;
+}
 function noteItem(n) {
   const k = hrKindOf(n);
   const tag = n.late ? `⏰ Retard · ${n.late.minutes} min` : n.field ? '📍 Terrain' : k === 'positive' ? '👍 Positif' : '👎 Négatif';
   return `<li class="hrx-item ${k}"><span class="dot"></span><div class="b">
     <div class="meta"><span class="tag">${tag}</span><span class="when">${dayLong(hrDateOf(n))}</span>${n.textPro && n.textPro !== n.text ? '<span class="ai" title="Mis au propre par l\'IA">✨</span>' : ''}
-      <button class="ghost del no-print" data-del="${n.id}" title="Supprimer">✕</button></div>
-    ${proText(n.id, n.textPro, n.text)}
-    <small class="by">Noté le ${hrWhen(n.createdAt)}${hrBy(n)}</small></div></li>`;
+      <span class="acts no-print"><button class="ghost" data-edit="${n.id}" title="Modifier">✎ Modifier</button><button class="ghost del" data-del="${n.id}" title="Supprimer">✕</button></span></div>
+    ${hrEdit && hrEdit.id === n.id ? editorHtml(!n.late && !n.field) : proText(n.id, n.textPro, n.text)}
+    <small class="by">Noté le ${hrWhen(n.createdAt)}${hrBy(n)}${n.editedAt ? ' · modifié le ' + hrWhen(n.editedAt) : ''}</small></div></li>`;
 }
 function hourItem(h) {
   const [label, f] = HOUR_KINDS[h.kind] || [h.kind, 0], eff = h.minutes * f;
   return `<li class="hrx-item hours"><span class="dot"></span><div class="b">
     <div class="meta"><span class="tag">⏱ ${label} · ${hm(h.minutes)}</span><span class="eff ${eff > 0 ? 'pos' : 'neg'}">${eff > 0 ? '+' : '−'}${hm(Math.abs(eff))} sur le solde</span><span class="when">${dayLong(h.date)}</span>
-      ${h.commentPro && h.commentPro !== h.comment ? '<span class="ai" title="Mis au propre par l\'IA">✨</span>' : ''}<button class="ghost del no-print" data-hdel="${h.id}" title="Supprimer">✕</button></div>
-    ${h.comment ? proText(h.id, h.commentPro, h.comment) : ''}
-    <small class="by">Noté le ${hrWhen(h.createdAt)}${hrBy(h)}</small></div></li>`;
+      ${h.commentPro && h.commentPro !== h.comment ? '<span class="ai" title="Mis au propre par l\'IA">✨</span>' : ''}<span class="acts no-print"><button class="ghost" data-hedit="${h.id}" title="Modifier le commentaire">✎ Modifier</button><button class="ghost del" data-hdel="${h.id}" title="Supprimer">✕</button></span></div>
+    ${hrEdit && hrEdit.id === h.id ? editorHtml(false) : h.comment ? proText(h.id, h.commentPro, h.comment) : ''}
+    <small class="by">Noté le ${hrWhen(h.createdAt)}${hrBy(h)}${h.editedAt ? ' · modifié le ' + hrWhen(h.editedAt) : ''}</small></div></li>`;
 }
 
 // Période, ouverture d'une fiche, retour à l'équipe.
 $('#hrPeriod').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (b) { hrPeriod = b.dataset.p; renderHr(); } });
 $('#hrTeam').addEventListener('click', e => {
   const b = e.target.closest('[data-emp]'); if (!b) return;
-  hrSel = b.dataset.emp; hrFilter = 'all'; hrOrig.clear();
+  hrSel = b.dataset.emp; hrFilter = 'all'; hrOrig.clear(); hrEdit = null;
   $('#hrxText').value = ''; $('#lateTime').value = '';
   renderHr(); hrSetMode(hrMode); scrollTo(0, 0);
 });
-$('#hrBack').onclick = () => { hrSel = null; renderHr(); scrollTo(0, 0); };
+$('#hrBack').onclick = () => { hrSel = null; hrEdit = null; renderHr(); scrollTo(0, 0); };
 $('#hrxFilter').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) { hrFilter = b.dataset.f; renderHr(); } });
 // Historique : supprimer, voir « Mon texte », remettre au propre les anciens textes.
-$('#hrxTimeline').addEventListener('click', e => {
+$('#hrxTimeline').addEventListener('input', e => { if (e.target.id === 'hrxEditText' && hrEdit) hrEdit.text = e.target.value; });
+$('#hrxTimeline').addEventListener('click', async e => {
+  const ed = e.target.closest('[data-edit]'), hed = e.target.closest('[data-hedit]');
+  if (ed || hed) {
+    const n = ed && hrNotes().find(x => x.id === ed.dataset.edit), h = hed && hrHours().find(x => x.id === hed.dataset.hedit);
+    hrEdit = n ? { id: n.id, hours: false, text: n.textPro || n.text, type: n.type } : h ? { id: h.id, hours: true, text: h.commentPro || h.comment || '' } : null;
+    renderHr();
+    const ta = $('#hrxEditText'); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    return;
+  }
+  const et = e.target.closest('[data-etype]');
+  if (et && hrEdit) { hrEdit.type = et.dataset.etype; return renderHr(); }
+  if (e.target.closest('[data-ecancel]')) { hrEdit = null; return renderHr(); }
+  const sv = e.target.closest('[data-esave]');
+  if (sv && hrEdit) {
+    const ai = sv.dataset.esave === 'ai', cur = hrEdit;
+    if (!cur.hours && !cur.text.trim()) return toast('Écris la remarque');
+    sv.disabled = true; sv.textContent = ai ? '✨ Mise au propre…' : 'Enregistrement…';
+    try {
+      const j = await api(cur.hours ? '/api/hr/hours/edit' : '/api/hr/edit', cur.hours ? { id: cur.id, comment: cur.text, ai } : { id: cur.id, text: cur.text, type: cur.type, ai });
+      if (hrEdit === cur) { hrEdit = null; renderHr(); }
+      toast(j.reformError ? 'Modifié (texte gardé tel quel : ' + j.reformError + ')' : 'Modifié');
+    } catch { if (sv.isConnected) { sv.disabled = false; sv.textContent = ai ? '✨ Enregistrer et mettre au propre' : 'Enregistrer tel quel'; } }
+    return;
+  }
   const o = e.target.closest('[data-orig]');
   if (o) { hrOrig.has(o.dataset.orig) ? hrOrig.delete(o.dataset.orig) : hrOrig.add(o.dataset.orig); return renderHr(); }
   const d = e.target.closest('[data-del]');
@@ -483,12 +515,28 @@ $('#hrxSave').onclick = async () => {
     toast(j.reformError ? 'Enregistré (texte gardé tel quel : ' + j.reformError + ')' : 'Ajouté au dossier');
   } catch {} finally { b.disabled = false; b.textContent = 'Enregistrer'; }
 };
-// Imprimer la fiche (ou l'enregistrer en PDF depuis la fenêtre d'impression).
-$('#hrPrint').onclick = () => {
-  document.body.classList.add('print-hr');
-  const done = () => { document.body.classList.remove('print-hr'); removeEventListener('afterprint', done); };
-  addEventListener('afterprint', done);
-  print();
+// PDF du dossier (même style que le rapport du Reporting) : fabriqué dans la page (en ligne) ou par le serveur local.
+async function hrPdfFile() {
+  const r = hrRange(), q = { month, emp: hrSel, from: r.from, label: r.label };
+  if (backend) {
+    const out = await backend.handle('GET', '/api/hr-report.pdf', q, {});
+    if (!out.pdf) throw new Error((out.json && out.json.error) || 'PDF impossible');
+    return new File([out.pdf], out.filename, { type: 'application/pdf' });
+  }
+  const res = await fetch('/api/hr-report.pdf?' + new URLSearchParams(q));
+  if (!res.ok || !(res.headers.get('Content-Type') || '').includes('pdf')) throw new Error('PDF impossible');
+  const name = (/filename="?([^";]+)/.exec(res.headers.get('Content-Disposition') || '') || [])[1] || 'dossier-rh.pdf';
+  return new File([await res.arrayBuffer()], name, { type: 'application/pdf' });
+}
+$('#hrPdf').onclick = async () => { try { saveFile(await hrPdfFile()); } catch (e) { toast(e.message); } };
+$('#hrShare').onclick = async () => {
+  try {
+    const file = await hrPdfFile();
+    const emp = hrEmps().find(x => x.id === hrSel), title = `Dossier RH · ${emp ? emp.name : ''} · ${hrRange().label}`;
+    // Menu « Partager » du téléphone (mail, WhatsApp, Teams…) ; sinon le PDF est téléchargé.
+    if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title });
+    else { saveFile(file); toast('Partage non disponible ici : le PDF est téléchargé.'); }
+  } catch (e) { if (e.name !== 'AbortError') toast(e.message); }
 };
 // Excel : toute l'équipe, ou seulement la personne ouverte.
 $('#hrExportNotes').onclick = () => downloadXlsx('/api/export-hr.xlsx', hrSel ? { emp: hrSel } : {});
