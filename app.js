@@ -1808,11 +1808,13 @@ const agTitle = (type, fields) => {
 };
 const agWhen = it => it.allDay ? 'Toute la journée' : `${it.start} – ${it.end}`;
 // Lien Outlook (web) qui ouvre un nouveau rendez-vous déjà rempli ; il reste à choisir l'agenda EXPLOITATION et enregistrer.
-function outlookLink(it) {
+// Outlook sur le web est à l'adresse outlook.cloud.microsoft (celle du compte Interparking) ; l'ancienne adresse
+// outlook.office.com reste en lien de secours (elle redemande parfois la connexion).
+function outlookLink(it, host = 'outlook.cloud.microsoft') {
   const p = new URLSearchParams({ subject: it.title, location: it.location || '', body: it.notes || '' });
   if (it.allDay) { p.set('startdt', it.date); p.set('enddt', addDay(it.date, 1)); p.set('allday', 'true'); }
   else { p.set('startdt', new Date(`${it.date}T${it.start}:00`).toISOString()); p.set('enddt', new Date(`${it.date}T${it.end}:00`).toISOString()); p.set('allday', 'false'); }
-  return 'https://outlook.office.com/calendar/deeplink/compose?' + p.toString();
+  return `https://${host}/calendar/deeplink/compose?` + p.toString();
 }
 // Fichier .ics (Outlook sur PC, iPhone…) : même rendez-vous, à ouvrir puis enregistrer dans l'agenda partagé.
 function icsFile(it) {
@@ -1838,6 +1840,7 @@ function renderAgenda() {
       <span class="ag-actions">
         <button class="primary" data-ag-out="${it.id}">📅 Ajouter à Outlook</button>
         <button class="ghost" data-ag-ics="${it.id}" title="Fichier pour Outlook sur PC ou téléphone">.ics</button>
+        <button class="link" data-ag-out2="${it.id}" title="Si le bouton Outlook ne marche pas">autre lien</button>
         ${ro ? '' : `<button class="ghost" data-ag-edit="${it.id}">Modifier</button><button class="ghost danger" data-ag-del="${it.id}" title="Supprimer">✕</button>`}
         ${it.sentAt && !ro ? `<button class="link" data-ag-unsent="${it.id}" title="Remettre « À ajouter »">annuler ✓</button>` : ''}
       </span></li>`;
@@ -1908,6 +1911,7 @@ $('#agBox').addEventListener('click', async e => {
     return;
   }
   if (b.dataset.agIcs) { saveFile(icsFile(find(b.dataset.agIcs))); return; }
+  if (b.dataset.agOut2) { window.open(outlookLink(find(b.dataset.agOut2), 'outlook.office365.com'), '_blank'); return; }
   if (b.dataset.agUnsent) { await agApi('/api/agenda/sent', { id: b.dataset.agUnsent, undo: true }).catch(() => null); return renderAgenda(); }
 });
 function agGo(m) { agMonth = m; agData = null; agForm = null; renderAgenda(); loadAgenda(); }
