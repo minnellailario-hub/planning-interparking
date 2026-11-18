@@ -67,6 +67,8 @@ function monthHours(r) {
 }
 
 function render() {
+  if (data.account && data.account.role === 'employee') return renderEmployee();
+  document.body.classList.remove('employee');
   const v = data.view;
   const [y, m] = month.split('-').map(Number);
   $('#monthTitle').textContent = `${MONTHS[m - 1]} ${y}`;
@@ -166,6 +168,7 @@ function render() {
   if (data.account.role === 'admin') renderHr();
   renderMatches();
   renderSettings();
+  renderPubBar();
   $('#alertChip').hidden = !v.warnings.length;
   $('#alertChip').textContent = `⚠ ${v.warnings.length} alerte${v.warnings.length > 1 ? 's' : ''}`;
 }
@@ -542,9 +545,255 @@ $('#hrShare').onclick = async () => {
 $('#hrExportNotes').onclick = () => downloadXlsx('/api/export-hr.xlsx', hrSel ? { emp: hrSel } : {});
 $('#hrExportHours').onclick = () => downloadXlsx('/api/export-hours.xlsx', hrSel ? { emp: hrSel } : {});
 
+// ----- Espace employé : son horaire publié, l'équipe, ses zones du jour et ses heures -----
+let meTab = 'mine', meWeek = null;
+const ME_OFF = { REPOS: 'Repos', WE: 'Week-end', RTT: 'RTT', RECUP: 'Récup', CONGE: 'Congé', MALADIE: 'Maladie', FORMATION: 'Formation' };
+const ME_SHORT = { REPOS: 'R', WE: 'WE', RTT: 'RTT', RECUP: 'Réc', CONGE: 'CG', MALADIE: 'M', FORMATION: 'For' };
+const DOW_FR = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+const DOW_LONG = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+const mondayOf = d => addDay(d, -((new Date(d + 'T12:00:00').getDay() + 6) % 7));
+const meMonth = date => data.me.months.find(m => m.ym === date.slice(0, 7));
+const meDay = date => { const m = meMonth(date); return m && m.days.find(d => d.date === date); };
+// Case d'une personne un jour donné : undefined si le mois n'est pas publié, null si rien ce jour-là.
+const meCell = (date, id = data.me.id) => { const m = meMonth(date); if (!m) return undefined; const r = m.rows.find(x => x.id === id); return (r && r.cells[date]) || null; };
+const cellHours = c => c && c.w ? parseInt(shiftDur(c.w)) || 0 : 0;
+const shiftKey = c => ({ '8-16': '8-16', '10-18': '10-18', '12-20': '12-20', FOOT: 'FOOT' })[c.s] || 'OTHER';
+// « 8-16 » → « 08:00 – 16:00 », même sur téléphone (il y a la place dans l'espace employé).
+const niceTimes = w => String(w).replace('⚽', '').trim().replace(/(\d{1,2})\s*-\s*(\d{1,2})/, (_, a, b) => `${a.padStart(2, '0')}:00 – ${(b === '0' ? '00' : b).padStart(2, '0')}:00`);
+
+function renderEmployee() {
+  document.body.classList.add('employee');
+  document.body.classList.remove('readonly');
+  $('#accountBtn').hidden = data.account.mode !== 'cloud';
+  if (document.body.dataset.page !== 'me') go('me');
+  renderMe();
+}
+// Zone de la personne maintenant (ou la prochaine aujourd'hui).
+function myZoneNow() {
+  const z = data.me.zones; if (!z || z.closed) return '';
+  const p = z.people.find(x => x.id === data.me.id); if (!p) return '';
+  const h = new Date().getHours(), i = z.slots.findIndex(s => s.start <= h && h < s.end);
+  const k = i >= 0 && p.cells[i] ? i : p.cells.findIndex((c, j) => c && z.slots[j].start > h);
+  if (k < 0) return '';
+  return `${k === i ? 'maintenant' : 'à ' + z.slots[k].start + 'h'} : <b>${esc(zoneName(p.cells[k], z))}</b>`;
+}
+const zoneName = (code, z) => code === 'D' ? 'Dispatch' : code === 'T' ? 'Toutes les zones' : ((z.zones.find(x => x.code === code) || {}).name || code) + (((z.zones.find(x => x.code === code) || {}).place) ? ' · ' + z.zones.find(x => x.code === code).place : '');
+
+function renderMe() {
+  const me = data.me; if (!me) return;
+  if (!meWeek) meWeek = mondayOf(me.today);
+  document.querySelectorAll('#meTabs [data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === meTab));
+  const c = meCell(me.today), zone = myZoneNow();
+  // Prochain jour de travail après aujourd'hui (dans les mois publiés).
+  let next = null;
+  for (let d = addDay(me.today, 1), k = 0; k < 40 && !next; d = addDay(d, 1), k++) { const x = meCell(d); if (x === undefined) break; if (x && x.w) next = { d, c: x }; }
+  const nd = next && new Date(next.d + 'T12:00:00');
+  $('#meHero').innerHTML = `<i class="hrx-av xl ${hrAv(me.id)}">${esc(initials(me.name))}</i>
+    <div class="me-hello"><h2>Bonjour ${esc(me.name.split(' ')[0] || '')} 👋</h2>
+      <p>${c === undefined ? "L'horaire de ce mois n'est pas encore publié."
+        : c && c.w ? `Aujourd'hui : <b>${esc(niceTimes(c.w))}</b>${zone ? ` · ${zone}` : ''}`
+        : `Aujourd'hui : <b>${c ? esc(ME_OFF[c.o] || c.o) : 'pas de travail'}</b>`}</p>
+      ${next ? `<p class="muted">Prochain travail : ${DOW_FR[nd.getDay()]} ${nd.getDate()} ${MONTHS[nd.getMonth()]} · ${esc(niceTimes(next.c.w))}</p>` : ''}</div>`;
+  $('#meBody').innerHTML = meTab === 'mine' ? meMine() : meTab === 'team' ? meTeam() : meTab === 'zones' ? meZones() : meHoursHtml();
+}
+function meWeekNav() {
+  const a = new Date(meWeek + 'T12:00:00'), b = new Date(addDay(meWeek, 6) + 'T12:00:00');
+  return `<div class="me-weeknav"><button class="icon-btn" data-mw="-7" aria-label="Semaine précédente">‹</button>
+    <span>Semaine du ${a.getDate()}${a.getMonth() !== b.getMonth() ? ' ' + MONTHS[a.getMonth()] : ''} au ${b.getDate()} ${MONTHS[b.getMonth()]}</span>
+    <button class="icon-btn" data-mw="7" aria-label="Semaine suivante">›</button>${meWeek !== mondayOf(data.me.today) ? '<button class="ghost" data-mw="0">Cette semaine</button>' : ''}</div>`;
+}
+const weekDates = () => [...Array(7)].map((_, i) => addDay(meWeek, i));
+function meMine() {
+  let total = 0;
+  const rows = weekDates().map(d => {
+    const c = meCell(d), info = meDay(d), dt = new Date(d + 'T12:00:00');
+    let what;
+    if (c === undefined) what = '<span class="me-np">Pas encore publié</span>';
+    else if (c && c.w) { total += cellHours(c); what = `<span class="me-shift c-${shiftKey(c)}"><b>${esc(niceTimes(c.w))}</b><small>${shiftDur(c.w)}${c.s === 'FOOT' ? ' · ⚽ Foot' : ''}</small></span>`; }
+    else what = `<span class="me-off">${c ? esc(ME_OFF[c.o] || c.o) : 'Pas de travail'}</span>`;
+    const tags = [info && info.holiday ? `🎉 ${esc(info.holiday)}` : '', info && info.match ? `⚽ ${esc(info.match.opponent)}${info.match.time ? ' · ' + esc(info.match.time) : ''}` : '', info && info.open ? '🛍 Dimanche d\'ouverture' : '']
+      .filter(Boolean).map(x => `<span class="tag">${x}</span>`).join('');
+    return `<div class="me-day ${d === data.me.today ? 'today' : ''}"><div class="me-date"><span>${DOW_LONG[dt.getDay()]}</span><b>${dt.getDate()}</b></div>
+      <div class="me-what">${what}${tags ? `<div class="me-tags">${tags}</div>` : ''}</div></div>`;
+  }).join('');
+  return `${meWeekNav()}<div class="card me-week">${rows}</div><p class="me-total"><b>${total}h</b> prévues cette semaine</p>`;
+}
+// L'équipe de la semaine, comme la feuille affichée au bureau.
+function meTeam() {
+  const days = weekDates(), ms = [...new Set(days.map(d => d.slice(0, 7)))].map(ym => data.me.months.find(m => m.ym === ym)).filter(Boolean);
+  if (!ms.length) return `${meWeekNav()}<div class="card hrx-empty"><span>🗓</span><p>Pas encore publié</p><small>L'horaire de cette semaine apparaîtra ici quand il sera publié.</small></div>`;
+  const people = [];
+  for (const m of ms) for (const r of m.rows) if (!people.some(p => p.id === r.id)) people.push({ id: r.id, name: r.name, chef: r.chef });
+  const cellAt = (id, d) => { const m = meMonth(d); const r = m && m.rows.find(x => x.id === id); return m ? (r && r.cells[d]) || null : undefined; };
+  const td = c => c === undefined ? '<td class="np">·</td>' : c && c.w ? `<td><span class="c-${shiftKey(c)}">${esc(c.w.replace('⚽', '').trim())}</span></td>` : `<td class="off">${c ? esc(ME_SHORT[c.o] || c.o) : ''}</td>`;
+  const head = days.map(d => { const dt = new Date(d + 'T12:00:00'); return `<th class="${d === data.me.today ? 'today' : ''}">${DOW_FR[dt.getDay()]}<br><b>${dt.getDate()}</b></th>`; }).join('');
+  const body = people.map(p => `<tr class="${p.id === data.me.id ? 'mine' : ''}"><th>${esc(p.name)}${p.chef ? '<small>Chef terrain</small>' : ''}</th>${days.map(d => td(cellAt(p.id, d))).join('')}</tr>`).join('');
+  const stud = [];
+  for (const m of ms) for (const s of m.students) { const ex = stud.find(x => x.name === s.name); if (ex) Object.assign(ex.cells, s.cells); else stud.push({ name: s.name, cells: { ...s.cells } }); }
+  const sbody = stud.filter(s => days.some(d => s.cells[d] && s.cells[d].w)).map(s => `<tr class="stud"><th>${esc(s.name)}</th>${days.map(d => { const c = s.cells[d]; return c && c.w ? `<td><span class="c-STUDENT">${esc(c.w.replace('⚽', '').trim())}</span></td>` : '<td></td>'; }).join('')}</tr>`).join('');
+  return `${meWeekNav()}<div class="card me-teamcard"><table class="me-team"><thead><tr><th></th>${head}</tr></thead><tbody>${body}${sbody}</tbody></table></div>`;
+}
+// Zones du jour : son parcours heure par heure, puis toute l'équipe.
+function meZones() {
+  const z = data.me.zones;
+  if (!z) return `<div class="card hrx-empty"><span>📍</span><p>Pas de zones pour aujourd'hui</p><small>Elles apparaissent quand l'horaire du mois est publié.</small></div>`;
+  if (z.closed) return `<div class="card hrx-empty"><span>🔒</span><p>Parking fermé aujourd'hui</p></div>`;
+  const p = z.people.find(x => x.id === data.me.id), h = new Date().getHours();
+  const zc = code => code === 'D' ? 'zD' : code === 'T' ? 'zT' : 'z' + String(code).slice(1);
+  const mine = p ? z.slots.map((s, i) => p.cells[i] ? `<li class="${s.start <= h && h < s.end ? 'now' : s.end <= h ? 'past' : ''}"><span class="t">${s.start}h – ${s.end}h</span>
+      <span class="zn ${zc(p.cells[i])}">${esc(zoneName(p.cells[i], z))}</span>${p.pause && p.pause.slot === i ? `<span class="tag">☕ Pause ${esc(p.pause.start)} – ${esc(p.pause.end)}</span>` : ''}</li>` : '').join('') : '';
+  const team = `<table class="me-zt"><thead><tr><th></th>${z.people.map(x => `<th class="${x.id === data.me.id ? 'mine' : ''}">${esc(x.name)}</th>`).join('')}</tr></thead><tbody>`
+    + z.slots.map((s, i) => `<tr class="${s.start <= h && h < s.end ? 'now' : ''}"><th>${s.start}h</th>${z.people.map(x => `<td>${x.cells[i] ? `<span class="${zc(x.cells[i])}">${x.cells[i] === 'D' ? 'Disp.' : x.cells[i] === 'T' ? 'Tout' : 'Z' + String(x.cells[i]).slice(1)}</span>` : ''}${x.pause && x.pause.slot === i ? ' ☕' : ''}</td>`).join('')}</tr>`).join('') + '</tbody></table>';
+  return `${p ? `<div class="card"><h3>Ton parcours aujourd'hui</h3><ol class="me-path">${mine}</ol></div>` : '<div class="card hrx-empty"><span>🙂</span><p>Tu ne travailles pas aujourd\'hui</p></div>'}
+    <div class="card me-teamcard"><h3>Toute l'équipe</h3>${team}</div>`;
+}
+// Compteur d'heures : 40 h par semaine (8 h de moins par jour de RTT) ; congé, maladie et formation comptent 8 h.
+function meHoursHtml() {
+  const me = data.me, ym = me.today.slice(0, 7);
+  const first = mondayOf(ym + '-01'), weeks = [];
+  for (let w = first; w.slice(0, 7) <= ym; w = addDay(w, 7)) weeks.push(w);
+  let sumPlan = 0, sumDone = 0, sumTarget = 0;
+  const rows = weeks.map(w => {
+    let plan = 0, done = 0, rtt = 0, just = 0, missing = false;
+    for (let i = 0; i < 7; i++) {
+      const d = addDay(w, i), c = meCell(d);
+      if (c === undefined) { missing = true; continue; }
+      if (c && c.w) { plan += cellHours(c); if (d < me.today) done += cellHours(c); }
+      if (c && c.o === 'RTT') rtt++;
+      if (c && ['CONGE', 'MALADIE', 'FORMATION'].includes(c.o)) just += 8;
+    }
+    const target = 40 - 8 * rtt, diff = plan + just - target;
+    if (!missing) { sumPlan += plan + just; sumDone += done; sumTarget += target; }
+    const a = new Date(w + 'T12:00:00'), b = new Date(addDay(w, 6) + 'T12:00:00');
+    return `<tr class="${w === mondayOf(me.today) ? 'cur' : ''}"><td>${a.getDate()}/${a.getMonth() + 1} → ${b.getDate()}/${b.getMonth() + 1}</td>
+      <td>${missing ? '<span class="muted">pas publié</span>' : plan + 'h' + (just ? ` <small>+${just}h justifiées</small>` : '')}</td>
+      <td>${target}h${rtt ? ` <small>(${rtt} RTT)</small>` : ''}</td>
+      <td>${missing ? '' : `<span class="me-diff ${diff > 0 ? 'pos' : diff < 0 ? 'neg' : ''}">${diff > 0 ? '+' : ''}${diff}h</span>`}</td></tr>`;
+  }).join('');
+  const bal = me.hours.reduce((m, h) => m + h.minutes * (HOUR_KINDS[h.kind] || [0, 0])[1], 0);
+  const list = me.hours.slice().reverse().slice(0, 12).map(h => { const [l, f] = HOUR_KINDS[h.kind] || [h.kind, 0]; return `<li><span>${fmtDate(h.date)}</span><span>${l} · ${hm(h.minutes)}</span><b class="${f > 0 ? 'pos' : 'neg'}">${f > 0 ? '+' : '−'}${hm(Math.abs(h.minutes * f))}</b></li>`; }).join('');
+  return `<div class="hrx-stats me-kpis"><div><span>Prévu ce mois</span><b>${sumPlan}h</b><small>semaines publiées</small></div>
+      <div><span>Déjà fait</span><b>${sumDone}h</b><small>jusqu'à hier</small></div>
+      <div><span>Objectif</span><b>${sumTarget}h</b><small>40 h / semaine, moins les RTT</small></div>
+      <div class="${bal > 0 ? 'pos' : bal < 0 ? 'neg' : ''}"><span>Heures supp</span><b>${bal ? (bal > 0 ? '+' : '−') + hm(Math.abs(bal)) : '0h'}</b><small>${balanceText(bal)}</small></div></div>
+    <div class="card"><h3>Semaine par semaine · ${MONTHS[Number(ym.slice(5)) - 1]} ${ym.slice(0, 4)}</h3>
+      <table class="list me-hours"><tr><th>Semaine</th><th>Prévu</th><th>Objectif</th><th>Écart</th></tr>${rows}</table>
+      <p class="hint">Les semaines vont du lundi au dimanche. Congé, maladie et formation comptent 8 h ; une récup compte 0 h (elle rattrape des heures déjà faites).</p></div>
+    <div class="card"><h3>Heures supp et heures à faire</h3>${list ? `<ul class="me-hlist">${list}</ul>` : '<p class="muted">Rien pour le moment.</p>'}<p class="hint">1 h supp = 2 h de récup.</p></div>`;
+}
+$('#meTabs').addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (b) { meTab = b.dataset.t; renderMe(); } });
+$('#meBody').addEventListener('click', e => {
+  const b = e.target.closest('[data-mw]'); if (!b) return;
+  meWeek = b.dataset.mw === '0' ? mondayOf(data.me.today) : addDay(meWeek, Number(b.dataset.mw)); renderMe();
+});
+
+// ----- Cloche : notifications (employé : les siennes ; direction : celles de la direction) -----
+let bellList = [];
+async function loadBell() {
+  if (!data) return;
+  const j = await call('/api/notifications', { month }).catch(() => null);
+  if (!j || j.error) return;
+  bellList = j.notifications || []; renderBell();
+}
+function renderBell() {
+  const n = bellList.filter(x => !x.read_at).length;
+  $('#bellCount').hidden = !n; $('#bellCount').textContent = n > 9 ? '9+' : n;
+  if (!$('#bellPanel').hidden) renderBellPanel();
+}
+function renderBellPanel() {
+  $('#bellPanel').innerHTML = '<div class="bell-head">Notifications</div>' + (bellList.length ? bellList.map(x => `<div class="bell-item ${x.read_at ? '' : 'new'}">
+      <b>${esc(x.title)}</b>${x.body ? `<p>${esc(x.body).replace(/\n/g, '<br>')}</p>` : ''}<small>${hrWhen(x.created_at)}</small></div>`).join('')
+    : '<div class="bell-empty">🔔<p>Rien de neuf pour le moment.</p></div>');
+}
+$('#bellBtn').onclick = async e => {
+  e.stopPropagation();
+  const p = $('#bellPanel'); p.hidden = !p.hidden;
+  if (p.hidden) return;
+  renderBellPanel();
+  if (bellList.some(x => !x.read_at)) {
+    await call('/api/notifications/read', { month }).catch(() => null);
+    setTimeout(() => { const now = new Date().toISOString(); bellList.forEach(x => { x.read_at = x.read_at || now; }); renderBell(); }, 2500);
+  }
+};
+document.addEventListener('click', e => { if (!e.target.closest('#bellPanel, #bellBtn')) $('#bellPanel').hidden = true; });
+setInterval(loadBell, 5 * 60e3);
+
+// ----- Publication du mois (Horaire) : l'équipe voit le mois quand il est publié -----
+function renderPubBar() {
+  const p = data.publish, el = $('#pubBar');
+  if (!p || data.account.role === 'viewer') { el.hidden = true; return; }
+  el.hidden = false;
+  const name = `${MONTHS[Number(month.slice(5)) - 1]} ${month.slice(0, 4)}`;
+  if (!p.published) {
+    el.className = 'pub-bar draft';
+    el.innerHTML = `<span class="ic">👁</span><span><b>L'équipe ne voit pas encore ${name}.</b> Publie-le quand il est prêt : chacun le verra dans son espace et sera prévenu.</span><button class="primary" id="pubGo">Publier ${MONTHS[Number(month.slice(5)) - 1]}</button>`;
+  } else if (!p.people.length && !p.students) {
+    el.className = 'pub-bar ok';
+    el.innerHTML = `<span class="ic">✓</span><span><b>Publié</b> le ${hrWhen(p.at)} : l'équipe voit ce mois à jour.</span>`;
+  } else {
+    el.className = 'pub-bar changed';
+    const who = p.people.map(x => `<span title="${esc(x.list.map(c => `${fmtDate(c.date)} : ${c.before} → ${c.after}`).join('\n'))}">${esc(x.name)} (${x.count} jour${x.count > 1 ? 's' : ''})</span>`).join(', ');
+    el.innerHTML = `<span class="ic">✎</span><span><b>Changements pas encore envoyés à l'équipe :</b> ${who || 'lignes étudiants'}.</span><button class="primary" id="pubGo">Envoyer les changements</button>`;
+  }
+}
+$('#pubBar').addEventListener('click', async e => {
+  const b = e.target.closest('#pubGo'); if (!b) return;
+  const name = `${MONTHS[Number(month.slice(5)) - 1]} ${month.slice(0, 4)}`;
+  if (!data.publish.published && !confirm(`Publier ${name} ? Toute l'équipe le verra dans son espace et sera prévenue.`)) return;
+  b.disabled = true;
+  try {
+    const j = await api('/api/publish', {});
+    const r = j.publishResult;
+    toast(r.notifError ? `Publié, mais les notifications n'ont pas pu partir : ${r.notifError}` : r.first ? `${cap(name)} publié : ${r.notified} personne(s) prévenue(s)` : `Changements envoyés à ${r.notified} personne(s)`);
+  } catch {} finally { b.disabled = false; }
+});
+
+// ----- Équipe : accès de chacun à son espace (invitation par lien) -----
+function renderTeamAccess() {
+  const card = $('#teamAccessCard');
+  card.hidden = !(data && data.account && data.account.mode === 'cloud' && data.account.role === 'admin');
+  if (card.hidden) return;
+  if (!access) { $('#teamAccess').innerHTML = '<tr><td class="muted">Chargement…</td></tr>'; return; }
+  const emps = data.config.employees.filter(e => !e.end || e.end >= today());
+  $('#teamAccess').innerHTML = '<tr><th>Personne</th><th>Adresse e-mail</th><th>État</th><th></th></tr>' + emps.map(e => {
+    const m = access.members.find(x => x.role === 'employee' && x.employee_id === e.id);
+    const st = !m ? '<span class="muted">Pas encore invité</span>' : m.last_sign_in ? `<span class="tag positive">✓ Connecté le ${hrWhen(m.last_sign_in)}</span>` : '<span class="tag warn">Invité, pas encore connecté</span>';
+    return `<tr><td><b>${esc(e.name)}</b></td><td>${m ? esc(m.email) : ''}</td><td>${st}</td>
+      <td class="acts">${m ? `<button data-inv="${e.id}" data-email="${esc(m.email)}">Nouveau lien</button><button class="danger" data-rmuser="${m.user_id}">Retirer l'accès</button>` : `<button class="primary" data-inv="${e.id}">Inviter</button>`}</td></tr>`;
+  }).join('');
+}
+$('#teamAccess').addEventListener('click', async e => {
+  const inv = e.target.closest('[data-inv]');
+  if (inv) {
+    const emp = data.config.employees.find(x => x.id === inv.dataset.inv);
+    const email = inv.dataset.email || (prompt(`Adresse e-mail de ${emp.name} (celle qu'il utilisera pour se connecter) :`) || '').trim();
+    if (!email) return;
+    inv.disabled = true; inv.textContent = 'Création du lien…';
+    const j = await call('/api/access/invite', { month, employeeId: emp.id, email }).catch(err => ({ error: err.message }));
+    if (j.error) { inv.disabled = false; inv.textContent = inv.dataset.email ? 'Nouveau lien' : 'Inviter'; return toast(j.error); }
+    data = j; access = j.access; render(); showInvite(j.invite);
+    return;
+  }
+  const rm = e.target.closest('[data-rmuser]');
+  if (rm && confirm("Retirer l'accès ? La personne ne pourra plus ouvrir son espace (son compte n'est pas supprimé).")) accessCall('/api/access/remove', { userId: rm.dataset.rmuser }, 'Accès retiré');
+});
+let inviteMsg = '';
+function showInvite(inv) {
+  const first = inv.name.split(' ')[0];
+  inviteMsg = `Bonjour ${first}, voici ton accès à l'horaire Interparking (Westland). Ouvre ce lien, choisis ton mot de passe, puis ajoute la page à l'écran d'accueil de ton téléphone : ${inv.link}`;
+  $('#invDlgTitle').textContent = `Lien pour ${inv.name}`;
+  $('#invDlgLink').value = inv.link;
+  $('#invDlgEmail').textContent = inv.email;
+  $('#inviteDlg').showModal();
+}
+$('#invDlgWa').onclick = () => window.open('https://wa.me/?text=' + encodeURIComponent(inviteMsg), '_blank', 'noopener');
+$('#invDlgCopy').onclick = async () => { try { await navigator.clipboard.writeText(inviteMsg); toast('Message copié avec le lien'); } catch { $('#invDlgLink').select(); toast('Sélectionne le lien et copie-le'); } };
+$('#invDlgClose').onclick = () => $('#inviteDlg').close();
+
 // ----- Droits, annuler, historique, accès et sauvegardes -----
 let access = null;
 const ROLE_LABEL = { admin: 'Administrateur', editor: 'Éditeur', viewer: 'Lecteur' };
+const ROLE_ALL = { ...ROLE_LABEL, employee: 'Employé' };
 function renderAccount() {
   const acc = data.account, role = acc.role || 'admin';
   document.body.classList.toggle('readonly', role === 'viewer');
@@ -567,10 +816,11 @@ function renderAccount() {
   renderAccess();
 }
 function renderAccess() {
+  renderTeamAccess();
   if (!access) { $('#membersList').innerHTML = '<tr><td class="muted">Chargement…</td></tr>'; $('#backupList').innerHTML = ''; return; }
   const me = data.account.email, admin = data.account.role === 'admin';
   $('#membersList').innerHTML = '<tr><th>Compte</th><th>Rôle</th><th></th></tr>' + access.members.map(m => `<tr><td>${esc(m.email)}${m.email === me ? ' <span class="tag">toi</span>' : ''}</td>
-    <td>${admin && m.email !== me ? `<select data-role="${esc(m.email)}">${Object.entries(ROLE_LABEL).map(([v, l]) => `<option value="${v}" ${v === m.role ? 'selected' : ''}>${l}</option>`).join('')}</select>` : ROLE_LABEL[m.role]}</td>
+    <td>${m.role === 'employee' ? 'Employé' + ((data.config.employees.find(e => e.id === m.employee_id) || {}).name ? ' · ' + esc(data.config.employees.find(e => e.id === m.employee_id).name) : '') : admin && m.email !== me ? `<select data-role="${esc(m.email)}">${Object.entries(ROLE_LABEL).map(([v, l]) => `<option value="${v}" ${v === m.role ? 'selected' : ''}>${l}</option>`).join('')}</select>` : ROLE_ALL[m.role] || m.role}</td>
     <td>${admin && m.email !== me ? `<button class="danger" data-rmuser="${m.user_id}">Retirer</button>` : ''}</td></tr>`).join('');
   $('#backupList').innerHTML = access.backups.length ? '<tr><th>Date</th><th>Type</th><th></th></tr>' + access.backups.map(b => `<tr><td>${hrWhen(b.created_at)}</td>
     <td>${b.kind === 'hebdo' ? 'Automatique (lundi)' : 'Manuelle'}</td><td><button data-restore="${b.id}">Restaurer</button></td></tr>`).join('') : '<tr><td class="muted">Aucune sauvegarde pour le moment.</td></tr>';
@@ -628,6 +878,8 @@ setInterval(async () => {
 // ----- Navigation entre les pages -----
 const PAGES = [...document.querySelectorAll('.page')];
 function go(page) {
+  if (document.body.classList.contains('employee')) page = 'me';
+  else if (page === 'me') page = 'dashboard';
   const el = PAGES.find(p => p.dataset.page === page) || PAGES[0];
   document.body.dataset.page = el.dataset.page;
   PAGES.forEach(p => { p.hidden = p !== el; });
@@ -636,7 +888,7 @@ function go(page) {
   document.querySelectorAll('.nav[data-go]').forEach(b => b.classList.toggle('on', b.dataset.go === el.dataset.page));
   document.body.classList.remove('menu-open');
   try { localStorage.setItem('page', el.dataset.page); } catch {}
-  if (el.dataset.page === 'settings') loadAccess();
+  if (el.dataset.page === 'settings' || el.dataset.page === 'team') loadAccess();
   window.scrollTo(0, 0);
 }
 // Les anciennes fenêtres sont devenues des pages : « ouvrir » = aller à la page.
@@ -2502,22 +2754,28 @@ if (backend && 'serviceWorker' in navigator) navigator.serviceWorker.register('s
   const here = location.pathname;
   // Version web : retour du lien « mot de passe oublié » (#access_token=…&type=recovery, ou #error=…).
   const hash = location.hash.slice(1);
-  if (backend && /type=recovery|error_description=/.test(hash)) {
+  if (backend && /type=(recovery|invite)|error_description=/.test(hash)) {
     history.replaceState(null, '', here);
+    if (/type=invite/.test(hash)) params.set('invite', '1');
     try { await backend.recoverFromLink(hash); params.set('reset', '1'); } catch (e) { params.set('resetError', e.message); }
   }
   const s = await authCall('/api/auth/status');
   if (params.has('reset') && s.loggedIn) {
     showLogin();
     $('#loginForm').hidden = true; $('#resetForm').hidden = false;
+    if (params.has('invite')) {
+      $('#resetForm p.muted').textContent = 'Bienvenue ! Choisis ton mot de passe (6 caractères minimum). Tu te connecteras ensuite avec ton adresse e-mail et ce mot de passe.';
+      $('#rSave').textContent = 'Enregistrer et ouvrir mon espace';
+    }
     $('#rPass').focus();
   } else if (s.mode === 'cloud' && !s.loggedIn) {
     showLogin();
     if (params.has('resetError')) loginMsg(params.get('resetError'));
     history.replaceState(null, '', here);
-  } else api('/api/state').then(restorePage);
+  } else api('/api/state').then(restorePage).then(loadBell);
 })();
 function restorePage() {
+  if (data && data.account.role === 'employee') return go('me');
   let p = 'dashboard';
   try { p = localStorage.getItem('page') || p; } catch {}
   const nav = document.querySelector(`.nav[data-go="${p}"]`);

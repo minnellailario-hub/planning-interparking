@@ -51,6 +51,7 @@
         <span class="side-sub">Westland Shopping · Planning</span>
       </div>
       <nav class="side-nav">
+        <button class="nav me-nav" data-go="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.3-6 8-6s7 2 8 6"/></svg>Mon espace</button>
         <button class="nav" data-go="dashboard"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Tableau de bord</button>
         <button class="nav" data-go="planning"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Horaire</button>
         <button class="nav" id="zonesOpen" data-go="zones"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Zones &amp; dispatch</button>
@@ -98,6 +99,10 @@
           <button id="next" class="icon-btn" aria-label="Mois suivant">›</button>
         </div>
         <button id="undoBtn" class="undo-btn" hidden title="Annuler la dernière modification">↶ Annuler</button>
+        <div class="bell-wrap">
+          <button id="bellBtn" class="bell-btn" aria-label="Notifications"><svg viewBox="0 0 24 24"><path d="M6 10a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 16 6 10z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg><span id="bellCount" class="bell-count" hidden></span></button>
+          <div id="bellPanel" class="bell-panel" hidden></div>
+        </div>
         <div class="actions">
           <button id="generate" class="primary">Générer<span class="long"> le mois</span></button>
           <a id="csv" class="btn">Excel</a>
@@ -149,6 +154,7 @@
           </div>
           <button class="alert-chip" id="alertChip" data-go="dashboard" hidden></button>
         </div>
+        <div id="pubBar" class="pub-bar" hidden></div>
         <div class="tablewrap card flat" id="tableView"><table id="grid"></table></div>
         <div class="dayview" id="dayView" hidden></div>
         <div class="legend" id="legend"></div>
@@ -212,6 +218,20 @@
           <div class="card-head"><h3>Chef terrain &amp; chef de parc</h3><button id="teamChefBtn">Modifier</button></div>
           <div id="teamChefInfo" class="muted"></div>
         </div>
+        <div class="card" id="teamAccessCard" hidden>
+          <div class="card-head"><h3>Espace employé</h3></div>
+          <p class="muted">Chacun peut avoir son espace sur son téléphone : son horaire publié, l'horaire de l'équipe, ses zones du jour et ses heures (jamais la RH). Invite la personne avec son adresse e-mail : l'outil te donne un lien à lui envoyer par WhatsApp ou SMS.</p>
+          <div class="scroll-x"><table class="list" id="teamAccess"></table></div>
+        </div>
+      </section>
+
+      <!-- Espace employé -->
+      <section class="page" data-page="me" data-title="Mon espace" data-sub="Ton horaire, l'équipe, tes zones du jour et tes heures.">
+        <div class="me-hero card" id="meHero"></div>
+        <div class="viewswitch me-tabs" id="meTabs" role="tablist">
+          <button data-t="mine" class="on">Horaire</button><button data-t="team">Équipe</button><button data-t="zones">Aujourd'hui</button><button data-t="hours">Heures</button>
+        </div>
+        <div id="meBody"></div>
       </section>
 
       <!-- RH -->
@@ -539,6 +559,14 @@
   <!-- Fenêtres -->
   <!-- Zones : remarque terrain et imprévu (contenu rempli par app.js) -->
   <dialog id="zSheet" class="zsheet"><div id="zSheetBody"></div></dialog>
+
+  <dialog id="inviteDlg" class="invite-dlg">
+    <h3 id="invDlgTitle"></h3>
+    <p class="muted">Envoie-lui ce lien. En l'ouvrant, la personne choisit son mot de passe et arrive dans son espace. Le lien ne sert qu'une fois et expire vite : s'il ne marche plus, clique sur « Nouveau lien ».</p>
+    <input id="invDlgLink" readonly>
+    <div class="row"><button class="primary" id="invDlgWa">Envoyer par WhatsApp</button><button id="invDlgCopy">Copier le message</button><button class="ghost" id="invDlgClose">Fermer</button></div>
+    <p class="muted">Ensuite, elle se connecte avec <b id="invDlgEmail"></b> et son mot de passe.</p>
+  </dialog>
 
   <dialog id="chefDlg">
     <form method="dialog" class="dlg-head"><h3>Chef terrain</h3><button class="ghost">✕</button></form>
