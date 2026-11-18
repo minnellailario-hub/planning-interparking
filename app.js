@@ -1808,8 +1808,8 @@ const agTitle = (type, fields) => {
 };
 const agWhen = it => it.allDay ? 'Toute la journée' : `${it.start} – ${it.end}`;
 // Lien Outlook (web) qui ouvre un nouveau rendez-vous déjà rempli ; il reste à choisir l'agenda EXPLOITATION et enregistrer.
-// Outlook sur le web est à l'adresse outlook.cloud.microsoft (celle du compte Interparking) ; l'ancienne adresse
-// outlook.office.com reste en lien de secours (elle redemande parfois la connexion).
+// Outlook sur le web est à l'adresse outlook.cloud.microsoft (celle du compte Interparking) ; outlook.office365.com
+// reste en lien de secours.
 function outlookLink(it, host = 'outlook.cloud.microsoft') {
   const p = new URLSearchParams({ subject: it.title, location: it.location || '', body: it.notes || '' });
   if (it.allDay) { p.set('startdt', it.date); p.set('enddt', addDay(it.date, 1)); p.set('allday', 'true'); }
@@ -1833,44 +1833,54 @@ function renderAgenda() {
   if (!d || d.month !== agMonth) { $('#agBox').innerHTML = '<p class="muted pad">Chargement…</p>'; return; }
   const ro = document.body.classList.contains('readonly');
   const typeOf = id => d.types.find(t => t.id === id) || { icon: '•', label: id };
+  // Une ligne : type, titre, quand, statut, bouton Outlook ; le reste dans le menu « ⋯ ».
   const row = it => `<li class="ag-item ${it.sentAt ? 'sent' : ''}">
-      <span class="ag-ico">${typeOf(it.type).icon}</span>
-      <div class="ag-main"><b>${esc(it.title)}</b><span class="muted small">${fmtDate(it.date)} · ${agWhen(it)}${it.location ? ' · ' + esc(it.location) : ''}${it.notes ? ' · ' + esc(it.notes.split('\n')[0]).slice(0, 80) : ''}</span></div>
-      <span class="chip ${it.sentAt ? 'z-D' : 'empty'}">${it.sentAt ? '✓ dans Outlook' : 'À ajouter'}</span>
-      <span class="ag-actions">
-        <button class="primary" data-ag-out="${it.id}">📅 Ajouter à Outlook</button>
-        <button class="ghost" data-ag-ics="${it.id}" title="Fichier pour Outlook sur PC ou téléphone">.ics</button>
-        <button class="link" data-ag-out2="${it.id}" title="Si le bouton Outlook ne marche pas">autre lien</button>
-        ${ro ? '' : `<button class="ghost" data-ag-edit="${it.id}">Modifier</button><button class="ghost danger" data-ag-del="${it.id}" title="Supprimer">✕</button>`}
-        ${it.sentAt && !ro ? `<button class="link" data-ag-unsent="${it.id}" title="Remettre « À ajouter »">annuler ✓</button>` : ''}
-      </span></li>`;
+      <span class="ag-ico t-${it.type}" title="${esc(typeOf(it.type).label)}">${typeOf(it.type).icon}</span>
+      <div class="ag-main">
+        <b>${esc(it.title)}</b>
+        <span class="ag-meta"><span>${agWhen(it)}</span>${it.location ? `<span>${esc(it.location)}</span>` : ''}${it.notes ? `<span>${esc(it.notes.split('\n')[0]).slice(0, 70)}</span>` : ''}</span>
+      </div>
+      <span class="ag-status ${it.sentAt ? 'ok' : ''}">${it.sentAt ? '✓ Dans Outlook' : 'À ajouter'}</span>
+      <button class="${it.sentAt ? 'ghost' : 'primary'} ag-out" data-ag-out="${it.id}">📅 ${it.sentAt ? 'Rouvrir' : 'Ajouter à Outlook'}</button>
+      <details class="ag-more"><summary title="Plus d'actions">⋯</summary><div class="ag-menu">
+        <button data-ag-ics="${it.id}">⬇️ Fichier .ics</button>
+        <button data-ag-out2="${it.id}">🔗 Autre lien Outlook</button>
+        ${ro ? '' : `<button data-ag-edit="${it.id}">✏️ Modifier</button>`}
+        ${it.sentAt && !ro ? `<button data-ag-unsent="${it.id}">↩️ Remettre « À ajouter »</button>` : ''}
+        ${ro ? '' : `<button class="danger" data-ag-del="${it.id}">🗑️ Supprimer</button>`}
+      </div></details></li>`;
   const todo = d.upcoming.filter(it => !it.sentAt);
-  let h = '';
-  if (agForm) h += agFormHtml();
-  h += `<div class="card"><div class="card-head"><h3>À mettre dans Outlook</h3><span class="chip ${todo.length ? 'empty' : 'z-D'}">${todo.length ? `${todo.length} à ajouter` : 'Tout est ajouté ✓'}</span></div>
-    ${todo.length ? `<ul class="ag-list">${todo.map(row).join('')}</ul>` : '<p class="muted">Rien en attente pour les prochains jours.</p>'}</div>`;
+  const dayHead = date => { const dd = new Date(date + 'T12:00:00'); return `${date === d.today ? "Aujourd'hui · " : ''}${DAY_NAMES[dd.getDay()]} ${dd.getDate()} ${MONTHS[dd.getMonth()].toLowerCase()}`; };
+  let h = agForm ? agFormHtml() : '';
+  if (todo.length) h += `<div class="card ag-todo"><div class="card-head"><h3>À mettre dans Outlook</h3><span class="chip empty">${todo.length} en attente</span></div>
+    <ul class="ag-list">${todo.map(it => row(it).replace('<div class="ag-main">', `<div class="ag-main"><small class="ag-date">${dayHead(it.date)}</small>`)).join('')}</ul></div>`;
   const byDay = {};
   for (const it of d.items) (byDay[it.date] = byDay[it.date] || []).push(it);
-  h += `<div class="card"><div class="card-head"><h3>Tout le mois</h3><span class="chip">${d.items.length} élément${d.items.length > 1 ? 's' : ''}</span></div>
-    ${d.items.length ? Object.entries(byDay).map(([date, its]) => { const dd = new Date(date + 'T12:00:00');
-      return `<h4 class="ag-day ${date === d.today ? 'today' : ''}">${DAY_NAMES[dd.getDay()]} ${dd.getDate()} ${MONTHS[dd.getMonth()].toLowerCase()}</h4><ul class="ag-list">${its.map(row).join('')}</ul>`; }).join('')
-      : `<p class="muted">Rien ce mois-ci.${ro ? '' : ' Clique sur « + Nouvel élément ».'}</p>`}</div>`;
+  h += `<div class="card"><div class="card-head"><h3>${esc($('#agTitle').textContent)}</h3><span class="chip">${d.items.length} élément${d.items.length > 1 ? 's' : ''}</span></div>
+    ${d.items.length ? Object.entries(byDay).map(([date, its]) => `<div class="ag-day ${date === d.today ? 'today' : ''}">${dayHead(date)}</div><ul class="ag-list">${its.map(row).join('')}</ul>`).join('')
+      : `<div class="ag-empty"><span>📅</span><p>Rien dans l'agenda ce mois-ci.</p>${ro ? '' : '<button class="primary" data-ag-new="1">+ Nouvel élément</button>'}</div>`}</div>`;
   $('#agBox').innerHTML = h;
 }
 function agFormHtml() {
   const f = agForm, d = agData, t = d.types.find(x => x.id === f.type);
-  return `<div class="card ag-form"><div class="card-head"><h3>${f.id ? 'Modifier' : 'Nouvel élément'}</h3></div>
-    <div class="zs-motifs ag-types">${d.types.map(x => `<button type="button" data-ag-type="${x.id}" class="${x.id === f.type ? 'on' : ''}">${x.icon} ${x.label}</button>`).join('')}</div>
-    <div class="ag-grid">
-      <label class="zs-field">Date <input type="date" data-ag="date" value="${f.date}"></label>
-      <label class="check ag-allday"><input type="checkbox" data-ag="allDay" ${f.allDay ? 'checked' : ''}> Toute la journée</label>
-      ${f.allDay ? '' : `<label class="zs-field">Début <input type="time" data-ag="start" value="${f.start}"></label><label class="zs-field">Fin <input type="time" data-ag="end" value="${f.end}"></label>`}
+  const field = (label, input, cls = '') => `<label class="ag-f ${cls}"><span>${label}</span>${input}</label>`;
+  return `<div class="card ag-form">
+    <div class="card-head"><h3>${f.id ? "Modifier l'élément" : 'Nouvel élément'}</h3><button class="ghost ag-x" id="agCancel" title="Fermer">✕</button></div>
+    <div class="log-types ag-types">${d.types.map(x => `<button type="button" data-ag-type="${x.id}" class="${x.id === f.type ? 'on' : ''}"><span>${x.icon}</span>${x.label}</button>`).join('')}</div>
+    <div class="ag-fields">
+      ${field('Date', `<input type="date" data-ag="date" value="${f.date}">`)}
+      <div class="ag-f"><span>Horaire</span><div class="viewswitch ag-when">
+        <button type="button" data-ag-allday="1" class="${f.allDay ? 'on' : ''}">Toute la journée</button>
+        <button type="button" data-ag-allday="0" class="${f.allDay ? '' : 'on'}">Avec heures</button></div></div>
+      ${f.allDay ? '' : field('De', `<input type="time" data-ag="start" value="${f.start}">`) + field('À', `<input type="time" data-ag="end" value="${f.end}">`)}
+      ${t.fields.map(([k, l, ph]) => field(esc(l), `<input data-ag-f="${k}" value="${esc(f.fields[k] || '')}" placeholder="${esc(ph)}" maxlength="120">`, t.fields.length === 1 ? 'ag-wide' : '')).join('')}
+      ${field('Lieu', `<input data-ag="location" value="${esc(f.location)}" maxlength="120">`, 'ag-wide')}
+      ${field('Détails <i>(facultatif)</i>', `<textarea data-ag="notes" rows="3" placeholder="Ce qui ira dans la description du rendez-vous">${esc(f.notes)}</textarea>`, 'ag-full')}
     </div>
-    <div class="ag-grid">${t.fields.map(([k, l, ph]) => `<label class="zs-field">${esc(l)} <input data-ag-f="${k}" value="${esc(f.fields[k] || '')}" placeholder="${esc(ph)}" maxlength="120"></label>`).join('')}
-      <label class="zs-field">Lieu <input data-ag="location" value="${esc(f.location)}" maxlength="120"></label></div>
-    <label class="zs-field">Détails (facultatif) <textarea data-ag="notes" rows="3" placeholder="Ce qui ira dans la description du rendez-vous">${esc(f.notes)}</textarea></label>
-    <p class="ag-preview">Titre dans l'agenda : <b id="agPreview">${esc(agTitle(f.type, f.fields)) || '—'}</b></p>
-    <div class="row"><button class="primary" id="agSave">Enregistrer</button><button class="ghost" id="agCancel">Annuler</button></div></div>`;
+    <div class="ag-foot">
+      <div class="ag-preview"><span>Titre dans Outlook</span><b id="agPreview">${esc(agTitle(f.type, f.fields)) || '—'}</b></div>
+      <div class="ag-btns"><button class="ghost" id="agCancel2">Annuler</button><button class="primary" id="agSave">${f.id ? 'Enregistrer' : 'Ajouter'}</button></div>
+    </div></div>`;
 }
 function openAgForm(it) {
   const type = it ? it.type : 'planon';
@@ -1889,8 +1899,11 @@ $('#agBox').addEventListener('change', e => { if (agForm && e.target.dataset.ag 
 $('#agBox').addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b) return;
   const find = id => [...agData.items, ...agData.upcoming].find(x => x.id === id);
+  b.closest('details.ag-more')?.removeAttribute('open');
   if (b.dataset.agType) { agForm.type = b.dataset.agType; return renderAgenda(); }
-  if (b.id === 'agCancel') { agForm = null; return renderAgenda(); }
+  if (b.dataset.agAllday) { agForm.allDay = b.dataset.agAllday === '1'; return renderAgenda(); }
+  if (b.dataset.agNew) return openAgForm(null);
+  if (b.id === 'agCancel' || b.id === 'agCancel2') { agForm = null; return renderAgenda(); }
   if (b.id === 'agSave') {
     const { id, type, date, allDay, start, end, fields, location, notes } = agForm;
     const j = await agApi('/api/agenda/save', { item: { id, type, date, allDay, start, end, fields, location, notes } }).catch(() => null);
