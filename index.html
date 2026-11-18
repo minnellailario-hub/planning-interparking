@@ -53,6 +53,7 @@
         <button class="nav" id="zonesOpen" data-go="zones"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Zones &amp; dispatch</button>
         <button class="nav" id="fixedOpen" data-go="fixed"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Horaire fixe</button>
         <button class="nav" id="logOpen" data-go="log"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h7M9 16h7"/></svg>Reporting</button>
+        <button class="nav" id="agOpen" data-go="agenda"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4M8 14h3"/></svg>Agenda</button>
         <div class="nav-label">Absences &amp; demandes</div>
         <button class="nav" id="sickOpen" data-go="sick"><svg viewBox="0 0 24 24"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"/></svg>Maladie</button>
         <button class="nav" id="formOpen" data-go="formation"><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/></svg>Formation</button>
@@ -392,6 +393,19 @@
       </section>
 
       <!-- Reporting -->
+      <!-- Agenda : éléments pour l'agenda partagé Outlook des contrôleurs -->
+      <section class="page" data-page="agenda" data-title="Agenda" data-sub="Tickets PLANON, matériel, livraisons, événements, foot, tâches : le titre se fait tout seul, puis « Ajouter à Outlook » ouvre le rendez-vous déjà rempli pour l'agenda partagé EXPLOITATION.">
+        <div class="planning-bar">
+          <div class="monthnav">
+            <button id="agPrev" class="icon-btn" aria-label="Mois précédent">‹</button>
+            <h2 id="agTitle"></h2>
+            <button id="agNext" class="icon-btn" aria-label="Mois suivant">›</button>
+          </div>
+          <button id="agNew" class="primary edit-only">+ Nouvel élément</button>
+        </div>
+        <div id="agBox"></div>
+      </section>
+
       <section class="page" data-page="log" data-title="Reporting" data-sub="Les événements de la journée, notés au fur et à mesure. Modifiables le jour même ; le soir, envoie le rapport PDF au chef de parc.">
         <div class="planning-bar log-bar">
           <div class="monthnav">

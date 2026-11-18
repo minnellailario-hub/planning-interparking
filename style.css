@@ -638,3 +638,21 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 
 /* Chef de parc : CP du lundi au vendredi */
 .c-CP { background: #e7ecf3; color: #344054; font-weight: 700; }
+
+/* Agenda */
+body.readonly .edit-only { display: none !important; }
+.ag-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ag-item { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; }
+.ag-item.sent { opacity: .75; }
+.ag-ico { font-size: 20px; }
+.ag-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.ag-main b { overflow-wrap: anywhere; }
+.ag-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ag-actions .link { border: 0; background: none; padding: 0; color: var(--muted, #667085); text-decoration: underline; font-size: 12px; }
+.ag-day { margin: 14px 0 6px; font-size: 14px; }
+.ag-day.today { color: var(--accent); }
+.ag-types { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.ag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0 12px; align-items: end; }
+.ag-allday { display: inline-flex; align-items: center; gap: 6px; margin: 10px 0; }
+.ag-preview { background: var(--accent-soft); border-radius: 10px; padding: 8px 12px; }
+@media (max-width: 700px) { .ag-actions { width: 100%; } .ag-actions .primary { flex: 1; } }

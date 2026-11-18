@@ -1788,6 +1788,134 @@ $('#empDelete').onclick = () => {
     empAction({ action: 'delete' }, 'Employé supprimé');
 };
 
+// ----- Agenda : éléments pour l'agenda partagé Outlook (titre composé automatiquement, bouton « Ajouter à Outlook ») -----
+let agMonth = localDay().slice(0, 7), agData = null, agForm = null; // agForm : élément en cours (id = null si nouveau)
+async function loadAgenda() {
+  const j = await call('/api/agenda', null, { month: agMonth });
+  if (j.error) { $('#agBox').innerHTML = `<p class="muted pad">${esc(j.error)}</p>`; return; }
+  agData = j.agenda; renderAgenda();
+}
+async function agApi(path, body) {
+  const j = await call(path, { month: agMonth, ...body });
+  if (j.needLogin) { showLogin(); throw new Error(j.error); }
+  if (j.error) { toast(j.error); throw new Error(j.error); }
+  agData = j.agenda; return j;
+}
+const agTitle = (type, fields) => {
+  const T = { planon: f => ['PLANON ' + (f.numero || ''), f.equipement, '2411 ' + agData.place], materiel: f => ['MATERIEL', 'FOURNISSEUR', '2411', f.detail],
+    livraison: f => ['LIVRAISON', '2411', f.detail], evenement: f => ['EVENEMENT', '2411', f.detail], foot: f => ['FOOT', 'RSCA', f.detail], tache: f => [f.detail] }[type];
+  return T ? T(fields || {}).map(x => String(x || '').trim()).filter(Boolean).join(' - ').toUpperCase() : '';
+};
+const agWhen = it => it.allDay ? 'Toute la journée' : `${it.start} – ${it.end}`;
+// Lien Outlook (web) qui ouvre un nouveau rendez-vous déjà rempli ; il reste à choisir l'agenda EXPLOITATION et enregistrer.
+function outlookLink(it) {
+  const p = new URLSearchParams({ subject: it.title, location: it.location || '', body: it.notes || '' });
+  if (it.allDay) { p.set('startdt', it.date); p.set('enddt', addDay(it.date, 1)); p.set('allday', 'true'); }
+  else { p.set('startdt', new Date(`${it.date}T${it.start}:00`).toISOString()); p.set('enddt', new Date(`${it.date}T${it.end}:00`).toISOString()); p.set('allday', 'false'); }
+  return 'https://outlook.office.com/calendar/deeplink/compose?' + p.toString();
+}
+// Fichier .ics (Outlook sur PC, iPhone…) : même rendez-vous, à ouvrir puis enregistrer dans l'agenda partagé.
+function icsFile(it) {
+  const z = d => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const txt = s => String(s || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/[,;]/g, m => '\\' + m);
+  const when = it.allDay ? [`DTSTART;VALUE=DATE:${it.date.replace(/-/g, '')}`, `DTEND;VALUE=DATE:${addDay(it.date, 1).replace(/-/g, '')}`]
+    : [`DTSTART:${z(new Date(`${it.date}T${it.start}:00`))}`, `DTEND:${z(new Date(`${it.date}T${it.end}:00`))}`];
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Planning Interparking//FR', 'BEGIN:VEVENT', `UID:${it.id}@planning-interparking`,
+    `DTSTAMP:${z(new Date())}`, ...when, `SUMMARY:${txt(it.title)}`, `LOCATION:${txt(it.location)}`, `DESCRIPTION:${txt(it.notes)}`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  return new File([ics], `${it.title.slice(0, 40).replace(/[^\w-]+/g, '_')}.ics`, { type: 'text/calendar' });
+}
+function renderAgenda() {
+  const [y, m] = agMonth.split('-').map(Number);
+  $('#agTitle').textContent = `${MONTHS[m - 1]} ${y}`;
+  const d = agData;
+  if (!d || d.month !== agMonth) { $('#agBox').innerHTML = '<p class="muted pad">Chargement…</p>'; return; }
+  const ro = document.body.classList.contains('readonly');
+  const typeOf = id => d.types.find(t => t.id === id) || { icon: '•', label: id };
+  const row = it => `<li class="ag-item ${it.sentAt ? 'sent' : ''}">
+      <span class="ag-ico">${typeOf(it.type).icon}</span>
+      <div class="ag-main"><b>${esc(it.title)}</b><span class="muted small">${fmtDate(it.date)} · ${agWhen(it)}${it.location ? ' · ' + esc(it.location) : ''}${it.notes ? ' · ' + esc(it.notes.split('\n')[0]).slice(0, 80) : ''}</span></div>
+      <span class="chip ${it.sentAt ? 'z-D' : 'empty'}">${it.sentAt ? '✓ dans Outlook' : 'À ajouter'}</span>
+      <span class="ag-actions">
+        <button class="primary" data-ag-out="${it.id}">📅 Ajouter à Outlook</button>
+        <button class="ghost" data-ag-ics="${it.id}" title="Fichier pour Outlook sur PC ou téléphone">.ics</button>
+        ${ro ? '' : `<button class="ghost" data-ag-edit="${it.id}">Modifier</button><button class="ghost danger" data-ag-del="${it.id}" title="Supprimer">✕</button>`}
+        ${it.sentAt && !ro ? `<button class="link" data-ag-unsent="${it.id}" title="Remettre « À ajouter »">annuler ✓</button>` : ''}
+      </span></li>`;
+  const todo = d.upcoming.filter(it => !it.sentAt);
+  let h = '';
+  if (agForm) h += agFormHtml();
+  h += `<div class="card"><div class="card-head"><h3>À mettre dans Outlook</h3><span class="chip ${todo.length ? 'empty' : 'z-D'}">${todo.length ? `${todo.length} à ajouter` : 'Tout est ajouté ✓'}</span></div>
+    ${todo.length ? `<ul class="ag-list">${todo.map(row).join('')}</ul>` : '<p class="muted">Rien en attente pour les prochains jours.</p>'}</div>`;
+  const byDay = {};
+  for (const it of d.items) (byDay[it.date] = byDay[it.date] || []).push(it);
+  h += `<div class="card"><div class="card-head"><h3>Tout le mois</h3><span class="chip">${d.items.length} élément${d.items.length > 1 ? 's' : ''}</span></div>
+    ${d.items.length ? Object.entries(byDay).map(([date, its]) => { const dd = new Date(date + 'T12:00:00');
+      return `<h4 class="ag-day ${date === d.today ? 'today' : ''}">${DAY_NAMES[dd.getDay()]} ${dd.getDate()} ${MONTHS[dd.getMonth()].toLowerCase()}</h4><ul class="ag-list">${its.map(row).join('')}</ul>`; }).join('')
+      : `<p class="muted">Rien ce mois-ci.${ro ? '' : ' Clique sur « + Nouvel élément ».'}</p>`}</div>`;
+  $('#agBox').innerHTML = h;
+}
+function agFormHtml() {
+  const f = agForm, d = agData, t = d.types.find(x => x.id === f.type);
+  return `<div class="card ag-form"><div class="card-head"><h3>${f.id ? 'Modifier' : 'Nouvel élément'}</h3></div>
+    <div class="zs-motifs ag-types">${d.types.map(x => `<button type="button" data-ag-type="${x.id}" class="${x.id === f.type ? 'on' : ''}">${x.icon} ${x.label}</button>`).join('')}</div>
+    <div class="ag-grid">
+      <label class="zs-field">Date <input type="date" data-ag="date" value="${f.date}"></label>
+      <label class="check ag-allday"><input type="checkbox" data-ag="allDay" ${f.allDay ? 'checked' : ''}> Toute la journée</label>
+      ${f.allDay ? '' : `<label class="zs-field">Début <input type="time" data-ag="start" value="${f.start}"></label><label class="zs-field">Fin <input type="time" data-ag="end" value="${f.end}"></label>`}
+    </div>
+    <div class="ag-grid">${t.fields.map(([k, l, ph]) => `<label class="zs-field">${esc(l)} <input data-ag-f="${k}" value="${esc(f.fields[k] || '')}" placeholder="${esc(ph)}" maxlength="120"></label>`).join('')}
+      <label class="zs-field">Lieu <input data-ag="location" value="${esc(f.location)}" maxlength="120"></label></div>
+    <label class="zs-field">Détails (facultatif) <textarea data-ag="notes" rows="3" placeholder="Ce qui ira dans la description du rendez-vous">${esc(f.notes)}</textarea></label>
+    <p class="ag-preview">Titre dans l'agenda : <b id="agPreview">${esc(agTitle(f.type, f.fields)) || '—'}</b></p>
+    <div class="row"><button class="primary" id="agSave">Enregistrer</button><button class="ghost" id="agCancel">Annuler</button></div></div>`;
+}
+function openAgForm(it) {
+  const type = it ? it.type : 'planon';
+  agForm = it ? { id: it.id, type, date: it.date, allDay: it.allDay, start: it.start || '09:00', end: it.end || '10:00', fields: { ...it.fields }, location: it.location || '', notes: it.notes || '' }
+    : { id: null, type, date: agMonth === localDay().slice(0, 7) ? localDay() : agMonth + '-01', allDay: true, start: '09:00', end: '10:00', fields: {}, location: agData.place, notes: '' };
+  renderAgenda(); $('#agBox').scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+$('#agBox').addEventListener('input', e => {
+  const f = agForm; if (!f) return;
+  const k = e.target.dataset.ag, kf = e.target.dataset.agF;
+  if (kf) f.fields[kf] = e.target.value;
+  else if (k && k !== 'allDay') f[k] = e.target.value;
+  const p = $('#agPreview'); if (p) p.textContent = agTitle(f.type, f.fields) || '—';
+});
+$('#agBox').addEventListener('change', e => { if (agForm && e.target.dataset.ag === 'allDay') { agForm.allDay = e.target.checked; renderAgenda(); } });
+$('#agBox').addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const find = id => [...agData.items, ...agData.upcoming].find(x => x.id === id);
+  if (b.dataset.agType) { agForm.type = b.dataset.agType; return renderAgenda(); }
+  if (b.id === 'agCancel') { agForm = null; return renderAgenda(); }
+  if (b.id === 'agSave') {
+    const { id, type, date, allDay, start, end, fields, location, notes } = agForm;
+    const j = await agApi('/api/agenda/save', { item: { id, type, date, allDay, start, end, fields, location, notes } }).catch(() => null);
+    if (j) { agForm = null; renderAgenda(); toast(id ? 'Modifié' : 'Ajouté : clique sur « Ajouter à Outlook »'); }
+    return;
+  }
+  if (b.dataset.agEdit) return openAgForm(find(b.dataset.agEdit));
+  if (b.dataset.agDel) {
+    const it = find(b.dataset.agDel);
+    if (!confirm(`Supprimer « ${it.title} » de l'outil ?${it.sentAt ? " (Il reste dans l'agenda Outlook : supprime-le aussi là-bas.)" : ''}`)) return;
+    await agApi('/api/agenda/delete', { id: it.id }).catch(() => null); return renderAgenda();
+  }
+  if (b.dataset.agOut) {
+    const it = find(b.dataset.agOut);
+    window.open(outlookLink(it), '_blank');
+    if (!it.sentAt && !document.body.classList.contains('readonly')) { await agApi('/api/agenda/sent', { id: it.id }).catch(() => null); renderAgenda(); }
+    toast("Outlook s'ouvre : choisis l'agenda EXPLOITATION puis « Enregistrer »");
+    return;
+  }
+  if (b.dataset.agIcs) { saveFile(icsFile(find(b.dataset.agIcs))); return; }
+  if (b.dataset.agUnsent) { await agApi('/api/agenda/sent', { id: b.dataset.agUnsent, undo: true }).catch(() => null); return renderAgenda(); }
+});
+function agGo(m) { agMonth = m; agData = null; agForm = null; renderAgenda(); loadAgenda(); }
+$('#agOpen').onclick = () => { go('agenda'); renderAgenda(); loadAgenda(); };
+$('#agPrev').onclick = () => agGo(addMonth(agMonth, -1));
+$('#agNext').onclick = () => agGo(addMonth(agMonth, 1));
+$('#agNew').onclick = () => { if (agData) openAgForm(null); };
+
 // ----- Factures (administrateurs) : stockage des factures envoyées chaque mois, par site et par magasin -----
 let invMonth = addMonth(localDay().slice(0, 7), -1), invData = null, invMemoOpen = null;
 async function loadInvoices() {
