@@ -45,12 +45,21 @@ const shiftCls = (c, isChef) => c.kind === 'off' ? c.code : isChef ? 'CHEF' : c.
 const shiftDur = label => { const m = String(label || '').match(/(\d{1,2})\s*-\s*(\d{1,2})/); if (!m) return ''; const h = ((Number(m[2]) || 24) - Number(m[1]) + 24) % 24; return h ? h + 'h' : ''; };
 // Initiales pour l'avatar (nouveau thème).
 const initials = name => String(name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
-function cellHtml(c, isChef) {
+// « 8-16 » → « 08:00 – 16:00 » (vue semaine).
+const fullTimes = label => innerWidth < 700 ? String(label || '') : String(label || '').replace(/(\d{1,2})\s*-\s*(\d{1,2})/, (_, a, b) => `${a.padStart(2, '0')}:00 – ${(b === '0' || b === '00' ? '00' : b).padStart(2, '0')}:00`);
+function cellHtml(c, isChef, wide = false) {
   if (!c) return '';
-  if (c.kind === 'off') return `<span class="c-${c.code}">${SHORT[c.code] || c.code}</span>`;
+  if (c.kind === 'off') return `<span class="c-${c.code}">${wide ? OFF[c.code] || c.code : SHORT[c.code] || c.code}</span>`;
   const dur = shiftDur(c.label);
-  return `<span class="c-${shiftCls(c, isChef)}">${esc(c.label)}${dur ? `<small class="dur">${dur}</small>` : ''}</span>`;
+  // Vue semaine : le ⚽ passe sous les heures (« 8h · Foot ») pour que les heures restent entières.
+  const foot = wide && c.shift === 'FOOT';
+  const lbl = foot ? c.label.replace('⚽', '').trim() : c.label;
+  return `<span class="c-${shiftCls(c, isChef)}"><b class="t">${esc(wide ? fullTimes(lbl) : lbl)}</b>${dur ? `<small class="dur">${dur}${foot ? ' · ⚽ Foot' : ''}</small>` : ''}</span>`;
 }
+// Heures prévues sur des jours donnés (vue semaine : la semaine affichée).
+const hoursOn = (r, dates) => r.isParkChief ? 0 : dates.reduce((n, d) => { const c = r.cells[d]; return n + (c && c.kind === 'work' ? parseInt(shiftDur(c.label)) || 0 : 0); }, 0);
+// Couleur douce de l'avatar, toujours la même pour une personne.
+const avColor = id => 'av' + ([...String(id)].reduce((a, ch) => a + ch.charCodeAt(0), 0) % 6);
 // Heures prévues dans le mois pour une ligne (nouveau thème, sous le nom).
 function monthHours(r) {
   if (r.isParkChief) return 0;
@@ -67,13 +76,25 @@ function render() {
   $('#syncBar').textContent = data.syncError || '';
 
   // Semaines complètes (lundi au dimanche) : les jours d'un autre mois sont grisés.
-  const gd = v.allDays || v.days;
+  // Vue « Semaine » : seulement les 7 jours de la semaine choisie, en grand.
+  const all = v.allDays || v.days;
+  const wide = view === 'week';
+  if (wide && !all.some(d => d.date === wkStart)) {
+    const today = localDay(), mon = all.find(d => d.dow === 1 && d.date <= today && addDay(d.date, 6) >= today);
+    wkStart = (mon || all.find(d => d.dow === 1 && !d.outside) || all[0]).date;
+  }
+  const gd = wide ? all.filter(d => d.date >= wkStart && d.date <= addDay(wkStart, 6)) : all;
+  $('#grid').classList.toggle('week', wide);
+  if (wide) {
+    const a = new Date(wkStart + 'T12:00:00'), b = new Date(addDay(wkStart, 6) + 'T12:00:00');
+    $('#weekTitle').textContent = `Semaine du ${a.getDate()}${a.getMonth() !== b.getMonth() ? ' ' + MONTHS[a.getMonth()].toLowerCase() : ''} au ${b.getDate()} ${MONTHS[b.getMonth()].toLowerCase()}`;
+  }
   const colCls = d => [d.dow === 1 ? 'monday' : '', d.closed ? 'closed' : '', d.dow === 6 ? 'sat' : '', d.outside ? 'outside' : ''].join(' ');
   let h = '<thead><tr><th class="name">Employé</th>';
   for (const d of gd) {
     const title = [d.holiday ? `Férié : ${d.holiday}${d.closed ? '' : ' (rouvert)'}` : d.closed ? 'Fermé' : '', d.weGroup.length ? 'Week-end : ' + d.weGroup.join(', ') : '',
       d.match ? `Anderlecht – ${d.match.opponent} (${d.match.competition}) ${d.match.time}${d.match.confirmed ? '' : ' – heure à confirmer'}` : ''].filter(Boolean).join('\n');
-    h += `<th class="${colCls(d)}" data-date="${d.date}" title="${esc(title)}"><span class="d">${d.dowLabel}</span><br>${d.day}`;
+    h += `<th class="${colCls(d)} ${d.date === localDay() ? 'today' : ''}" data-date="${d.date}" title="${esc(title)}"><span class="d">${d.dowLabel}</span>${wide ? ' ' : '<br>'}<span class="n">${d.day}</span>`;
     if (d.openSunday) h += `<span class="o">Ouvert</span>`;
     if (d.holiday) h += `<span class="f">Férié</span>`;
     if (d.match) h += `<span class="m ${d.match.confirmed ? '' : 'tbc'}">⚽ ${d.match.time}</span>`;
@@ -82,10 +103,10 @@ function render() {
   h += '</tr></thead><tbody>';
   const firstEmp = v.rows.findIndex(r => !r.isChef && !r.isParkChief);
   v.rows.forEach((r, k) => {
-    h += `<tr class="${r.isChef || r.isParkChief ? 'chef' : k === firstEmp && k > 0 ? 'sep' : ''}"><td class="name"><div class="namebox"><i class="av">${initials(r.name)}</i><span>${esc(r.name)}${r.note ? `<small>${esc(r.note)}</small>` : ''}${monthHours(r) ? `<small class="hrs">${monthHours(r)}h ce mois</small>` : ''}</span>${r.isChef || r.isParkChief ? `<button class="edit-chef ghost" title="Modifier le chef terrain et le chef de parc">✎</button>` : `<button class="edit-emp ghost" data-id="${r.id}" title="Modifier ou supprimer ${esc(r.name)}">✎</button>`}</div></td>`;
+    h += `<tr class="${r.isChef || r.isParkChief ? 'chef' : k === firstEmp && k > 0 ? 'sep' : ''}"><td class="name"><div class="namebox"><i class="av ${avColor(r.id)}">${initials(r.name)}</i><span>${esc(r.name)}${r.note ? `<small>${esc(r.note)}</small>` : ''}${(wide ? hoursOn(r, gd.map(d => d.date)) : monthHours(r)) ? `<small class="hrs">${wide ? hoursOn(r, gd.map(d => d.date)) + 'h cette semaine' : monthHours(r) + 'h ce mois'}</small>` : ''}</span>${r.isChef || r.isParkChief ? `<button class="edit-chef ghost" title="Modifier le chef terrain et le chef de parc">✎</button>` : `<button class="edit-emp ghost" data-id="${r.id}" title="Modifier ou supprimer ${esc(r.name)}">✎</button>`}</div></td>`;
     for (const d of gd) {
       const c = r.cells[d.date];
-      h += `<td class="cell ${colCls(d)} ${c && c.locked ? 'lock' : ''}" data-emp="${r.id}" data-date="${d.date}">${cellHtml(c, r.isChef)}</td>`;
+      h += `<td class="cell ${colCls(d)} ${c && c.locked ? 'lock' : ''}" data-emp="${r.id}" data-date="${d.date}">${cellHtml(c, r.isChef, wide)}</td>`;
     }
     h += '</tr>';
   });
@@ -95,7 +116,7 @@ function render() {
     h += `<tr class="student ${k === 0 ? 'sep' : ''}"><td class="name">${esc(r.name)}${k === 0 ? '<small>Étudiants</small>' : ''}</td>`;
     for (const d of gd) {
       const c = r.cells[d.date];
-      const inner = !c ? '' : c.kind === 'off' ? '<span class="c-NONE">—</span>' : `<span class="c-STUDENT ${c.auto ? 'auto' : ''}">${esc(c.label)}</span>`;
+      const inner = !c ? '' : c.kind === 'off' ? '<span class="c-NONE">—</span>' : `<span class="c-STUDENT ${c.auto ? 'auto' : ''}"><b class="t">${esc(wide ? fullTimes(c.label.replace('⚽', '').trim()) : c.label)}</b>${wide && shiftDur(c.label) ? `<small class="dur">${shiftDur(c.label)}${c.shift === 'FOOT' ? ' · ⚽ Foot' : ''}</small>` : ''}</span>`;
       h += `<td class="cell ${colCls(d)} ${c && c.locked ? 'lock' : ''}" data-emp="${r.id}" data-date="${d.date}">${inner}</td>`;
     }
     h += '</tr>';
@@ -485,17 +506,32 @@ function renderDays() {
 const dayCards = {};
 
 // Tableau ou jour par jour : par défaut « jour par jour » sur téléphone ; le choix est retenu.
-let view = (() => { try { return localStorage.getItem('view'); } catch { return null; } })() || (innerWidth < 700 ? 'days' : 'table');
+let view = (() => { try { if (!localStorage.getItem('viewV2')) { localStorage.setItem('viewV2', '1'); return null; } return localStorage.getItem('view'); } catch { return null; } })() || (innerWidth < 700 ? 'days' : 'week');
+let wkStart = null; // lundi de la semaine affichée (vue Semaine)
 function applyView(scroll) {
-  $('#tableView').hidden = view !== 'table';
+  $('#tableView').hidden = view !== 'table' && view !== 'week';
   $('#dayView').hidden = view !== 'days';
+  $('#weekNav').hidden = view !== 'week';
+  $('#vWeek').classList.toggle('on', view === 'week');
   $('#vTable').classList.toggle('on', view === 'table');
   $('#vDays').classList.toggle('on', view === 'days');
   try { localStorage.setItem('view', view); } catch {}
   const t = document.getElementById('day-' + new Date().toISOString().slice(0, 10));
   if (scroll && view === 'days' && t) t.scrollIntoView({ block: 'start' });
 }
-$('#vTable').onclick = () => { view = 'table'; applyView(); };
+$('#vTable').onclick = () => { view = 'table'; applyView(); if (data) render(); };
+$('#vWeek').onclick = () => { view = 'week'; applyView(); if (data) render(); };
+// Semaine précédente / suivante (on change de mois quand la semaine en sort).
+function weekGo(start) {
+  wkStart = start;
+  const all = data.view.allDays || data.view.days;
+  if (all.some(d => d.date === start)) return render();
+  month = addDay(start, 3).slice(0, 7); // le mois du jeudi de la semaine
+  api('/api/state');
+}
+$('#wPrev').onclick = () => weekGo(addDay(wkStart, -7));
+$('#wNext').onclick = () => weekGo(addDay(wkStart, 7));
+$('#wToday').onclick = () => { const t = localDay(); const mon = addDay(t, -((new Date(t + 'T12:00:00').getDay() + 6) % 7)); month = t.slice(0, 7); wkStart = mon; api('/api/state'); };
 $('#vDays').onclick = () => { view = 'days'; applyView(true); };
 applyView();
 

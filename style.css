@@ -699,4 +699,4 @@ body.readonly .edit-only { display: none !important; }
 }
 
 /* Éléments du nouveau thème, cachés dans le thème classique (voir theme-shyfter.css) */
-.av, .hrs, #grid td.cell span .dur { display: none; }
+.av, .hrs, #grid .namebox small.hrs, #grid td.cell span .dur { display: none; }
