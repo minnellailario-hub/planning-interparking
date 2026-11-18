@@ -12,6 +12,9 @@
   <meta name="theme-color" content="#1d2330">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="theme-shyfter.css">
+  <!-- Apparence choisie sur cet appareil (nouveau thème par défaut, l'ancien reste disponible dans Paramètres). -->
+  <script>try { if (localStorage.getItem('theme') !== 'classic') document.documentElement.classList.add('theme-new'); } catch (e) { document.documentElement.classList.add('theme-new'); }</script>
 </head>
 <body data-page="dashboard">
   <div id="login" class="login" hidden>
@@ -460,6 +463,14 @@
 
       <!-- Paramètres -->
       <section class="page" id="settingsDlg" data-page="settings" data-title="Paramètres" data-sub="Roulement des week-ends, semaine du chef terrain et outils du mois.">
+        <div class="card">
+          <h3>Apparence</h3>
+          <p class="muted">Le choix est gardé sur cet appareil (ordinateur, téléphone) : chacun peut avoir le sien.</p>
+          <div class="theme-pick" id="themePick">
+            <button type="button" data-theme="new"><span class="prev p-new"><i></i><i></i></span><b>Nouveau</b><span class="muted">Clair et aéré, inspiré de Shyfter</span></button>
+            <button type="button" data-theme="classic"><span class="prev p-classic"><i></i><i></i></span><b>Classique</b><span class="muted">L'apparence d'avant</span></button>
+          </div>
+        </div>
         <div class="card">
           <h3>Roulement des week-ends</h3>
           <p class="muted">Choisis un samedi et le groupe qui est en week-end ce jour-là. Le reste du roulement se calcule tout seul.</p>

@@ -697,3 +697,6 @@ body.readonly .edit-only { display: none !important; }
   .ag-status { margin-left: 50px; } .ag-out { flex: 1; }
   .ag-btns { width: 100%; } .ag-btns button { flex: 1; }
 }
+
+/* Éléments du nouveau thème, cachés dans le thème classique (voir theme-shyfter.css) */
+.av, .hrs, #grid td.cell span .dur { display: none; }

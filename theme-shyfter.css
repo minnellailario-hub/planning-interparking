@@ -1,0 +1,107 @@
+/* ===== Thème « Nouveau » (inspiré de Shyfter) =====
+   Actif quand <html> a la classe theme-new (choix dans Paramètres › Apparence ; l'ancien thème reste disponible).
+   Police Inter, fond clair et aéré, barre latérale bleu nuit / sarcelle, boutons principaux vert menthe en pilule,
+   cases d'horaire pastel avec la durée, avatars à initiales. */
+html.theme-new {
+  --bg: #f4f7f8; --surface: #ffffff; --surface-2: #f6f9fa; --text: #1f2c3d; --muted: #66727f; --line: #e5ebee; --line-strong: #d2dbe0;
+  --accent: #006a73; --accent-soft: #dff7ec; --accent-ink: #ffffff; --danger: #e5484d; --danger-soft: #fdecec;
+  --mint: #22ef84; --mint-hover: #12d673; --mint-ink: #0f2a1d; --ink: #1f2c3d; --teal: #005961;
+  --warn-bg: #fff5e5; --warn: #a15c00; --ok: #0e8a55; --ok-soft: #e3f8ee;
+  --side: #0d2328; --side-2: #15343a; --side-text: #c4d3d6; --side-muted: #7d9499;
+  --s8: #e8f0ff; --s8-ink: #2952c8; --s10: #e2f8ee; --s10-ink: #0b7a4b; --s12: #fff1e0; --s12-ink: #b25b00;
+  --foot: #f0eaff; --foot-ink: #6b3fd6; --off: #f1f4f6; --off-ink: #6b7884; --we: #ecedf6; --rtt: #ddf6f4; --rtt-ink: #0d6f6a;
+  --conge: #fde9f0; --conge-ink: #b4245f; --closed: #f7f9fa; --chef: #e7f4f5;
+  --radius: 16px; --shadow: 0 1px 2px rgba(15, 35, 40, .04), 0 6px 20px rgba(15, 35, 40, .05);
+}
+html.theme-new body { font-family: Inter, system-ui, "Segoe UI", sans-serif; letter-spacing: -.005em; }
+
+/* Boutons : principal vert menthe en pilule, secondaires blancs arrondis */
+html.theme-new button, html.theme-new .btn { border-radius: 999px; padding: 8px 16px; border-color: var(--line-strong); }
+html.theme-new button:hover, html.theme-new .btn:hover { border-color: var(--teal); }
+html.theme-new button.primary, html.theme-new .btn.primary { background: var(--mint); color: var(--mint-ink); border-color: var(--mint); font-weight: 600; box-shadow: 0 2px 8px rgba(34, 239, 132, .25); }
+html.theme-new button.primary:hover, html.theme-new .btn.primary:hover { background: var(--mint-hover); border-color: var(--mint-hover); }
+html.theme-new button.ghost { border-color: transparent; border-radius: 10px; }
+html.theme-new input, html.theme-new select, html.theme-new textarea { border-radius: 10px; border-color: var(--line-strong); }
+html.theme-new input:focus, html.theme-new select:focus, html.theme-new textarea:focus { outline: 3px solid rgba(34, 239, 132, .25); border-color: var(--ok); }
+html.theme-new input[type=checkbox] { accent-color: var(--ok); }
+
+/* Barre latérale : bleu nuit sarcelle, élément actif en pilule menthe */
+html.theme-new .sidebar { background: linear-gradient(180deg, #0f2a30 0%, #0b1d22 100%); }
+html.theme-new .nav { border-radius: 999px; padding: 9px 14px; }
+html.theme-new .nav:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+html.theme-new .nav.on { background: var(--mint); color: var(--mint-ink); box-shadow: 0 4px 14px rgba(34, 239, 132, .25); }
+html.theme-new .nav-label { color: #5f7a80; }
+html.theme-new .side-brand, html.theme-new .side-foot { border-color: rgba(255, 255, 255, .06); }
+
+/* En-tête et cartes */
+html.theme-new .topbar { background: rgba(255, 255, 255, .92); backdrop-filter: blur(8px); border-bottom-color: var(--line); }
+html.theme-new .page-title h1 { font-weight: 700; letter-spacing: -.02em; }
+html.theme-new .monthnav { background: var(--surface); border-radius: 999px; padding: 3px 6px; }
+html.theme-new .icon-btn { border-radius: 999px; }
+html.theme-new .icon-btn:hover { background: var(--surface-2); }
+html.theme-new .card { border-color: var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+html.theme-new .card h3 { font-weight: 650; letter-spacing: -.01em; }
+html.theme-new .chip, html.theme-new .badge, html.theme-new .tag { border-radius: 999px; }
+html.theme-new .viewswitch { border-radius: 999px; padding: 3px; background: var(--surface-2); }
+html.theme-new .viewswitch button { border-radius: 999px; }
+html.theme-new .viewswitch button.on { background: var(--ink); color: #fff; }
+html.theme-new .kpi { border-radius: var(--radius); }
+html.theme-new .kpi::before { background: var(--mint); }
+html.theme-new dialog { border-radius: 20px; }
+
+/* Horaire : cases pastel arrondies avec un trait de couleur à gauche et la durée (8h) */
+html.theme-new #grid { font-size: 12px; }
+html.theme-new #grid th, html.theme-new #grid td { border-left-color: transparent; border-bottom-color: var(--line); }
+html.theme-new #grid thead th { background: var(--surface); }
+html.theme-new #grid thead th .d { color: var(--muted); letter-spacing: .04em; }
+html.theme-new #grid td.cell { height: 44px; min-width: 56px; }
+html.theme-new #grid td.cell:hover { box-shadow: inset 0 0 0 2px var(--ok); border-radius: 10px; }
+html.theme-new #grid td.cell span { margin: 3px; padding: 5px 4px 4px 7px; border-radius: 9px; text-align: left; line-height: 1.15; border-left: 3px solid currentColor; }
+html.theme-new #grid td.cell span .dur { display: block; font-size: 9.5px; font-weight: 500; opacity: .7; }
+html.theme-new #grid td.cell span.c-REPOS, html.theme-new #grid td.cell span.c-WE, html.theme-new #grid td.cell span.c-NONE { border-left-color: transparent; text-align: center; padding-left: 4px; }
+html.theme-new #grid tr.sep td { border-top-color: var(--line-strong); }
+html.theme-new #grid tr.chef td { background: #fbfdfd; }
+html.theme-new #grid td.name { padding: 7px 12px; }
+html.theme-new .namebox { display: flex; align-items: center; gap: 8px; }
+html.theme-new .namebox > span { min-width: 0; flex: 1; }
+html.theme-new .av { display: inline-grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 50%; font-size: 11px; font-weight: 700; font-style: normal;
+  background: #e3f3f4; color: var(--teal); }
+html.theme-new tr.chef .av { background: var(--mint); color: var(--mint-ink); }
+html.theme-new .hrs { display: block !important; font-size: 10.5px; color: var(--muted); font-weight: 500; }
+html.theme-new #grid tr.sum td { background: var(--surface-2); }
+html.theme-new #grid tr.sum td.bad { background: var(--danger-soft); }
+html.theme-new .legend span.sw, html.theme-new .legend i { border-radius: 4px; }
+
+/* Jour par jour, zones, reporting, agenda : mêmes arrondis et accents */
+html.theme-new .daycard { border-radius: var(--radius); }
+html.theme-new .log-types button, html.theme-new .zs-motifs button { border-radius: 14px; }
+html.theme-new .log-types button.on, html.theme-new .zs-motifs button.on { box-shadow: 0 0 0 2px var(--ok) inset; background: var(--accent-soft); color: var(--text); border-color: var(--ok); }
+html.theme-new .znow-card { border-radius: 18px; }
+html.theme-new .znow-person { border-radius: 999px; }
+html.theme-new .ag-form { border-color: var(--ok); box-shadow: 0 0 0 3px rgba(34, 239, 132, .18), var(--shadow); }
+html.theme-new .ag-status.ok { background: var(--ok-soft); color: var(--ok); }
+html.theme-new .ag-date, html.theme-new .ag-day.today { color: var(--ok); }
+html.theme-new .ag-more summary { border-radius: 999px; }
+html.theme-new .ag-preview { background: #f2fbf7; border-color: #bdeed5; }
+html.theme-new .stats th, html.theme-new .list th { background: var(--surface-2); }
+html.theme-new #dutyFoot tr.next td, html.theme-new #dutySunday tr.next td { background: var(--accent-soft); }
+html.theme-new .badge.foot { background: var(--mint); color: var(--mint-ink); }
+
+/* Choix de l'apparence (Paramètres) */
+.theme-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.theme-pick button { flex-direction: column; align-items: stretch; text-align: left; gap: 8px; padding: 12px; border-radius: 14px; }
+.theme-pick button.on { box-shadow: 0 0 0 2px var(--accent) inset; }
+.theme-pick .prev { height: 64px; border-radius: 10px; display: grid; grid-template-columns: 28% 1fr; overflow: hidden; border: 1px solid var(--line); }
+.theme-pick .prev i:first-child { display: block; }
+.theme-pick .prev i:last-child { display: block; background: #f4f7f8; background-image: linear-gradient(90deg, transparent 12%, #e8f0ff 12% 30%, transparent 30% 36%, #e2f8ee 36% 54%, transparent 54% 60%, #fff1e0 60% 78%, transparent 78%); background-size: 100% 18px; background-repeat: no-repeat; background-position: 0 22px; }
+.theme-pick .p-new i:first-child { background: #0f2a30; }
+.theme-pick .p-classic i:first-child { background: #161b33; }
+/* Gros boutons sur plusieurs lignes : coins arrondis plutôt que pilule */
+html.theme-new .q, html.theme-new .hr-person, html.theme-new .kpi, html.theme-new .theme-pick button { border-radius: 14px; }
+/* Téléphone : colonne des noms étroite, pas d'avatar ni d'heures du mois */
+@media (max-width: 700px) {
+  html.theme-new #grid .av, html.theme-new #grid .hrs { display: none !important; }
+  html.theme-new #grid td.cell { height: auto; min-width: 0; }
+  html.theme-new #grid td.cell span { padding: 2px 1px 2px 3px; border-left-width: 2px; }
+  html.theme-new #grid td.cell span .dur { display: none; }
+}

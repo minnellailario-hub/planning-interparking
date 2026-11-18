@@ -41,10 +41,20 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '
 
 // Couleur d'une case : le chef terrain a sa propre couleur, quel que soit son horaire.
 const shiftCls = (c, isChef) => c.kind === 'off' ? c.code : isChef ? 'CHEF' : c.shift;
+// Durée d'un horaire « 8-16 », « 16-00 »… (affichée sous l'horaire dans le nouveau thème).
+const shiftDur = label => { const m = String(label || '').match(/(\d{1,2})\s*-\s*(\d{1,2})/); if (!m) return ''; const h = ((Number(m[2]) || 24) - Number(m[1]) + 24) % 24; return h ? h + 'h' : ''; };
+// Initiales pour l'avatar (nouveau thème).
+const initials = name => String(name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
 function cellHtml(c, isChef) {
   if (!c) return '';
   if (c.kind === 'off') return `<span class="c-${c.code}">${SHORT[c.code] || c.code}</span>`;
-  return `<span class="c-${shiftCls(c, isChef)}">${esc(c.label)}</span>`;
+  const dur = shiftDur(c.label);
+  return `<span class="c-${shiftCls(c, isChef)}">${esc(c.label)}${dur ? `<small class="dur">${dur}</small>` : ''}</span>`;
+}
+// Heures prévues dans le mois pour une ligne (nouveau thème, sous le nom).
+function monthHours(r) {
+  if (r.isParkChief) return 0;
+  return Object.entries(r.cells).filter(([d, c]) => d.startsWith(month) && c && c.kind === 'work').reduce((n, [, c]) => n + (parseInt(shiftDur(c.label)) || 0), 0);
 }
 
 function render() {
@@ -72,7 +82,7 @@ function render() {
   h += '</tr></thead><tbody>';
   const firstEmp = v.rows.findIndex(r => !r.isChef && !r.isParkChief);
   v.rows.forEach((r, k) => {
-    h += `<tr class="${r.isChef || r.isParkChief ? 'chef' : k === firstEmp && k > 0 ? 'sep' : ''}"><td class="name"><div class="namebox"><span>${esc(r.name)}${r.note ? `<small>${esc(r.note)}</small>` : ''}</span>${r.isChef || r.isParkChief ? `<button class="edit-chef ghost" title="Modifier le chef terrain et le chef de parc">✎</button>` : `<button class="edit-emp ghost" data-id="${r.id}" title="Modifier ou supprimer ${esc(r.name)}">✎</button>`}</div></td>`;
+    h += `<tr class="${r.isChef || r.isParkChief ? 'chef' : k === firstEmp && k > 0 ? 'sep' : ''}"><td class="name"><div class="namebox"><i class="av">${initials(r.name)}</i><span>${esc(r.name)}${r.note ? `<small>${esc(r.note)}</small>` : ''}${monthHours(r) ? `<small class="hrs">${monthHours(r)}h ce mois</small>` : ''}</span>${r.isChef || r.isParkChief ? `<button class="edit-chef ghost" title="Modifier le chef terrain et le chef de parc">✎</button>` : `<button class="edit-emp ghost" data-id="${r.id}" title="Modifier ou supprimer ${esc(r.name)}">✎</button>`}</div></td>`;
     for (const d of gd) {
       const c = r.cells[d.date];
       h += `<td class="cell ${colCls(d)} ${c && c.locked ? 'lock' : ''}" data-emp="${r.id}" data-date="${d.date}">${cellHtml(c, r.isChef)}</td>`;
@@ -2072,6 +2082,19 @@ for (const id of ['#dutyFoot', '#dutySunday']) $(id).addEventListener('click', e
   [order[i], order[j]] = [order[j], order[i]];
   api('/api/config', { dutyOrder: { [kind]: order } }).then(() => toast('Ordre enregistré : régénère le mois pour l\'appliquer')).catch(() => {});
 });
+
+// ----- Apparence : nouveau thème (inspiré de Shyfter) ou classique, gardé sur cet appareil -----
+function renderThemePick() {
+  const cur = document.documentElement.classList.contains('theme-new') ? 'new' : 'classic';
+  document.querySelectorAll('#themePick [data-theme]').forEach(b => b.classList.toggle('on', b.dataset.theme === cur));
+}
+$('#themePick').addEventListener('click', e => {
+  const b = e.target.closest('[data-theme]'); if (!b) return;
+  document.documentElement.classList.toggle('theme-new', b.dataset.theme === 'new');
+  try { localStorage.setItem('theme', b.dataset.theme); } catch {}
+  renderThemePick();
+});
+renderThemePick();
 
 // ----- Équipe -----
 let team = [];
