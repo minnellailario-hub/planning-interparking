@@ -205,8 +205,8 @@ function renderDashboard() {
   $('#dashToday').innerHTML = shown && dayCards[shown.date] ? dayCards[shown.date].replace('class="daycard', 'class="daycard plain') : '';
   // À venir : matchs et dimanches d'ouverture.
   const events = [
-    ...(data.matches || []).filter(m => m.date >= today).map(m => ({ date: m.date, html: `<span class="ev foot">⚽</span><div><b>${esc(m.opponent)}</b><small>${esc(m.competition || '')} · ${m.time}${m.confirmed === false ? ' · heure à confirmer' : ''}</small></div>` })),
-    ...(data.openings || []).filter(o => !o.ignored && o.date >= today).map(o => ({ date: o.date, html: `<span class="ev open">🛍</span><div><b>Dimanche d'ouverture</b><small>${esc(o.label)}${o.hours ? ' · ' + esc(o.hours) : ''}</small></div>` })),
+    ...(data.matches || []).filter(m => m.date >= today).map(m => ({ date: m.date, html: `<span class="ev foot">${matchIcon(m)}</span><div><b>${esc(m.opponent)}</b><small>${esc(m.competition || '')} · ${m.time}${m.confirmed === false ? ' · heure à confirmer' : ''}</small></div>` })),
+    ...(data.openings || []).filter(o => !o.ignored && o.date >= today).map(o => ({ date: o.date, html: `<span class="ev open">${westIcon()}</span><div><b>Dimanche d'ouverture</b><small>${esc(o.label)}${o.hours ? ' · ' + esc(o.hours) : ''}</small></div>` })),
   ].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 6);
   $('#dashUpcoming').innerHTML = events.length ? '<ul class="events">' + events.map(e => `<li><span class="ev-date">${fmtDate(e.date)}</span>${e.html}</li>`).join('') + '</ul>' : '<p class="muted">Rien de prévu.</p>';
 }
@@ -979,6 +979,13 @@ $('#rfSiteMenu').addEventListener('click', e => {
 });
 document.addEventListener('click', e => { if (!e.target.closest('#rfSiteMenu, #rfSite')) $('#rfSiteMenu').hidden = true; });
 
+// Logos : club adverse et compétition (ESPN), Westland pour les dimanches d'ouverture.
+// Copie du logo du Westland (son site interdit de l'afficher ailleurs), avec l'accord de l'utilisateur.
+const WESTLAND_LOGO = 'westland-logo.png';
+const logoImg = (src, alt, fallback, cls = '') => src ? `<img class="lg ${cls}" src="${esc(src)}" alt="${esc(alt)}" title="${esc(alt)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(document.createTextNode('${fallback}'))">` : fallback;
+const matchIcon = m => logoImg(m.oppLogo, m.opponent, '⚽');
+const compIcon = m => m.compLogo ? logoImg(m.compLogo, m.competition || '', '', 'comp') : '';
+const westIcon = () => logoImg(WESTLAND_LOGO, 'Westland Shopping', '🛍');
 // ----- Encadrés -----
 const rfTile = (go, title, body, cls = '') => `<button type="button" class="rf-tile ${cls}" ${go ? `data-go="${go}"` : ''}><span class="rf-tile-head"><b class="rf-t">${title}</b><span class="rf-more">⋯</span></span>${body}</button>`;
 const rfMonthLabel = () => `${MONTHS[Number(month.slice(5)) - 1]} ${month.slice(0, 4)}`;
@@ -1023,10 +1030,10 @@ const RF_TILES = {
   },
   avenir() {
     const td = localDay();
-    const ev = [...(data.matches || []).filter(m => m.date >= td).map(m => ({ date: m.date, ic: '⚽', t: m.opponent, s: m.time })),
-      ...(data.openings || []).filter(o => !o.ignored && o.date >= td).map(o => ({ date: o.date, ic: '🛍', t: 'Ouverture · ' + o.label, s: o.hours || '' }))]
+    const ev = [...(data.matches || []).filter(m => m.date >= td).map(m => ({ date: m.date, ic: matchIcon(m), t: m.opponent, sub: m.competition || 'Match', comp: compIcon(m), s: m.time })),
+      ...(data.openings || []).filter(o => !o.ignored && o.date >= td).map(o => ({ date: o.date, ic: westIcon(), t: "Dimanche d'ouverture", sub: o.label, comp: '', s: o.hours || '' }))]
       .sort((a, b) => a.date.localeCompare(b.date)).slice(0, 4);
-    return rfTile('calendar', 'À venir', ev.length ? `<ul class="rf-list">${ev.map(e => `<li><span class="rf-ic">${e.ic}</span><span class="t">${esc(e.t)}</span><span>${fmtDate(e.date)}${e.s ? ' · ' + esc(e.s) : ''}</span></li>`).join('')}</ul>` : '<span class="rf-muted">Rien de prévu.</span>', 'span2');
+    return rfTile('calendar', 'À venir', ev.length ? `<ul class="rf-list rf-events">${ev.map(e => `<li><span class="rf-ic logo">${e.ic}</span><span class="t"><b>${esc(e.t)}</b><small>${esc(e.sub)}</small></span>${e.comp ? `<span class="rf-comp">${e.comp}</span>` : ''}<span>${fmtDate(e.date)}${e.s ? ' · ' + esc(e.s) : ''}</span></li>`).join('')}</ul>` : '<span class="rf-muted">Rien de prévu.</span>', 'span2');
   },
   absences() {
     const v = data.view, n = v.rows.filter(r => !r.isParkChief).length || 1;

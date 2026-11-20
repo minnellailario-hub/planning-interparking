@@ -200,3 +200,17 @@ html.refonte .card { border-radius: 20px; border-color: transparent; box-shadow:
 @media (prefers-reduced-motion: reduce) { .rf-modal, .rf-sheet, .rf-grid.anim .rf-bars .b i, .rf-grid.anim .rf-track i { animation: none !important; } }
 /* Téléphone : la fenêtre couvre tout l'écran, la page derrière est simplement cachée (rien à flouter) */
 @media (max-width: 700px) { html.refonte body.rf-open .app { filter: none; visibility: hidden; } .rf-modal { background: var(--panel); } }
+
+/* Logo Interparking (blanc à l'origine) en noir dans l'en-tête clair */
+.rf-logo { height: 24px; display: block; filter: brightness(0); }
+@media (max-width: 700px) { .rf-logo { height: 20px; } }
+/* Logos des clubs, des compétitions et du Westland */
+.lg { width: 100%; height: 100%; object-fit: contain; display: block; }
+.rf-ic.logo { background: #fff; border: 1px solid var(--line); padding: 4px; box-sizing: border-box; width: 36px; height: 36px; flex-basis: 36px; border-radius: 10px; }
+.rf-events li { gap: 12px; }
+.rf-events .t { display: grid; min-width: 0; }
+.rf-events .t b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rf-events .t small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rf-comp { width: 26px; height: 26px; flex: 0 0 26px; margin-left: auto; }
+.rf-comp + span { margin-left: 0 !important; }
+.ev .lg { width: 22px; height: 22px; }
