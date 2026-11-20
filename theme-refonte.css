@@ -83,7 +83,8 @@ body.employee .rf-overview, body.employee .rf-tabs, body.employee .rf-site { dis
 /* Barres du mois (rayées bleues) */
 .rf-bars { display: flex; align-items: flex-end; gap: 3px; height: 150px; padding-top: 10px; position: relative; }
 .rf-bars .b { flex: 1; min-width: 3px; position: relative; height: 100%; display: flex; align-items: flex-end; }
-.rf-bars .b i { display: block; width: 100%; border-radius: 4px 4px 2px 2px; background: repeating-linear-gradient(135deg, var(--blue) 0 3px, #6f88ff 3px 6px); opacity: .9; transform-origin: bottom; animation: rfGrow .7s cubic-bezier(.2, .8, .2, 1) both; }
+.rf-bars .b i { display: block; width: 100%; border-radius: 4px 4px 2px 2px; background: repeating-linear-gradient(135deg, var(--blue) 0 3px, #6f88ff 3px 6px); opacity: .9; transform-origin: bottom; }
+.rf-grid.anim .rf-bars .b i { animation: rfGrow .6s cubic-bezier(.2, .8, .2, 1) both; }
 .rf-bars .b.miss i { background: repeating-linear-gradient(135deg, var(--pink) 0 3px, #ff8fb5 3px 6px); }
 .rf-bars .b.off i { background: #e9e9e7; }
 .rf-bars .b.today i { background: linear-gradient(180deg, #5b7bff, #1f3fe0); opacity: 1; }
@@ -98,7 +99,8 @@ body.employee .rf-overview, body.employee .rf-tabs, body.employee .rf-site { dis
 .rf-prog .r > span:first-child {  display: flex; justify-content: space-between; font-size: 13px; }
 .rf-prog .r > span:first-child b { font-weight: 600; }
 .rf-track { display: block; height: 8px; border-radius: 999px; background: #f0f0ee; overflow: hidden; }
-.rf-track i { display: block; height: 100%; border-radius: 999px; background: repeating-linear-gradient(135deg, var(--c, var(--blue)) 0 4px, color-mix(in srgb, var(--c, var(--blue)) 70%, #fff) 4px 8px); animation: rfSlide .8s cubic-bezier(.2, .8, .2, 1) both; transform-origin: left; }
+.rf-track i { display: block; height: 100%; border-radius: 999px; background: repeating-linear-gradient(135deg, var(--c, var(--blue)) 0 4px, color-mix(in srgb, var(--c, var(--blue)) 70%, #fff) 4px 8px); transform-origin: left; }
+.rf-grid.anim .rf-track i { animation: rfSlide .6s cubic-bezier(.2, .8, .2, 1) both; }
 @keyframes rfSlide { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
 /* Points (comme « Transactions ») et listes */
@@ -130,9 +132,11 @@ body.employee .rf-overview, body.employee .rf-tabs, body.employee .rf-site { dis
 .rf-soon { opacity: .75; }
 
 /* Grande fenêtre : 85 % de l'écran, le reste flouté */
-.rf-modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(20, 20, 20, .22); backdrop-filter: blur(10px) saturate(120%); -webkit-backdrop-filter: blur(10px) saturate(120%); animation: rfFade .2s ease both; }
+.rf-modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(20, 20, 20, .2); animation: rfFade .16s ease-out both; }
+html.refonte body.rf-open .app { filter: blur(7px) saturate(115%); pointer-events: none; user-select: none; }
+html.refonte { scrollbar-gutter: stable; }
 .rf-modal[hidden] { display: none; }
-.rf-sheet { width: 85vw; height: 85vh; background: var(--panel); border-radius: 28px; box-shadow: 0 40px 120px rgba(0, 0, 0, .28); display: flex; flex-direction: column; overflow: hidden; animation: rfPop .28s cubic-bezier(.2, .9, .25, 1.05) both; }
+.rf-sheet { width: 85vw; height: 85vh; background: var(--panel); border-radius: 28px; box-shadow: 0 30px 80px rgba(0, 0, 0, .25); display: flex; flex-direction: column; overflow: hidden; contain: layout paint; will-change: transform; animation: rfPop .2s cubic-bezier(.2, .8, .2, 1) both; }
 .rf-sheet-head { display: flex; align-items: center; gap: 14px; padding: 18px 22px 14px 26px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
 .rf-sheet-head h2 { margin: 0; font-size: 26px; font-weight: 500; letter-spacing: -0.03em; }
 .rf-sheet-head p { margin: 2px 0 0; color: var(--muted); font-size: 13px; max-width: 760px; }
@@ -140,10 +144,10 @@ body.employee .rf-overview, body.employee .rf-tabs, body.employee .rf-site { dis
 .rf-sheet-tools .monthnav { display: flex !important; }
 .rf-sheet-tools .actions { display: flex !important; gap: 6px; }
 .rf-close { width: 40px; height: 40px; padding: 0 !important; border-radius: 50% !important; justify-content: center; font-size: 16px !important; background: var(--surface) !important; border: 1px solid var(--line-strong) !important; flex: 0 0 40px; }
-.rf-sheet-body { flex: 1; overflow: auto; padding: 0; }
+.rf-sheet-body { flex: 1; overflow: auto; padding: 0; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .rf-sheet-body > .page { padding: 20px 26px 30px !important; }
 @keyframes rfFade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes rfPop { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes rfPop { from { opacity: 0; transform: translateY(12px) scale(.99); } to { opacity: 1; transform: none; } }
 body.rf-open { overflow: hidden; }
 
 /* Espace employé dans la refonte : la page « Mon espace » s'affiche directement */
@@ -191,3 +195,8 @@ html.refonte body.employee .main > .page[data-page="me"] { padding: 8px 28px 32p
 html.refonte button.primary, html.refonte .btn.primary { background: var(--ink) !important; border-color: var(--ink) !important; color: #fff !important; border-radius: 999px !important; }
 html.refonte button.primary:hover, html.refonte .btn.primary:hover { background: #2b2b2b !important; }
 html.refonte .card { border-radius: 20px; border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+
+/* Pas d'animation pour ceux qui les coupent dans leur système */
+@media (prefers-reduced-motion: reduce) { .rf-modal, .rf-sheet, .rf-grid.anim .rf-bars .b i, .rf-grid.anim .rf-track i { animation: none !important; } }
+/* Téléphone : la fenêtre couvre tout l'écran, la page derrière est simplement cachée (rien à flouter) */
+@media (max-width: 700px) { html.refonte body.rf-open .app { filter: none; visibility: hidden; } .rf-modal { background: var(--panel); } }

@@ -933,7 +933,7 @@ function openTab(id) {
   rfClose(true);
   PAGES.forEach(p => { p.hidden = true; });
   document.body.dataset.page = 'overview';
-  renderOverview();
+  renderOverview(true);
   window.scrollTo(0, 0);
 }
 // Ouvre une page dans la grande fenêtre.
@@ -949,6 +949,7 @@ function rfOpen(el) {
   else { const top = document.querySelector('.topbar'); top.insertBefore(rfMonthNav, top.querySelector('#undoBtn') || null); top.appendChild(rfActions); }
   $('#rfModal').hidden = false;
   document.body.classList.add('rf-open');
+  document.querySelector('.app').inert = true;
   body.scrollTop = 0;
 }
 function rfClose(quiet) {
@@ -958,9 +959,10 @@ function rfClose(quiet) {
   const top = document.querySelector('.topbar'); top.appendChild(rfMonthNav); top.appendChild(rfActions);
   $('#rfModal').hidden = true;
   document.body.classList.remove('rf-open');
+  document.querySelector('.app').inert = false;
   document.body.dataset.page = 'overview';
   try { localStorage.setItem('page', 'dashboard'); } catch {}
-  if (!quiet) renderOverview();
+  if (!quiet || rfDirty) renderOverview();
 }
 $('#rfClose').onclick = () => rfClose();
 $('#rfModal').addEventListener('mousedown', e => { if (e.target === e.currentTarget) rfClose(); });
@@ -1087,8 +1089,12 @@ const RF_TILES = {
   pointage: () => `<div class="rf-tile span4 dark rf-soon"><span class="rf-tile-head"><b class="rf-t">Pointage</b><span class="rf-more">⋯</span></span>
     <span class="rf-big">Bientôt</span><span class="rf-muted">La liste des pointages de l'équipe, les alertes (retard, oubli, heures supp), les corrections, les horaires de référence et l'export Excel pour la RH et la paie arrivent à une prochaine étape.</span></div>`,
 };
-function renderOverview() {
+let rfDirty = false;
+function renderOverview(animate = false) {
   if (!rfOn() || !data || !data.view || (data.account && data.account.role === 'employee')) return;
+  if (!$('#rfModal').hidden) { rfDirty = true; return; }
+  rfDirty = false;
+  $('#rfGrid').classList.toggle('anim', animate);
   document.querySelectorAll('#rfTabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === rfTab));
   const tab = RF_TABS.find(t => t.id === rfTab);
   $('#rfTitle').textContent = tab.title;
