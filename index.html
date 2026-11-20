@@ -13,8 +13,10 @@
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="theme-shyfter.css">
+  <link rel="stylesheet" href="theme-refonte.css">
   <!-- Apparence choisie sur cet appareil (nouveau thème par défaut, l'ancien reste disponible dans Paramètres). -->
-  <script>try { if (localStorage.getItem('theme') !== 'classic') document.documentElement.classList.add('theme-new'); } catch (e) { document.documentElement.classList.add('theme-new'); }</script>
+  <!-- Refonte : toujours active. Les anciennes apparences (Nouveau / Classique) restent dans les fichiers, sans bouton pour les choisir. -->
+  <script>document.documentElement.classList.add('theme-new', 'refonte');</script>
 </head>
 <body data-page="dashboard">
   <div id="login" class="login" hidden>
@@ -79,6 +81,20 @@
 
     <!-- ===== Contenu ===== -->
     <div class="main">
+      <header class="rf-head">
+        <div class="rf-brand">
+          <span class="rf-mark">i</span><b>Interparking</b>
+          <span style="position:relative">
+            <button type="button" class="rf-site" id="rfSite">Westland <i>▾</i></button>
+            <div class="rf-site-menu" id="rfSiteMenu" hidden>
+              <button data-site="westland">Westland Shopping <small>✓</small></button>
+              <button data-site="bordet">Bordet <small>bientôt</small></button>
+            </div>
+          </span>
+        </div>
+        <nav class="rf-tabs" id="rfTabs" aria-label="Menu"></nav>
+        <div class="rf-right" id="rfRight"></div>
+      </header>
       <div id="syncBar" class="syncbar" hidden></div>
       <div id="roBar" class="robar" hidden>👁 Accès en lecture seule : tu peux consulter le planning, pas le modifier.</div>
       <div id="updateBar" class="updatebar" hidden>
@@ -109,6 +125,18 @@
           <button id="print">Imprimer</button>
         </div>
       </header>
+
+      <!-- Refonte : page « Overview » de l'onglet choisi (encadrés cliquables) -->
+      <section class="rf-overview" id="rfOverview">
+        <div class="rf-titlebar">
+          <h1 id="rfTitle">Overview</h1><span class="rf-chip" title="Mois affiché">🗓</span>
+          <div class="rf-tools">
+            <div class="rf-pill"><button id="rfPrev" aria-label="Mois précédent">‹</button><span id="rfMonth"></span><button id="rfNext" aria-label="Mois suivant">›</button></div>
+          </div>
+        </div>
+        <div class="rf-grid" id="rfGrid"></div>
+      </section>
+      <div id="rfStore"></div>
 
       <!-- Tableau de bord -->
       <section class="page" data-page="dashboard" data-title="Tableau de bord" data-sub="Résumé du mois et points à régler.">
@@ -499,7 +527,7 @@
 
       <!-- Paramètres -->
       <section class="page" id="settingsDlg" data-page="settings" data-title="Paramètres" data-sub="Roulement des week-ends, semaine du chef terrain et outils du mois.">
-        <div class="card">
+        <div class="card" hidden>
           <h3>Apparence</h3>
           <p class="muted">Le choix est gardé sur cet appareil (ordinateur, téléphone) : chacun peut avoir le sien.</p>
           <div class="theme-pick" id="themePick">
@@ -558,6 +586,17 @@
 
   <!-- Fenêtres -->
   <!-- Zones : remarque terrain et imprévu (contenu rempli par app.js) -->
+  <div class="rf-modal" id="rfModal" hidden>
+    <div class="rf-sheet" role="dialog" aria-modal="true" aria-labelledby="rfSheetTitle">
+      <div class="rf-sheet-head">
+        <div><h2 id="rfSheetTitle"></h2><p id="rfSheetSub"></p></div>
+        <div class="rf-sheet-tools" id="rfSheetTools"></div>
+        <button class="rf-close" id="rfClose" aria-label="Fermer">✕</button>
+      </div>
+      <div class="rf-sheet-body" id="rfSheetBody"></div>
+    </div>
+  </div>
+
   <dialog id="zSheet" class="zsheet"><div id="zSheetBody"></div></dialog>
 
   <dialog id="inviteDlg" class="invite-dlg">

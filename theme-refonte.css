@@ -1,0 +1,193 @@
+/* ===== Refonte (inspirée du tableau de bord « Overview ») =====
+   En-tête avec logo, choix du parking et menu en pilules ; pages « Overview » faites d'encadrés ;
+   un clic sur un encadré ouvre une grande fenêtre (85 % de l'écran, fond flouté).
+   S'ajoute à style.css + theme-shyfter.css (classes html.theme-new et html.refonte). */
+
+html.refonte {
+  --bg: #ececec; --panel: #f5f5f4; --surface: #ffffff; --surface-2: #f7f7f6; --text: #111111; --muted: #737373; --line: #ebebea; --line-strong: #d9d9d6;
+  --ink: #111111; --blue: #3157ff; --blue-2: #8aa2ff; --pink: #ff4f8b; --green: #22c55e; --orange: #ff9f1c;
+  --accent: #111111; --accent-soft: #f0f0ee; --ok: #15803d; --ok-soft: #e9f8ef;
+  --radius: 22px; --shadow: 0 1px 2px rgba(0, 0, 0, .04);
+}
+html.refonte body { background: var(--bg); font-family: Inter, system-ui, "Segoe UI", sans-serif; letter-spacing: -0.005em; }
+html.refonte .app { display: block; padding: 18px; }
+html.refonte .sidebar, html.refonte .scrim, html.refonte .topbar { display: none !important; }
+html.refonte .main { background: var(--panel); border-radius: 28px; min-height: calc(100vh - 36px); box-shadow: 0 1px 0 rgba(255, 255, 255, .8) inset, 0 20px 50px rgba(0, 0, 0, .06); }
+/* Les pages restent dans un rangement caché tant qu'elles ne sont pas ouvertes dans la grande fenêtre. */
+#rfStore { display: none; }
+
+/* En-tête : logo, parking, menu en pilules, outils */
+.rf-head { display: none; }
+html.refonte .rf-head { display: flex; align-items: center; gap: 18px; padding: 20px 28px 6px; position: sticky; top: 0; z-index: 20; background: var(--panel); border-radius: 28px 28px 0 0; }
+.rf-brand { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.rf-mark { width: 30px; height: 30px; border-radius: 8px; background: var(--orange); display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 15px; }
+.rf-brand b { font-size: 21px; font-weight: 600; letter-spacing: -0.03em; }
+.rf-site { margin-left: 6px; border: 1px solid var(--line-strong) !important; background: var(--surface) !important; border-radius: 999px !important; padding: 6px 12px !important; font-size: 13px !important; font-weight: 600; display: inline-flex; gap: 6px; align-items: center; }
+.rf-site i { font-style: normal; color: var(--muted); font-size: 11px; }
+.rf-site-menu { position: absolute; margin-top: 8px; min-width: 220px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 14px 40px rgba(0, 0, 0, .12); padding: 6px; z-index: 70; }
+.rf-site-menu button { width: 100%; justify-content: flex-start; border: 0 !important; background: none !important; padding: 9px 10px !important; border-radius: 10px !important; font-weight: 500; }
+.rf-site-menu button:hover { background: var(--surface-2) !important; }
+.rf-site-menu small { color: var(--muted); margin-left: auto; font-size: 11.5px; }
+.rf-tabs { flex: 1; display: flex; justify-content: center; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.rf-tabs::-webkit-scrollbar { display: none; }
+.rf-tabs button { border: 0 !important; background: none !important; box-shadow: none !important; border-radius: 999px !important; padding: 8px 15px !important; font-size: 13.5px !important; font-weight: 500; color: #333 !important; white-space: nowrap; }
+.rf-tabs button:hover { background: rgba(0, 0, 0, .05) !important; }
+.rf-tabs button.on { background: var(--ink) !important; color: #fff !important; box-shadow: 0 6px 14px rgba(0, 0, 0, .18) !important; }
+.rf-right { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+html.refonte .rf-right .bell-btn, html.refonte .rf-right #undoBtn { background: var(--surface) !important; border: 1px solid var(--line-strong) !important; border-radius: 999px !important; }
+html.refonte .rf-right #undoBtn { padding: 8px 14px !important; font-size: 13px !important; }
+html.refonte .rf-right .bell-btn { width: 38px; height: 38px; }
+html.refonte #accountBtn { width: 38px; height: 38px; padding: 0 !important; border-radius: 50% !important; justify-content: center; background: var(--ink) !important; color: #fff !important; border: 0 !important; font-weight: 600; font-size: 13px; }
+html.refonte #accountBtn svg { display: none; }
+html.refonte #accountBtn span { font-size: 13px; }
+
+/* Page « Overview » */
+.rf-overview { display: none; }
+html.refonte .rf-overview { display: block; padding: 8px 28px 32px; }
+body.employee .rf-overview, body.employee .rf-tabs, body.employee .rf-site { display: none !important; }
+.rf-titlebar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 10px 0 20px; }
+.rf-titlebar h1 { margin: 0; font-size: 46px; font-weight: 500; letter-spacing: -0.045em; line-height: 1.05; }
+.rf-chip { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line-strong); display: grid; place-items: center; color: var(--muted); font-size: 13px; background: var(--surface); }
+.rf-tools { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rf-pill { display: inline-flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 999px; padding: 3px; }
+.rf-pill button { border: 0 !important; background: none !important; box-shadow: none !important; padding: 6px 10px !important; border-radius: 999px !important; font-size: 13px !important; }
+.rf-pill button:hover { background: var(--surface-2) !important; }
+.rf-pill span { font-size: 13px; font-weight: 600; padding: 0 6px; min-width: 130px; text-align: center; }
+.rf-sub { color: var(--muted); font-size: 13px; }
+.rf-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; grid-auto-flow: dense; }
+
+/* Encadrés (cliquables : ouvrent la grande fenêtre) */
+.rf-tile { all: unset; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; min-width: 0; background: var(--surface); border-radius: var(--radius); padding: 18px 20px 20px;
+  cursor: pointer; position: relative; overflow: hidden; transition: transform .18s ease, box-shadow .18s ease; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); color: var(--text); }
+.rf-tile:hover { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(0, 0, 0, .08); }
+.rf-tile:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.rf-tile.span2 { grid-column: span 2; } .rf-tile.span3 { grid-column: span 3; } .rf-tile.span4 { grid-column: span 4; }
+.rf-tile.tall { grid-row: span 2; }
+.rf-tile-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rf-tile-head .rf-t { margin: 0; font-size: 17px; font-weight: 500; letter-spacing: -0.01em; }
+.rf-more { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line-strong); display: grid; place-items: center; color: #444; font-size: 15px; letter-spacing: 1px; flex: 0 0 32px; }
+.rf-big { font-size: 40px; font-weight: 500; letter-spacing: -0.04em; line-height: 1; }
+.rf-big small { font-size: 15px; color: var(--muted); letter-spacing: 0; margin-left: 6px; font-weight: 500; }
+.rf-muted { color: var(--muted); font-size: 13px; }
+.rf-delta { font-weight: 600; font-size: 13px; } .rf-delta.up { color: var(--ok); } .rf-delta.down { color: #dc2626; }
+
+/* Colonnes de chiffres (comme « Initiated / Authorized / Successful ») */
+.rf-funnel { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--line); }
+.rf-funnel > span { display: block;  padding: 10px 12px 0; border-left: 1px solid var(--line); }
+.rf-funnel > span:first-child { border-left: 0; padding-left: 0; }
+.rf-funnel span span { display: block; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rf-funnel b { display: block; font-size: 24px; font-weight: 500; letter-spacing: -0.03em; color: #9a9a9a; }
+.rf-funnel .hl b { color: var(--text); }
+.rf-funnel .hl { background: linear-gradient(180deg, rgba(49, 87, 255, .07), transparent 80%); border-radius: 10px 10px 0 0; }
+
+/* Barres du mois (rayées bleues) */
+.rf-bars { display: flex; align-items: flex-end; gap: 3px; height: 150px; padding-top: 10px; position: relative; }
+.rf-bars .b { flex: 1; min-width: 3px; position: relative; height: 100%; display: flex; align-items: flex-end; }
+.rf-bars .b i { display: block; width: 100%; border-radius: 4px 4px 2px 2px; background: repeating-linear-gradient(135deg, var(--blue) 0 3px, #6f88ff 3px 6px); opacity: .9; transform-origin: bottom; animation: rfGrow .7s cubic-bezier(.2, .8, .2, 1) both; }
+.rf-bars .b.miss i { background: repeating-linear-gradient(135deg, var(--pink) 0 3px, #ff8fb5 3px 6px); }
+.rf-bars .b.off i { background: #e9e9e7; }
+.rf-bars .b.today i { background: linear-gradient(180deg, #5b7bff, #1f3fe0); opacity: 1; }
+.rf-bars .b em { position: absolute; left: 50%; transform: translateX(-50%); width: 70%; height: 4px; border-radius: 3px; background: #c9d4ff; box-shadow: 0 0 0 2px #fff; }
+.rf-bars .b.today::after { content: attr(data-l); position: absolute; top: -4px; left: 50%; transform: translate(-50%, -100%); background: #fff; border: 1px solid var(--line); border-radius: 999px; font-size: 11px; padding: 2px 7px; white-space: nowrap; box-shadow: 0 4px 10px rgba(0, 0, 0, .08); }
+.rf-axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; }
+@keyframes rfGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+/* Barres de progression (comme « Online Payments / Subscriptions ») */
+.rf-prog { display: grid; width: 100%; gap: 12px; }
+.rf-prog .r { display: grid; gap: 6px; }
+.rf-prog .r > span:first-child {  display: flex; justify-content: space-between; font-size: 13px; }
+.rf-prog .r > span:first-child b { font-weight: 600; }
+.rf-track { display: block; height: 8px; border-radius: 999px; background: #f0f0ee; overflow: hidden; }
+.rf-track i { display: block; height: 100%; border-radius: 999px; background: repeating-linear-gradient(135deg, var(--c, var(--blue)) 0 4px, color-mix(in srgb, var(--c, var(--blue)) 70%, #fff) 4px 8px); animation: rfSlide .8s cubic-bezier(.2, .8, .2, 1) both; transform-origin: left; }
+@keyframes rfSlide { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* Points (comme « Transactions ») et listes */
+.rf-dots { display: flex; align-items: flex-end; gap: 3px; height: 54px; }
+.rf-dots .c { display: flex; flex-direction: column-reverse; gap: 3px; }
+.rf-dots .c i { width: 7px; height: 7px; border-radius: 50%; background: #bbf7d0; }
+.rf-dots .c.hi i { background: var(--green); }
+.rf-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rf-list li { display: flex; align-items: center; gap: 10px; font-size: 13.5px; min-width: 0; }
+.rf-list li > span:last-child { margin-left: auto; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.rf-list .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rf-ic { width: 30px; height: 30px; flex: 0 0 30px; border-radius: 9px; display: grid; place-items: center; background: var(--surface-2); font-size: 15px; }
+.rf-avs { display: flex; }
+.rf-avs i { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 600; border: 2px solid #fff; margin-left: -8px; }
+.rf-avs i:first-child { margin-left: 0; }
+.rf-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rf-chips span { font-size: 12.5px; padding: 4px 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
+.rf-chips span b { font-weight: 600; margin-right: 4px; }
+
+/* Encadré en dégradé (comme « Insights ») */
+.rf-tile.grad { color: #fff; background: radial-gradient(120% 90% at 0% 0%, #ffb36b 0%, rgba(255, 179, 107, 0) 55%), radial-gradient(120% 120% at 100% 100%, #3157ff 0%, rgba(49, 87, 255, 0) 60%), linear-gradient(135deg, #ff6a5c, #b94cff 60%, #3157ff); }
+.rf-tile.grad .rf-more { border-color: rgba(255, 255, 255, .5); color: #fff; }
+.rf-tile.grad .rf-muted { color: rgba(255, 255, 255, .85); }
+.rf-tile.grad .rf-big { font-size: 64px; }
+.rf-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(255, 255, 255, .22); backdrop-filter: blur(6px); align-self: flex-start; }
+.rf-tile.dark { background: var(--ink); color: #fff; }
+.rf-tile.dark .rf-more { border-color: rgba(255, 255, 255, .3); color: #fff; }
+.rf-tile.dark .rf-muted { color: rgba(255, 255, 255, .65); }
+.rf-soon { opacity: .75; }
+
+/* Grande fenêtre : 85 % de l'écran, le reste flouté */
+.rf-modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(20, 20, 20, .22); backdrop-filter: blur(10px) saturate(120%); -webkit-backdrop-filter: blur(10px) saturate(120%); animation: rfFade .2s ease both; }
+.rf-modal[hidden] { display: none; }
+.rf-sheet { width: 85vw; height: 85vh; background: var(--panel); border-radius: 28px; box-shadow: 0 40px 120px rgba(0, 0, 0, .28); display: flex; flex-direction: column; overflow: hidden; animation: rfPop .28s cubic-bezier(.2, .9, .25, 1.05) both; }
+.rf-sheet-head { display: flex; align-items: center; gap: 14px; padding: 18px 22px 14px 26px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+.rf-sheet-head h2 { margin: 0; font-size: 26px; font-weight: 500; letter-spacing: -0.03em; }
+.rf-sheet-head p { margin: 2px 0 0; color: var(--muted); font-size: 13px; max-width: 760px; }
+.rf-sheet-tools { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rf-sheet-tools .monthnav { display: flex !important; }
+.rf-sheet-tools .actions { display: flex !important; gap: 6px; }
+.rf-close { width: 40px; height: 40px; padding: 0 !important; border-radius: 50% !important; justify-content: center; font-size: 16px !important; background: var(--surface) !important; border: 1px solid var(--line-strong) !important; flex: 0 0 40px; }
+.rf-sheet-body { flex: 1; overflow: auto; padding: 0; }
+.rf-sheet-body > .page { padding: 20px 26px 30px !important; }
+@keyframes rfFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rfPop { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
+body.rf-open { overflow: hidden; }
+
+/* Espace employé dans la refonte : la page « Mon espace » s'affiche directement */
+html.refonte body.employee .main > .page[data-page="me"] { padding: 8px 28px 32px; }
+
+/* Téléphone : menu qui défile, grande fenêtre en plein écran */
+@media (max-width: 1100px) { .rf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rf-tile.span3, .rf-tile.span4 { grid-column: span 2; } }
+@media (max-width: 700px) {
+  html.refonte .app { padding: 0; }
+  html.refonte .main { border-radius: 0; min-height: 100vh; }
+  html.refonte .rf-head { flex-wrap: wrap; padding: 12px 14px 4px; gap: 10px; border-radius: 0; }
+  .rf-brand b { font-size: 18px; }
+  .rf-right { margin-left: auto; }
+  .rf-tabs { order: 3; flex-basis: 100%; justify-content: flex-start; padding-bottom: 4px; }
+  html.refonte .rf-overview { padding: 4px 14px 24px; }
+  .rf-titlebar h1 { font-size: 34px; }
+  .rf-tools { margin-left: 0; width: 100%; }
+  .rf-grid { grid-template-columns: 1fr; gap: 12px; }
+  .rf-tile.span2, .rf-tile.span3, .rf-tile.span4 { grid-column: span 1; }
+  .rf-tile.tall { grid-row: auto; }
+  .rf-funnel { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .rf-funnel > span:nth-child(n+4) { display: none; }
+  .rf-sheet { width: 100vw; height: 100dvh; border-radius: 0; }
+  .rf-sheet-head { padding: 12px 12px 10px 16px; }
+  .rf-sheet-head h2 { font-size: 21px; }
+  .rf-sheet-head p { display: none; }
+  .rf-sheet-tools { order: 3; width: 100%; margin-left: 0; }
+  .rf-close { margin-left: auto; }
+  .rf-sheet-body > .page { padding: 14px 12px 24px !important; }
+  html.refonte body.employee .main > .page[data-page="me"] { padding: 4px 14px 24px; }
+}
+
+/* Impression depuis la grande fenêtre : seulement le contenu */
+@media print {
+  html.refonte .rf-head, html.refonte .rf-overview, html.refonte .rf-sheet-head { display: none !important; }
+  html.refonte .app { padding: 0; } html.refonte .main { background: #fff; box-shadow: none; border-radius: 0; }
+  .rf-modal { position: static; background: none; backdrop-filter: none; display: block !important; }
+  .rf-sheet { width: auto; height: auto; box-shadow: none; border-radius: 0; overflow: visible; animation: none; }
+  .rf-sheet-body { overflow: visible; }
+  .rf-sheet-body .page[data-page="planning"] { display: block !important; }
+}
+
+.rf-tile .rf-big, .rf-tile .rf-muted { display: block; }
+/* Boutons principaux en noir, comme le menu actif */
+html.refonte button.primary, html.refonte .btn.primary { background: var(--ink) !important; border-color: var(--ink) !important; color: #fff !important; border-radius: 999px !important; }
+html.refonte button.primary:hover, html.refonte .btn.primary:hover { background: #2b2b2b !important; }
+html.refonte .card { border-radius: 20px; border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }

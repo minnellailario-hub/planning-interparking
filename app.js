@@ -169,6 +169,7 @@ function render() {
   renderMatches();
   renderSettings();
   renderPubBar();
+  renderOverview();
   $('#alertChip').hidden = !v.warnings.length;
   $('#alertChip').textContent = `⚠ ${v.warnings.length} alerte${v.warnings.length > 1 ? 's' : ''}`;
 }
@@ -881,16 +882,221 @@ function go(page) {
   if (document.body.classList.contains('employee')) page = 'me';
   else if (page === 'me') page = 'dashboard';
   const el = PAGES.find(p => p.dataset.page === page) || PAGES[0];
+  if (rfOn() && el.dataset.page === 'dashboard') return openTab(rfTab);
+  if (rfOn() && el.dataset.page !== 'me') rfOpen(el);
   document.body.dataset.page = el.dataset.page;
-  PAGES.forEach(p => { p.hidden = p !== el; });
+  if (!rfOn() || el.dataset.page === 'me') PAGES.forEach(p => { p.hidden = p !== el; });
   $('#pageTitle').textContent = el.dataset.title;
   $('#pageSub').textContent = el.dataset.sub || '';
   document.querySelectorAll('.nav[data-go]').forEach(b => b.classList.toggle('on', b.dataset.go === el.dataset.page));
   document.body.classList.remove('menu-open');
   try { localStorage.setItem('page', el.dataset.page); } catch {}
   if (el.dataset.page === 'settings' || el.dataset.page === 'team') loadAccess();
+  if (!rfOn() || el.dataset.page === 'me') window.scrollTo(0, 0);
+}
+// ----- Refonte : en-tête (logo, parking, menu en pilules), pages « Overview » d'encadrés, grande fenêtre -----
+// Chaque onglet du menu montre des encadrés ; un clic sur un encadré ouvre la page dans une grande fenêtre
+// (85 % de l'écran, fond flouté ; plein écran sur téléphone). Les pages d'avant sont rangées dans #rfStore.
+const rfOn = () => document.documentElement.classList.contains('refonte');
+const RF_TABS = [
+  { id: 'accueil', label: 'Accueil', title: 'Overview' },
+  { id: 'horaire', label: 'Horaire', title: 'Horaire' },
+  { id: 'terrain', label: 'Terrain', title: 'Terrain' },
+  { id: 'absences', label: 'Absences', title: 'Absences' },
+  { id: 'organisation', label: 'Organisation', title: 'Organisation' },
+  { id: 'pointage', label: 'Pointage', title: 'Pointage' },
+];
+// Encadrés de chaque onglet (dans l'ordre d'affichage).
+const RF_LAYOUT = {
+  accueil: ['horaire', 'couverture', 'jour', 'avenir', 'absences', 'alertes', 'reporting', 'agenda'],
+  horaire: ['horaire', 'publication', 'couverture', 'alertes', 'matchs', 'stats'],
+  terrain: ['zones', 'jour', 'fixe', 'reporting', 'agenda'],
+  absences: ['maladie', 'formation', 'demandes', 'absences'],
+  organisation: ['equipe', 'rh', 'factures', 'etudiants', 'matchs', 'stats', 'parametres'],
+  pointage: ['pointage'],
+};
+let rfTab = (() => { try { return localStorage.getItem('rfTab') || 'accueil'; } catch { return 'accueil'; } })();
+if (!RF_TABS.some(t => t.id === rfTab)) rfTab = 'accueil';
+const rfMonthNav = document.querySelector('.topbar .monthnav'), rfActions = document.querySelector('.topbar .actions');
+
+// Mise en place : menu, cloche / annuler / compte dans l'en-tête, pages rangées.
+(function rfSetup() {
+  if (!rfOn()) return;
+  $('#rfTabs').innerHTML = RF_TABS.map(t => `<button type="button" data-tab="${t.id}">${t.label}</button>`).join('');
+  $('#rfRight').append($('#undoBtn'), document.querySelector('.bell-wrap'), $('#accountBtn'));
+  PAGES.forEach(p => { if (p.dataset.page !== 'me') { p.hidden = true; $('#rfStore').appendChild(p); } });
+})();
+$('#rfTabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) openTab(b.dataset.tab); });
+function openTab(id) {
+  rfTab = id;
+  try { localStorage.setItem('rfTab', id); localStorage.setItem('page', 'dashboard'); } catch {}
+  rfClose(true);
+  PAGES.forEach(p => { p.hidden = true; });
+  document.body.dataset.page = 'overview';
+  renderOverview();
   window.scrollTo(0, 0);
 }
+// Ouvre une page dans la grande fenêtre.
+function rfOpen(el) {
+  const body = $('#rfSheetBody');
+  [...body.children].forEach(c => { if (c !== el) { c.hidden = true; $('#rfStore').appendChild(c); } });
+  body.appendChild(el); el.hidden = false;
+  $('#rfSheetTitle').textContent = el.dataset.title || '';
+  $('#rfSheetSub').textContent = el.dataset.sub || '';
+  // Mois et boutons « Générer, Excel, Imprimer » pour l'horaire et les statistiques.
+  const tools = $('#rfSheetTools');
+  if (['planning', 'stats'].includes(el.dataset.page)) tools.append(rfMonthNav, rfActions);
+  else { const top = document.querySelector('.topbar'); top.insertBefore(rfMonthNav, top.querySelector('#undoBtn') || null); top.appendChild(rfActions); }
+  $('#rfModal').hidden = false;
+  document.body.classList.add('rf-open');
+  body.scrollTop = 0;
+}
+function rfClose(quiet) {
+  if ($('#rfModal').hidden) return;
+  const body = $('#rfSheetBody');
+  [...body.children].forEach(c => { c.hidden = true; $('#rfStore').appendChild(c); });
+  const top = document.querySelector('.topbar'); top.appendChild(rfMonthNav); top.appendChild(rfActions);
+  $('#rfModal').hidden = true;
+  document.body.classList.remove('rf-open');
+  document.body.dataset.page = 'overview';
+  try { localStorage.setItem('page', 'dashboard'); } catch {}
+  if (!quiet) renderOverview();
+}
+$('#rfClose').onclick = () => rfClose();
+$('#rfModal').addEventListener('mousedown', e => { if (e.target === e.currentTarget) rfClose(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#rfModal').hidden && !document.querySelector('dialog[open]')) rfClose(); });
+$('#rfPrev').onclick = () => { month = addMonth(month, -1); api('/api/state'); };
+$('#rfNext').onclick = () => { month = addMonth(month, 1); api('/api/state'); };
+
+// Choix du parking (Bordet arrive à l'étape suivante).
+$('#rfSite').onclick = e => { e.stopPropagation(); $('#rfSiteMenu').hidden = !$('#rfSiteMenu').hidden; };
+$('#rfSiteMenu').addEventListener('click', e => {
+  const b = e.target.closest('[data-site]'); if (!b) return;
+  $('#rfSiteMenu').hidden = true;
+  if (b.dataset.site !== 'westland') toast('Bordet arrive à la prochaine étape.');
+});
+document.addEventListener('click', e => { if (!e.target.closest('#rfSiteMenu, #rfSite')) $('#rfSiteMenu').hidden = true; });
+
+// ----- Encadrés -----
+const rfTile = (go, title, body, cls = '') => `<button type="button" class="rf-tile ${cls}" ${go ? `data-go="${go}"` : ''}><span class="rf-tile-head"><b class="rf-t">${title}</b><span class="rf-more">⋯</span></span>${body}</button>`;
+const rfMonthLabel = () => `${MONTHS[Number(month.slice(5)) - 1]} ${month.slice(0, 4)}`;
+const rfIsAdmin = () => data.account.role === 'admin';
+function rfMonthStats() {
+  const v = data.view, open = v.days.filter(d => !d.closed && d.need);
+  const full = open.filter(d => !d.missing && d.present + d.students.length >= d.need).length;
+  const studs = v.days.reduce((n, d) => n + d.studentRows.filter(r => !r.none).length, 0);
+  return { v, open, full, studs, pct: open.length ? Math.round(full / open.length * 100) : 0 };
+}
+const RF_TILES = {
+  horaire() {
+    const { v, open, full, studs } = rfMonthStats(), td = localDay();
+    const max = Math.max(1, ...v.days.map(d => Math.max(d.need || 0, d.present + d.students.length)));
+    const bars = v.days.map((d, i) => {
+      const val = d.present + d.students.length, cls = d.closed ? 'off' : d.missing ? 'miss' : '';
+      return `<span class="b ${cls} ${d.date === td ? 'today' : ''}" data-l="${d.day} · ${val}/${d.need || 0} pers."><i style="height:${Math.max(4, val / max * 100)}%;animation-delay:${i * 14}ms"></i>${d.need ? `<em style="bottom:calc(${d.need / max * 100}% - 2px)"></em>` : ''}</span>`;
+    }).join('');
+    const last = v.days.length ? v.days[v.days.length - 1].day : 30;
+    const body = `<span class="rf-funnel"><span><span>Jours ouverts</span><b>${open.length}</b></span><span class="hl"><span>Jours complets</span><b>${full}</b></span>
+        <span><span>À compléter</span><b>${open.length - full}</b></span><span><span>Alertes</span><b>${v.generated ? v.warnings.length : '—'}</b></span><span><span>Jours étudiants</span><b>${studs}</b></span></span>
+      ${v.generated ? `<span class="rf-bars">${bars}</span><span class="rf-axis"><span>1</span><span>8</span><span>15</span><span>22</span><span>${last}</span></span>`
+        : '<span class="rf-muted">Le mois n\'est pas encore généré : ouvre l\'horaire pour le générer.</span>'}`;
+    return rfTile('planning', `Horaire · ${rfMonthLabel()}`, body, 'span3');
+  },
+  couverture() {
+    const { pct, open, full } = rfMonthStats();
+    return rfTile('planning', '<span class="rf-tag">✦ Couverture</span>', `<span class="rf-big">${data.view.generated ? pct + '%' : '—'}</span>
+      <span class="rf-muted">${data.view.generated ? `des jours ouverts ont assez de monde en ${rfMonthLabel()} (${full} sur ${open.length}).` : 'Génère le mois pour voir la couverture.'}</span>`, 'grad');
+  },
+  jour() {
+    const v = data.view, td = localDay(), d = v.days.find(x => x.date === td);
+    let body;
+    if (!d) body = '<span class="rf-muted">Aujourd\'hui n\'est pas dans le mois affiché.</span>';
+    else if (d.closed) body = '<span class="rf-muted">Parking fermé aujourd\'hui.</span>';
+    else {
+      const w = v.rows.filter(r => !r.isParkChief).map(r => ({ r, c: r.cells[td] })).filter(x => x.c && x.c.kind === 'work');
+      body = `<span class="rf-big">${w.length + d.students.length}<small>personnes</small></span>
+        <span class="rf-chips">${w.map(x => `<span><b>${esc(x.c.label)}</b>${esc(x.r.name)}</span>`).join('')}${d.students.length ? `<span><b>${d.students.length}</b>étudiant(s)</span>` : ''}</span>`;
+    }
+    return rfTile('zones', "Aujourd'hui", body, 'span2');
+  },
+  avenir() {
+    const td = localDay();
+    const ev = [...(data.matches || []).filter(m => m.date >= td).map(m => ({ date: m.date, ic: '⚽', t: m.opponent, s: m.time })),
+      ...(data.openings || []).filter(o => !o.ignored && o.date >= td).map(o => ({ date: o.date, ic: '🛍', t: 'Ouverture · ' + o.label, s: o.hours || '' }))]
+      .sort((a, b) => a.date.localeCompare(b.date)).slice(0, 4);
+    return rfTile('calendar', 'À venir', ev.length ? `<ul class="rf-list">${ev.map(e => `<li><span class="rf-ic">${e.ic}</span><span class="t">${esc(e.t)}</span><span>${fmtDate(e.date)}${e.s ? ' · ' + esc(e.s) : ''}</span></li>`).join('')}</ul>` : '<span class="rf-muted">Rien de prévu.</span>', 'span2');
+  },
+  absences() {
+    const v = data.view, n = v.rows.filter(r => !r.isParkChief).length || 1;
+    const row = (l, k, c) => { const x = absentPeople(v, k); return `<span class="r"><span><span>${l}</span><b>${x}</b></span><span class="rf-track"><i style="width:${Math.max(x ? 6 : 0, x / n * 100)}%;--c:${c}"></i></span></span>`; };
+    return rfTile('sick', 'Absences du mois', `<span class="rf-big">${absentPeople(v, 'ALL')}<small>personne(s)</small></span>
+      <span class="rf-prog">${row('Maladie', 'MALADIE', 'var(--pink)')}${row('Formation', 'FORMATION', 'var(--blue)')}${row('Congé', 'CONGE', 'var(--green)')}</span>`);
+  },
+  alertes() {
+    const v = data.view;
+    return rfTile('planning', 'Alertes', !v.generated ? '<span class="rf-muted">Mois pas encore généré.</span>'
+      : `<span class="rf-big">${v.warnings.length}<small>${v.warnings.length ? 'à régler' : 'tout est en ordre'}</small></span>
+        <ul class="rf-list">${v.warnings.slice(0, 3).map(w => `<li><span class="rf-ic">⚠</span><span class="t">${esc(w)}</span></li>`).join('')}</ul>`);
+  },
+  reporting: () => rfTile('log', 'Reporting', `<span class="rf-ic" style="width:44px;height:44px;font-size:22px">📝</span>
+    <span class="rf-muted">Les événements du jour (accident, client difficile, objet trouvé…), remis au propre par l'IA, et le rapport PDF du soir.</span>`),
+  agenda: () => rfTile('agenda', 'Agenda', `<span class="rf-ic" style="width:44px;height:44px;font-size:22px">🗓</span>
+    <span class="rf-muted">Tickets PLANON, livraisons, matchs… à ajouter dans l'agenda Outlook EXPLOITATION.</span>`),
+  publication() {
+    const p = data.publish;
+    const body = !p ? '' : !p.published ? `<span class="rf-big">Brouillon</span><span class="rf-muted">L'équipe ne voit pas encore ${rfMonthLabel()}.</span>`
+      : p.people.length ? `<span class="rf-big">${p.people.length}<small>à prévenir</small></span><span class="rf-muted">Changements pas encore envoyés : ${esc(p.people.map(x => x.name).join(', '))}.</span>`
+        : `<span class="rf-big">Publié</span><span class="rf-muted">Le ${hrWhen(p.at)} : l'équipe voit ce mois à jour.</span>`;
+    return rfTile('planning', 'Publication', body, p && p.published && !p.people.length ? '' : 'dark');
+  },
+  matchs() {
+    const ms = (data.allMatches || []).length, os = (data.openings || []).filter(o => !o.ignored && o.date.startsWith(month)).length;
+    const dots = [...Array(14)].map((_, i) => `<span class="c ${i % 5 === 2 ? 'hi' : ''}">${'<i></i>'.repeat(1 + ((i * 7) % 4))}</span>`).join('');
+    return rfTile('calendar', 'Matchs & dimanches', `<span class="rf-big">${ms}<small>match(s) · ${os} ouverture(s)</small></span><span class="rf-dots">${dots}</span>`);
+  },
+  stats: () => rfTile('stats', 'Statistiques', `<span class="rf-muted">Roulement des matchs et des dimanches, compteurs de la saison, heures et jours par personne.</span>
+    <span class="rf-dots">${[...Array(16)].map((_, i) => `<span class="c ${i === 9 ? 'hi' : ''}">${'<i></i>'.repeat(1 + (i * 3) % 5)}</span>`).join('')}</span>`),
+  zones: () => rfTile('zones', 'Zones & dispatch', `<span class="rf-muted">Qui est où maintenant, la journée heure par heure, les imprévus (absent, retard) et les remarques terrain.</span>
+    <span class="rf-chips"><span style="background:#e0eaff">Zone 1 · Total-Delhaize</span><span style="background:#dcfae6">Zone 2 · City-Crélan</span><span style="background:#fdead7">Zone 3 · Toit</span><span style="background:#f4ebff">Dispatch</span></span>`, 'span2'),
+  fixe: () => rfTile('fixed', 'Horaire fixe', `<span class="rf-ic" style="width:44px;height:44px;font-size:22px">🖨</span><span class="rf-muted">Les feuilles par horaire (8-16, 12-20 A…) à imprimer et plastifier.</span>`),
+  maladie() {
+    const v = data.view, who = v.rows.filter(r => Object.values(r.cells).some(c => c && c.code === 'MALADIE'));
+    return rfTile('sick', 'Maladie', `<span class="rf-big">${who.length}<small>personne(s) ce mois</small></span>${who.length ? `<span class="rf-chips">${who.map(r => `<span>${esc(r.name)}</span>`).join('')}</span>` : '<span class="rf-muted">Personne en maladie ce mois-ci.</span>'}`, 'span2');
+  },
+  formation() {
+    const n = absentPeople(data.view, 'FORMATION');
+    return rfTile('formation', 'Formation', `<span class="rf-big">${n}<small>personne(s) ce mois</small></span><span class="rf-muted">La personne n'est pas au parking ce jour-là.</span>`);
+  },
+  demandes: () => rfTile('requests', 'Demandes', `<span class="rf-ic" style="width:44px;height:44px;font-size:22px">✉️</span><span class="rf-muted">Horaire voulu, congé, repos, RTT… pour un jour précis.</span>`),
+  equipe() {
+    const emps = data.config.employees.filter(e => !e.end || e.end >= today());
+    return rfTile('team', 'Équipe', `<span class="rf-big">${emps.length}<small>employés</small></span>
+      <span class="rf-avs">${emps.map(e => `<i class="hrx-av ${hrAv(e.id)}">${esc(initials(e.name))}</i>`).join('')}</span>`, 'span2');
+  },
+  rh() {
+    if (!rfIsAdmin()) return '';
+    const notes = (data.hr && data.hr.notes || []).filter(n => (n.createdAt || '').slice(0, 7) === localDay().slice(0, 7));
+    const pos = notes.filter(n => n.type === 'positive').length, late = notes.filter(n => n.late).length;
+    return rfTile('hr', 'RH', `<span class="rf-big">${notes.length}<small>note(s) ce mois</small></span>
+      <span class="rf-prog"><span class="r"><span><span>Positives</span><b>${pos}</b></span><span class="rf-track"><i style="width:${notes.length ? pos / notes.length * 100 : 0}%;--c:var(--green)"></i></span></span>
+      <span class="r"><span><span>Retards</span><b>${late}</b></span><span class="rf-track"><i style="width:${notes.length ? late / notes.length * 100 : 0}%;--c:var(--orange)"></i></span></span></span>`);
+  },
+  factures: () => rfIsAdmin() ? rfTile('invoices', 'Factures', `<span class="rf-ic" style="width:44px;height:44px;font-size:22px">🧾</span><span class="rf-muted">Westland (Delhaize, Big C, Superwash…) et Bordet (Pfizer) : les factures du mois.</span>`) : '',
+  etudiants: () => rfTile('students', 'Étudiants', `<span class="rf-big">${rfMonthStats().studs}<small>jours étudiants</small></span><span class="rf-muted">Disponibilités par jour et exceptions.</span>`),
+  parametres: () => rfTile('settings', 'Paramètres', `<span class="rf-muted">Roulement des week-ends, semaine du chef terrain, accès, historique et sauvegardes.</span>`),
+  pointage: () => `<div class="rf-tile span4 dark rf-soon"><span class="rf-tile-head"><b class="rf-t">Pointage</b><span class="rf-more">⋯</span></span>
+    <span class="rf-big">Bientôt</span><span class="rf-muted">La liste des pointages de l'équipe, les alertes (retard, oubli, heures supp), les corrections, les horaires de référence et l'export Excel pour la RH et la paie arrivent à une prochaine étape.</span></div>`,
+};
+function renderOverview() {
+  if (!rfOn() || !data || !data.view || (data.account && data.account.role === 'employee')) return;
+  document.querySelectorAll('#rfTabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === rfTab));
+  const tab = RF_TABS.find(t => t.id === rfTab);
+  $('#rfTitle').textContent = tab.title;
+  $('#rfMonth').textContent = cap(rfMonthLabel());
+  $('#rfGrid').innerHTML = RF_LAYOUT[rfTab].map(k => RF_TILES[k] ? RF_TILES[k]() : '').join('');
+  if (data.account.email) $('#accountLabel').textContent = initials(data.account.email.split('@')[0].replace(/[._-]+/g, ' ')) || '?';
+}
+
 // Les anciennes fenêtres sont devenues des pages : « ouvrir » = aller à la page.
 PAGES.forEach(p => { p.showModal = () => go(p.dataset.page); p.close = () => {}; });
 document.addEventListener('click', e => {
@@ -2776,6 +2982,7 @@ if (backend && 'serviceWorker' in navigator) navigator.serviceWorker.register('s
 })();
 function restorePage() {
   if (data && data.account.role === 'employee') return go('me');
+  if (rfOn()) return openTab(rfTab);
   let p = 'dashboard';
   try { p = localStorage.getItem('page') || p; } catch {}
   const nav = document.querySelector(`.nav[data-go="${p}"]`);
