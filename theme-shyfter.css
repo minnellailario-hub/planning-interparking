@@ -165,3 +165,9 @@ html.theme-new .inv-store { border-top-color: var(--line); }
   html.theme-new .weeknav { width: 100%; justify-content: space-between; }
   html.theme-new .weeknav span { min-width: 0; font-size: 13px; }
 }
+/* Menu de gauche en groupes (Planning, Terrain, Absences, Équipe, Gestion) : un peu plus serré pour tout voir sans défiler */
+html.theme-new .sidebar { padding: 16px 12px; }
+html.theme-new .side-brand { padding: 4px 10px 12px; }
+html.theme-new .nav { padding: 7px 12px; }
+html.theme-new .nav-label { padding: 12px 12px 3px; font-size: 10.5px; }
+html.theme-new .side-foot { padding-top: 8px; }
