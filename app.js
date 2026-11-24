@@ -91,7 +91,7 @@ function render() {
     const a = new Date(wkStart + 'T12:00:00'), b = new Date(addDay(wkStart, 6) + 'T12:00:00');
     $('#weekTitle').textContent = `Semaine du ${a.getDate()}${a.getMonth() !== b.getMonth() ? ' ' + MONTHS[a.getMonth()].toLowerCase() : ''} au ${b.getDate()} ${MONTHS[b.getMonth()].toLowerCase()}`;
   }
-  const colCls = d => [d.dow === 1 ? 'monday' : '', d.closed ? 'closed' : '', d.dow === 6 ? 'sat' : '', d.outside ? 'outside' : ''].join(' ');
+  const colCls = d => [d.dow === 1 ? 'monday' : '', d.closed ? 'closed' : '', d.dow === 6 ? 'sat' : '', d.outside ? 'outside' : '', d.frozen ? 'frozen' : ''].join(' ');
   let h = '<thead><tr><th class="name">Employé</th>';
   for (const d of gd) {
     const title = [d.holiday ? `Férié : ${d.holiday}${d.closed ? '' : ' (rouvert)'}` : d.closed ? 'Fermé' : '', d.weGroup.length ? 'Week-end : ' + d.weGroup.join(', ') : '',
@@ -2943,6 +2943,12 @@ $('#grpSave').onclick = async () => {
   toast("Groupes enregistrés. L'horaire déjà fait ne change pas : ils s'appliqueront au prochain « Générer le mois ».");
 };
 
+// Semaine figée : un clic dans l'horaire ne fait que prévenir.
+$('#grid').addEventListener('click', e => {
+  const c = e.target.closest('td.frozen, th.frozen'); if (!c) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  toast('Semaine figée (horaire reçu) : impossible de la modifier.');
+}, true);
 // ----- Actions -----
 $('#prev').onclick = () => { month = addMonth(month, -1); api('/api/state'); };
 $('#next').onclick = () => { month = addMonth(month, 1); api('/api/state'); };

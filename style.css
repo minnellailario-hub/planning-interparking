@@ -933,3 +933,9 @@ body.employee .topbar .monthnav, body.employee .topbar .actions, body.employee #
 .grp-people select { flex: 1 1 200px; width: auto; }
 .grp-people select.grp-add { color: var(--muted); border-style: dashed; }
 @media (max-width: 700px) { .grp-row { grid-template-columns: 1fr auto; } .grp-people { grid-column: 1 / -1; } }
+
+/* Semaine figée (horaire reçu) : impossible à modifier */
+#grid th.frozen { box-shadow: inset 0 3px 0 #475467; }
+#grid th.frozen .n::after { content: " 🔒"; font-size: 10px; }
+#grid td.cell.frozen { cursor: not-allowed; background-image: repeating-linear-gradient(135deg, transparent 0 6px, rgba(71, 84, 103, .05) 6px 12px); }
+#grid td.cell.frozen.lock::after { content: ""; }
