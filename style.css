@@ -903,3 +903,18 @@ body.employee .topbar .monthnav, body.employee .topbar .actions, body.employee #
   .me-shift { min-width: 0; }
   .me-tabs button { padding-left: 6px; padding-right: 6px; font-size: 13px; }
 }
+
+/* ===== Groupes de week-end (Équipe) ===== */
+.grp-board { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin: 12px 0; }
+.grp-col { border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: var(--surface-2); display: flex; flex-direction: column; gap: 6px; min-height: 120px; cursor: pointer; transition: border-color .15s, background .15s; }
+.grp-col.drop { border-color: var(--accent); background: var(--accent-soft); }
+.grp-col.over { border-color: var(--danger); background: var(--danger-soft); }
+.grp-col.new { border-style: dashed; background: transparent; }
+.grp-head { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; margin-bottom: 2px; }
+.grp-head small { color: var(--muted); font-size: 11.5px; }
+.grp-chip { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); font-weight: 500; cursor: grab; user-select: none; }
+.grp-chip.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.grp-chip .hrx-av { width: 26px; height: 26px; flex-basis: 26px; font-size: 11px; }
+.grp-empty { color: var(--muted); font-size: 12.5px; font-style: italic; }
+.grp-warn { color: var(--danger); font-size: 12px; font-weight: 600; }
+.grp-head { flex-direction: column; align-items: flex-start; gap: 0; } .grp-head b { white-space: nowrap; }

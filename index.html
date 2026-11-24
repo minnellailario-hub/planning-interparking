@@ -185,6 +185,7 @@
           </div>
           <button class="alert-chip" id="alertChip" data-go="dashboard" hidden></button>
         </div>
+        <div id="rotBar" class="pub-bar draft" hidden><span class="ic">↻</span><span><b>Les groupes de week-end ont changé.</b> Ce mois garde les groupes avec lesquels il a été fait : clique sur « Générer le mois » pour lui appliquer les nouveaux.</span></div>
         <div id="pubBar" class="pub-bar" hidden></div>
         <div class="tablewrap card flat" id="tableView"><table id="grid"></table></div>
         <div class="dayview" id="dayView" hidden></div>
@@ -237,9 +238,15 @@
 
       <!-- Équipe -->
       <section class="page" id="teamDlg" data-page="team" data-title="Équipe" data-sub="Noms, groupes de week-end, arrivées et départs. Une personne qui part garde son historique.">
+        <div class="card grp-card">
+          <div class="card-head"><h3>Groupes de week-end</h3><span class="muted" id="grpInfo"></span></div>
+          <p class="muted">Glisse un prénom dans un autre groupe, ou touche le prénom puis le groupe. 2 personnes maximum par groupe. <b>L'horaire déjà fait ne change pas</b> : les nouveaux groupes s'appliquent quand tu cliques sur « Générer le mois ».</p>
+          <div class="grp-board" id="grpBoard"></div>
+          <div class="row"><button id="grpSave" class="primary" disabled>Enregistrer les groupes</button><button id="grpReset" class="ghost" hidden>Annuler les changements</button><span class="team-err" id="grpErr" hidden></span></div>
+        </div>
         <div class="card">
           <div class="card-head"><h3>Employés</h3></div>
-          <p class="muted" id="teamGroupsInfo"></p>
+          <p class="muted" id="teamGroupsInfo">Les groupes de week-end se changent dans la carte « Groupes de week-end » ci-dessus.</p>
           <table class="list team" id="teamList"></table>
           <div class="row"><button id="teamAdd">+ Ajouter un employé</button><button id="teamSave" class="primary">Enregistrer</button></div>
           <p id="teamErr" class="team-err" hidden></p>

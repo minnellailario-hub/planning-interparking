@@ -169,6 +169,8 @@ function render() {
   renderMatches();
   renderSettings();
   renderPubBar();
+  $('#rotBar').hidden = !data.rotationChanged || data.account.role === 'viewer';
+  if (document.body.dataset.page === 'team') loadGroups();
   renderOverview();
   $('#alertChip').hidden = !v.warnings.length;
   $('#alertChip').textContent = `⚠ ${v.warnings.length} alerte${v.warnings.length > 1 ? 's' : ''}`;
@@ -2814,15 +2816,10 @@ function groupOptions(i) {
   return h + `<option value="${n}">+ Nouveau groupe</option>`;
 }
 function renderTeam() {
-  const n = groupCount(), used = new Set(team.filter(activeMember).map(t => Number(t.group)));
-  const over = [...used].filter(g => team.filter(t => Number(t.group) === g && activeMember(t)).length > 2);
-  $('#teamGroupsInfo').innerHTML = `<b>${used.size} groupe${used.size > 1 ? 's' : ''}</b> : chaque groupe a son week-end obligatoire toutes les ${used.size} semaines (2 personnes maximum par groupe).`
-    + (over.length ? ` <span class="tag warn">${over.map(g => 'Groupe ' + (g + 1)).join(', ')} : plus de 2 personnes, choisis « + Nouveau groupe » pour l'une d'elles</span>` : '');
-  $('#teamList').innerHTML = '<tr><th>Nom</th><th>Note</th><th>Week-end avec</th><th>Arrivée</th><th>Départ</th><th></th></tr>' + team.map((t, i) => `
-    <tr class="${t.end && t.end < today() ? 'gone' : ''} ${activeMember(t) && over.includes(Number(t.group)) ? 'over' : ''}">
+  $('#teamList').innerHTML = '<tr><th>Nom</th><th>Note</th><th>Arrivée</th><th>Départ</th><th></th></tr>' + team.map((t, i) => `
+    <tr class="${t.end && t.end < today() ? 'gone' : ''}">
       <td><input type="text" data-i="${i}" data-k="name" value="${esc(t.name)}"></td>
       <td><input type="text" data-i="${i}" data-k="note" value="${esc(t.note || '')}" placeholder="ex. CDR"></td>
-      <td><select data-i="${i}" data-k="group">${groupOptions(i)}</select></td>
       <td><input type="date" data-i="${i}" data-k="start" value="${t.start || ''}"></td>
       <td><input type="date" data-i="${i}" data-k="end" value="${t.end || ''}"></td>
       <td>${t.id ? `<button data-edit="${t.id}" title="Départ ou suppression de ${esc(t.name)}">Supprimer…</button>` : `<button data-rm="${i}">Retirer</button>`}</td>
@@ -2838,7 +2835,7 @@ function loadTeam(force) {
   teamDirty = false; $('#teamErr').hidden = true;
   renderTeam();
 }
-$('#openTeam').onclick = () => { loadTeam(true); $('#teamDlg').showModal(); };
+$('#openTeam').onclick = () => { loadTeam(true); loadGroups(true); $('#teamDlg').showModal(); };
 $('#teamChefBtn').onclick = () => openChef();
 $('#teamList').addEventListener('change', e => {
   const { i, k } = e.target.dataset; if (i === undefined) return;
@@ -2868,7 +2865,75 @@ $('#teamSave').onclick = async () => {
     $('#teamErr').textContent = `Pas enregistré : ${err.message}`; $('#teamErr').hidden = false;
     return;
   }
-  loadTeam(true); toast('Équipe enregistrée');
+  loadTeam(true); loadGroups(true); toast('Équipe enregistrée');
+};
+
+// ----- Groupes de week-end : une colonne par groupe, on déplace les prénoms -----
+let grp = null, grpSel = null, grpDirty = false;
+const grpName = id => (data.config.employees.find(e => e.id === id) || {}).name || id;
+const grpActive = id => { const e = data.config.employees.find(x => x.id === id); return !!e && (!e.end || e.end >= today()); };
+function loadGroups(force) {
+  if (grpDirty && !force) return;
+  const c = data.config;
+  grp = c.rotation.groups.map(g => g.slice());
+  // Une personne active sans groupe va dans le premier groupe qui a de la place.
+  for (const e of c.employees) if (grpActive(e.id) && !grp.some(g => g.includes(e.id))) {
+    let k = grp.findIndex(g => g.filter(grpActive).length < 2); if (k < 0) { grp.push([]); k = grp.length - 1; }
+    grp[k].push(e.id);
+  }
+  grpDirty = false; grpSel = null; renderGroups();
+}
+// Prochain samedi de week-end obligatoire de chaque groupe (roulement actuel).
+function grpNextWeekend(k) {
+  const r = data.config.rotation, n = grp.length; if (!n) return null;
+  let sat = localDay(); while (new Date(sat + 'T12:00:00').getDay() !== 6) sat = addDay(sat, 1);
+  for (let w = 0; w < n * 2; w++) {
+    const d = addDay(sat, 7 * w), weeks = Math.round((new Date(d + 'T12:00:00') - new Date(r.refSaturday + 'T12:00:00')) / 6048e5);
+    if ((((r.refGroup + weeks) % n) + n) % n === k) return d;
+  }
+  return null;
+}
+function renderGroups() {
+  if (!grp) return;
+  const cols = grp.map((g, k) => {
+    const people = g.filter(grpActive), over = people.length > 2, nw = grpNextWeekend(k);
+    const nd = nw && new Date(nw + 'T12:00:00');
+    return `<div class="grp-col ${over ? 'over' : ''}" data-g="${k}"><div class="grp-head"><b>Groupe ${k + 1}</b>${nd ? `<small>week-end le ${nd.getDate()}/${nd.getMonth() + 1}</small>` : ''}</div>
+      ${people.map(id => `<span class="grp-chip hrx-av-chip ${grpSel === id ? 'sel' : ''}" draggable="true" data-id="${id}"><i class="hrx-av ${hrAv(id)}">${esc(initials(grpName(id)))}</i>${esc(grpName(id))}</span>`).join('') || '<span class="grp-empty">Vide</span>'}
+      ${over ? '<span class="grp-warn">3 personnes : 2 maximum</span>' : ''}</div>`;
+  }).join('') + `<div class="grp-col new" data-g="${grp.length}"><div class="grp-head"><b>+ Nouveau groupe</b></div><span class="grp-empty">Glisse un prénom ici</span></div>`;
+  const used = grp.filter(g => g.some(grpActive)).length;
+  $('#grpInfo').textContent = `${used} groupe${used > 1 ? 's' : ''} : week-end obligatoire toutes les ${used} semaines`;
+  $('#grpBoard').innerHTML = cols;
+  $('#grpSave').disabled = !grpDirty; $('#grpReset').hidden = !grpDirty;
+}
+function grpMove(id, k) {
+  if (!id || !Number.isInteger(k)) return;
+  if (grp[k] && grp[k].includes(id)) { grpSel = null; return renderGroups(); }
+  grp.forEach(g => { const i = g.indexOf(id); if (i >= 0) g.splice(i, 1); });
+  while (grp.length <= k) grp.push([]);
+  grp[k].push(id);
+  // Les groupes restés vides disparaissent (sauf s'ils gardent d'anciens employés).
+  grp = grp.filter(g => g.length);
+  grpSel = null; grpDirty = true; $('#grpErr').hidden = true; renderGroups();
+}
+$('#grpBoard').addEventListener('click', e => {
+  const chip = e.target.closest('.grp-chip');
+  if (chip) { grpSel = grpSel === chip.dataset.id ? null : chip.dataset.id; return renderGroups(); }
+  const col = e.target.closest('.grp-col');
+  if (col && grpSel) grpMove(grpSel, Number(col.dataset.g));
+});
+$('#grpBoard').addEventListener('dragstart', e => { const c = e.target.closest('.grp-chip'); if (c) { e.dataTransfer.setData('text/plain', c.dataset.id); e.dataTransfer.effectAllowed = 'move'; } });
+$('#grpBoard').addEventListener('dragover', e => { const col = e.target.closest('.grp-col'); if (col) { e.preventDefault(); document.querySelectorAll('.grp-col.drop').forEach(x => x.classList.toggle('drop', x === col)); col.classList.add('drop'); } });
+$('#grpBoard').addEventListener('dragleave', e => { const col = e.target.closest('.grp-col'); if (col && !col.contains(e.relatedTarget)) col.classList.remove('drop'); });
+$('#grpBoard').addEventListener('drop', e => { const col = e.target.closest('.grp-col'); if (!col) return; e.preventDefault(); col.classList.remove('drop'); grpMove(e.dataTransfer.getData('text/plain'), Number(col.dataset.g)); });
+$('#grpReset').onclick = () => loadGroups(true);
+$('#grpSave').onclick = async () => {
+  $('#grpErr').hidden = true;
+  try { await api('/api/groups', { groups: grp }); }
+  catch (err) { $('#grpErr').textContent = 'Pas enregistré : ' + err.message; $('#grpErr').hidden = false; return; }
+  grpDirty = false; loadGroups(true); loadTeam(true);
+  toast("Groupes enregistrés. L'horaire déjà fait ne change pas : ils s'appliqueront au prochain « Générer le mois ».");
 };
 
 // ----- Actions -----
