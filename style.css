@@ -958,3 +958,29 @@ body.employee .topbar .monthnav, body.employee .topbar .actions, body.employee #
 /* Codes de la fiche salaires */
 .c-SS, .c-ANC, .c-PC, .c-PATERNITE, .c-AT, .c-AJ, .c-CS, .c-FS, .c-MS { background: var(--conge); color: var(--conge-ink); }
 .c-RJ, .c-RS { background: var(--off); color: var(--off-ink); }
+
+/* Équipe : une ligne par personne (prénom, nom, fonction, arrivée, départ, retirer) */
+.emp-list { display: grid; gap: 8px; margin: 10px 0 12px; }
+.emp-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1.2fr) 110px 150px 150px auto; gap: 10px; align-items: end;
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.emp-row.gone { opacity: .6; background: var(--surface-2); }
+.emp-row > .hrx-av { width: 36px; height: 36px; flex-basis: 36px; font-size: 13px; align-self: center; }
+.emp-row label { display: grid; gap: 3px; font-size: 11.5px; color: var(--muted); font-weight: 500; min-width: 0; }
+.emp-row input { width: 100%; box-sizing: border-box; min-width: 0; }
+.emp-act { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.emp-rm { color: var(--danger); }
+.emp-ask { grid-column: 1 / -1; display: grid; gap: 8px; padding: 12px; border-radius: 10px; background: var(--danger-soft); }
+.emp-ask .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.emp-ask label { color: var(--text); }
+@media (max-width: 900px) {
+  .emp-row { grid-template-columns: 36px 1fr 1fr; }
+  .emp-row > .hrx-av { grid-row: span 2; }
+  .emp-row .emp-fn { grid-column: 2 / -1; }
+  .emp-row label:nth-of-type(4), .emp-row label:nth-of-type(5) { grid-column: auto; }
+  .emp-act { grid-column: 1 / -1; justify-content: space-between; }
+}
+@media (max-width: 520px) {
+  .emp-row { grid-template-columns: 1fr 1fr; }
+  .emp-row > .hrx-av { display: none; }
+  .emp-row .emp-fn { grid-column: 1 / -1; }
+}

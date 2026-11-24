@@ -2879,15 +2879,33 @@ function groupOptions(i) {
   }
   return h + `<option value="${n}">+ Nouveau groupe</option>`;
 }
+// Prénom et nom séparés à l'écran ; l'outil garde « Prénom Nom ».
+const firstOf = n => String(n || '').trim().split(/\s+/)[0] || '';
+const lastOf = n => String(n || '').trim().split(/\s+/).slice(1).join(' ');
+let teamRemove = null; // ligne dont on choisit comment la retirer
 function renderTeam() {
-  $('#teamList').innerHTML = '<tr><th>Nom</th><th>Note</th><th>Arrivée</th><th>Départ</th><th></th></tr>' + team.map((t, i) => `
-    <tr class="${t.end && t.end < today() ? 'gone' : ''}">
-      <td><input type="text" data-i="${i}" data-k="name" value="${esc(t.name)}"></td>
-      <td><input type="text" data-i="${i}" data-k="note" value="${esc(t.note || '')}" placeholder="ex. CDR"></td>
-      <td><input type="date" data-i="${i}" data-k="start" value="${t.start || ''}"></td>
-      <td><input type="date" data-i="${i}" data-k="end" value="${t.end || ''}"></td>
-      <td>${t.id ? `<button data-edit="${t.id}" title="Départ ou suppression de ${esc(t.name)}">Supprimer…</button>` : `<button data-rm="${i}">Retirer</button>`}</td>
-    </tr>`).join('');
+  const gone = t => t.end && t.end < today();
+  const order = team.map((t, i) => i).sort((a, b) => (gone(team[a]) ? 1 : 0) - (gone(team[b]) ? 1 : 0));
+  $('#teamList').innerHTML = order.map(i => {
+    const t = team[i], f = t.first !== undefined ? t.first : firstOf(t.name), l = t.last !== undefined ? t.last : lastOf(t.name);
+    const ask = teamRemove === i && t.id;
+    return `<div class="emp-row ${gone(t) ? 'gone' : ''}">
+      <i class="hrx-av ${t.id ? hrAv(t.id) : 'c0'}">${esc(initials(`${f} ${l}`) || '+')}</i>
+      <label>Prénom<input type="text" data-i="${i}" data-k="first" value="${esc(f)}" placeholder="Prénom"></label>
+      <label>Nom<input type="text" data-i="${i}" data-k="last" value="${esc(l)}" placeholder="Nom de famille"></label>
+      <label class="emp-fn">Fonction<input type="text" data-i="${i}" data-k="note" value="${esc(t.note || '')}" placeholder="ex. CDR"></label>
+      <label>Arrivée<input type="date" data-i="${i}" data-k="start" value="${t.start || ''}"></label>
+      <label>Départ<input type="date" data-i="${i}" data-k="end" value="${t.end || ''}"></label>
+      <div class="emp-act">${gone(t) ? `<span class="tag">Parti le ${fmtDate(t.end)}</span>` : ''}<button type="button" class="ghost emp-rm" data-rm="${i}" title="Retirer ${esc(f)} de l'équipe">Retirer</button></div>
+      ${ask ? `<div class="emp-ask">
+        <b>Retirer ${esc(f)} de l'équipe ?</b>
+        <div class="row"><label>Dernier jour de travail <input type="date" id="empLastDay" value="${t.end || today()}"></label>
+          <button type="button" class="primary" data-leave="${i}">Il part (garde son historique)</button></div>
+        <div class="row"><button type="button" class="danger" data-del="${i}">Supprimer définitivement (efface aussi son historique)</button>
+          <button type="button" class="ghost" data-cancel="1">Annuler</button></div>
+      </div>` : ''}
+    </div>`;
+  }).join('') || '<p class="muted">Personne dans l\'équipe pour le moment.</p>';
 }
 // Modifications pas encore enregistrées : on ne les écrase pas quand la page se redessine.
 let teamDirty = false;
@@ -2903,15 +2921,35 @@ $('#openTeam').onclick = () => { loadTeam(true); loadGroups(true); renderPay(); 
 $('#teamChefBtn').onclick = () => openChef();
 $('#teamList').addEventListener('change', e => {
   const { i, k } = e.target.dataset; if (i === undefined) return;
-  team[i][k] = e.target.value; teamDirty = true;
-  if (k === 'group' || k === 'end' || k === 'name') renderTeam();
+  const t = team[i]; teamDirty = true;
+  if (k === 'first' || k === 'last') {
+    if (t.first === undefined) { t.first = firstOf(t.name); t.last = lastOf(t.name); }
+    t[k] = e.target.value.trim();
+    t.name = `${t.first} ${t.last}`.trim();
+  } else t[k] = e.target.value;
+  renderTeam();
 });
-$('#teamList').addEventListener('click', e => {
-  const ed = e.target.closest('button[data-edit]');
-  // Personne déjà enregistrée : départ (garde l'historique) ou suppression définitive, dans la fiche de la personne.
-  if (ed) { teamDirty = false; openEmp(ed.dataset.edit); return; }
-  const b = e.target.closest('button[data-rm]'); if (!b) return;
-  team.splice(Number(b.dataset.rm), 1); renderTeam();
+$('#teamList').addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.cancel) { teamRemove = null; return renderTeam(); }
+  if (b.dataset.rm !== undefined) {
+    const i = Number(b.dataset.rm);
+    // Pas encore enregistré : on enlève simplement la ligne ; sinon on demande comment.
+    if (!team[i].id) { team.splice(i, 1); teamRemove = null; return renderTeam(); }
+    teamRemove = teamRemove === i ? null : i; return renderTeam();
+  }
+  const leave = b.dataset.leave, del = b.dataset.del;
+  if (leave === undefined && del === undefined) return;
+  const t = team[Number(leave !== undefined ? leave : del)];
+  const body = leave !== undefined ? { action: 'leave', end: $('#empLastDay').value } : { action: 'delete' };
+  if (leave !== undefined && !body.end) return toast('Indique le dernier jour de travail');
+  if (del !== undefined && !confirm(`Supprimer définitivement ${t.name} et tout son historique ? C'est irréversible.`)) return;
+  b.disabled = true;
+  try {
+    await api('/api/employee', { ...body, id: t.id, regenerate: true });
+    teamRemove = null; teamDirty = false; loadTeam(true); loadGroups(true);
+    toast(leave !== undefined ? `${firstOf(t.name)} ne sera plus dans le planning après le ${fmtDate(body.end)}.` : `${t.name} supprimé.`);
+  } catch { b.disabled = false; }
 });
 // Nouvelle personne : dans le premier groupe qui a encore de la place, sinon dans un nouveau groupe.
 $('#teamAdd').onclick = () => {
@@ -2924,7 +2962,8 @@ $('#teamAdd').onclick = () => {
 $('#teamSave').onclick = async () => {
   $('#teamErr').hidden = true;
   try {
-    await api('/api/team', { employees: team, chefName: $('#chefNameInput').value });
+    if (team.some(t => !String(t.name || '').trim())) throw new Error('il manque un prénom');
+    await api('/api/team', { employees: team.map(({ first, last, ...t }) => t), chefName: $('#chefNameInput').value });
   } catch (err) {
     $('#teamErr').textContent = `Pas enregistré : ${err.message}`; $('#teamErr').hidden = false;
     return;
