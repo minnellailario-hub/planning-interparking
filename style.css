@@ -927,3 +927,9 @@ body.employee .topbar .monthnav, body.employee .topbar .actions, body.employee #
 .grp-del { color: var(--muted); }
 #grpAdd { justify-self: start; }
 @media (max-width: 700px) { .grp-row { grid-template-columns: 1fr auto; } .grp-row select { grid-column: 1 / -1; } .grp-name { grid-row: 1; } }
+
+.grp-row { grid-template-columns: 130px minmax(0, 1fr) auto; }
+.grp-people { display: flex; flex-wrap: wrap; gap: 8px; }
+.grp-people select { flex: 1 1 200px; width: auto; }
+.grp-people select.grp-add { color: var(--muted); border-style: dashed; }
+@media (max-width: 700px) { .grp-row { grid-template-columns: 1fr auto; } .grp-people { grid-column: 1 / -1; } }

@@ -7,13 +7,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261124140155">
+  <link rel="stylesheet" href="style.css?v=20261124140419">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#1d2330">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="theme-shyfter.css?v=20261124140155">
-  <link rel="stylesheet" href="theme-refonte.css?v=20261124140155">
+  <link rel="stylesheet" href="theme-shyfter.css?v=20261124140419">
+  <link rel="stylesheet" href="theme-refonte.css?v=20261124140419">
   <!-- Apparence choisie sur cet appareil (nouveau thème par défaut, l'ancien reste disponible dans Paramètres). -->
   <!-- Apparence « Nouveau » (menu à gauche). La refonte (theme-refonte.css, classe refonte) reste dans les fichiers, inactive. -->
   <script>document.documentElement.classList.add('theme-new');</script>
@@ -240,7 +240,7 @@
       <section class="page" id="teamDlg" data-page="team" data-title="Équipe" data-sub="Noms, groupes de week-end, arrivées et départs. Une personne qui part garde son historique.">
         <div class="card grp-card">
           <div class="card-head"><h3>Groupes de week-end</h3><span class="muted" id="grpInfo"></span></div>
-          <p class="muted">Pour chaque groupe, choisis les 2 personnes dans les listes. « + Créer un groupe » en ajoute un. <b>L'horaire déjà fait ne change pas</b> : les nouveaux groupes s'appliquent quand tu cliques sur « Générer le mois ».</p>
+          <p class="muted">Pour chaque groupe, choisis les personnes dans les listes (« + ajouter une personne » pour en mettre autant que tu veux). « + Créer un groupe » en ajoute un. <b>L'horaire déjà fait ne change pas</b> : les nouveaux groupes s'appliquent quand tu cliques sur « Générer le mois ».</p>
           <div class="grp-board" id="grpBoard"></div>
           <div class="row"><button id="grpSave" class="primary" disabled>Enregistrer les groupes</button><button id="grpReset" class="ghost" hidden>Annuler les changements</button><span class="team-err" id="grpErr" hidden></span></div>
         </div>
@@ -672,7 +672,7 @@
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
-  <script src="backend.js?v=20261124140155"></script>
-  <script src="app.js?v=20261124140155"></script>
+  <script src="backend.js?v=20261124140419"></script>
+  <script src="app.js?v=20261124140419"></script>
 </body>
 </html>

@@ -2899,12 +2899,12 @@ function renderGroups() {
   const groupOf = id => grp.findIndex(g => g.includes(id));
   const rows = grp.map((g, k) => {
     const people = g.filter(grpActive), nw = grpNextWeekend(k), nd = nw && new Date(nw + 'T12:00:00');
-    const sel = s => `<select data-g="${k}" data-s="${s}"><option value="">— choisir —</option>${actives.map(e => {
+    const sel = s => `<select data-g="${k}" data-s="${s}" class="${s >= people.length ? 'grp-add' : ''}"><option value="">${s >= people.length ? '+ ajouter une personne' : '— retirer —'}</option>${actives.map(e => {
       const o = groupOf(e.id);
       return `<option value="${e.id}" ${people[s] === e.id ? 'selected' : ''}>${esc(e.name)}${o >= 0 && o !== k ? ` (Groupe ${o + 1})` : ''}</option>`;
     }).join('')}</select>`;
     return `<div class="grp-row"><div class="grp-name"><b>Groupe ${k + 1}</b>${nd ? `<small>week-end le ${nd.getDate()}/${nd.getMonth() + 1}</small>` : ''}</div>
-      ${sel(0)}${sel(1)}<button type="button" class="ghost grp-del" data-del="${k}" title="Supprimer le Groupe ${k + 1}">✕</button></div>`;
+      <div class="grp-people">${people.map((_, s) => sel(s)).join('')}${sel(people.length)}</div><button type="button" class="ghost grp-del" data-del="${k}" title="Supprimer le Groupe ${k + 1}">✕</button></div>`;
   }).join('');
   const alone = actives.filter(e => groupOf(e.id) < 0);
   $('#grpBoard').innerHTML = rows + `<button type="button" id="grpAdd">+ Créer un groupe</button>`
@@ -2921,7 +2921,7 @@ $('#grpBoard').addEventListener('change', e => {
   if (id) grp.forEach(g => { const i = g.indexOf(id); if (i >= 0) g.splice(i, 1); });
   const now = people.filter(x => x !== id);
   if (id) now.splice(Math.min(slot, now.length), 0, id); else now.splice(slot, 1);
-  grp[k] = [...gone, ...now.slice(0, 2)];
+  grp[k] = [...gone, ...now];
   grpDirty = true; $('#grpErr').hidden = true; renderGroups();
 });
 $('#grpBoard').addEventListener('click', e => {
