@@ -1,8 +1,10 @@
 'use strict';
 const $ = s => document.querySelector(s);
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-const OFF = { REPOS: 'Repos', WE: 'Week-end', RTT: 'RTT', RECUP: 'Récup', CONGE: 'Congé', MALADIE: 'Maladie', FORMATION: 'Formation' };
-const SHORT = { REPOS: 'R', WE: 'WE', RTT: 'RTT', RECUP: 'Réc', CONGE: 'CG', MALADIE: 'M', FORMATION: 'For' };
+const OFF = { REPOS: 'Repos', WE: 'Week-end', RTT: 'RTT', RECUP: 'Récup', CONGE: 'Congé', MALADIE: 'Maladie', FORMATION: 'Formation', SS: 'Sans solde', ANC: 'Ancienneté', PC: 'Petit chômage', PATERNITE: 'Paternité', AT: 'Accident travail', AJ: 'Absence justifiée', RJ: 'Récup férié', CS: 'Congé syndical', RS: 'Récup syndicale', FS: 'Form. syndicale', MS: 'Mission syndicale' };
+const SHORT = { REPOS: 'R', WE: 'WE', RTT: 'RTT', RECUP: 'Réc', CONGE: 'CG', MALADIE: 'M', FORMATION: 'For', SS: 'SS', ANC: 'ANC', PC: 'PC', PATERNITE: 'Pat', AT: 'AT', AJ: 'AJ', RJ: 'RJ', CS: 'CS', RS: 'RS', FS: 'FS', MS: 'MS' };
+// Codes de la fiche salaires (en plus de Congé, Maladie, Formation, RTT, Récup).
+const PAY_CODES = ['SS', 'ANC', 'PC', 'PATERNITE', 'AT', 'AJ', 'RJ', 'CS', 'RS', 'FS', 'MS'];
 
 let month = (() => {
   try { const m = localStorage.getItem('month'); if (/^\d{4}-\d{2}$/.test(m)) return m; } catch {}
@@ -550,8 +552,8 @@ $('#hrExportHours').onclick = () => downloadXlsx('/api/export-hours.xlsx', hrSel
 
 // ----- Espace employé : son horaire publié, l'équipe, ses zones du jour et ses heures -----
 let meTab = 'mine', meWeek = null;
-const ME_OFF = { REPOS: 'Repos', WE: 'Week-end', RTT: 'RTT', RECUP: 'Récup', CONGE: 'Congé', MALADIE: 'Maladie', FORMATION: 'Formation' };
-const ME_SHORT = { REPOS: 'R', WE: 'WE', RTT: 'RTT', RECUP: 'Réc', CONGE: 'CG', MALADIE: 'M', FORMATION: 'For' };
+const ME_OFF = OFF;
+const ME_SHORT = SHORT;
 const DOW_FR = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
 const DOW_LONG = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 const mondayOf = d => addDay(d, -((new Date(d + 'T12:00:00').getDay() + 6) % 7));
@@ -663,7 +665,7 @@ function meHoursHtml() {
       if (c === undefined) { missing = true; continue; }
       if (c && c.w) { plan += cellHours(c); if (d < me.today) done += cellHours(c); }
       if (c && c.o === 'RTT') rtt++;
-      if (c && ['CONGE', 'MALADIE', 'FORMATION'].includes(c.o)) just += 8;
+      if (c && ['CONGE', 'MALADIE', 'FORMATION', 'ANC', 'PC', 'PATERNITE', 'AT', 'AJ', 'CS', 'FS', 'MS'].includes(c.o)) just += 8;
     }
     const target = 40 - 8 * rtt, diff = plan + just - target;
     if (!missing) { sumPlan += plan + just; sumDone += done; sumTarget += target; }
@@ -1230,7 +1232,7 @@ function openPop(td) {
   if (row.isParkChief) {
     // Chef de parc : CP (automatique) du lundi au vendredi, ou une absence.
     let hp = `<div class="ttl">${esc(row.name)} – ${day.dowLabel} ${fmtDate(date)}</div>`;
-    for (const k of ['CONGE', 'MALADIE', 'FORMATION', 'REPOS', 'RTT']) hp += `<button data-v="${k}" class="c-${k}">${OFF[k]}</button>`;
+    for (const k of ['CONGE', 'MALADIE', 'FORMATION', 'REPOS', 'RTT', ...PAY_CODES]) hp += `<button data-v="${k}" class="c-${k}">${OFF[k]}</button>`;
     hp += '<button data-v="auto" class="auto">CP (automatique)</button>';
     return showPop(td, hp, emp, date);
   }
@@ -1244,7 +1246,7 @@ function openPop(td) {
     return showPop(td, h, emp, date);
   }
   for (const o of opts) h += `<button data-v="${o}" class="c-${row.isChef ? 'CHEF' : o}">${o === 'FOOT' ? '⚽ ' + day.match.shift : o}</button>`;
-  for (const k of Object.keys(OFF)) if (!row.isChef || ['REPOS', 'CONGE', 'MALADIE', 'FORMATION', 'RTT'].includes(k)) h += `<button data-v="${k}" class="c-${k}">${OFF[k]}</button>`;
+  for (const k of Object.keys(OFF)) if (!row.isChef || ['REPOS', 'CONGE', 'MALADIE', 'FORMATION', 'RTT', ...PAY_CODES].includes(k)) h += `<button data-v="${k}" class="c-${k}">${OFF[k]}</button>`;
   h += `<button data-v="auto" class="auto">Automatique (déverrouiller)</button>`;
   showPop(td, h, emp, date);
 }
@@ -1467,7 +1469,9 @@ $('#clear').onclick = () => confirm('Vider le mois (les cases verrouillées sont
 
 // ----- Maladie et demandes (même fenêtre, plusieurs lignes) -----
 const today = () => new Date().toISOString().slice(0, 10);
-const REQUEST_CHOICES = [['8-16', '8-16'], ['10-18', '10-18'], ['12-20', '12-20'], ['REPOS', 'Repos'], ['CONGE', 'Congé'], ['RTT', 'RTT']];
+const REQUEST_CHOICES = [['8-16', '8-16'], ['10-18', '10-18'], ['12-20', '12-20'], ['REPOS', 'X · Repos'], ['CONGE', 'C · Congé légal payé'], ['RTT', 'RTT'],
+  ['SS', 'SS · Congé sans solde'], ['ANC', "ANC · Congé d'ancienneté"], ['PC', 'PC · Petit chômage'], ['PATERNITE', 'CP · Congé de paternité'], ['AT', 'AT · Accident de travail'],
+  ['AJ', 'AJ · Absence justifiée'], ['RJ', 'RJ · Récup jour férié'], ['CS', 'CS · Congé syndical'], ['RS', 'RS · Récup syndicale'], ['FS', 'FS · Formation syndicale'], ['MS', 'MS · Mission syndicale']];
 const activeEmps = () => data.config.employees.filter(e => !e.end || e.end >= today());
 // Maladie / formation : aussi le chef terrain et le chef de parc (identifiant fixe « chef-parc »).
 const chiefs = () => [{ id: data.config.chef.id, name: `${data.config.chef.name} (chef terrain)` },
@@ -2895,7 +2899,7 @@ function loadTeam(force) {
   teamDirty = false; $('#teamErr').hidden = true;
   renderTeam();
 }
-$('#openTeam').onclick = () => { loadTeam(true); loadGroups(true); $('#teamDlg').showModal(); };
+$('#openTeam').onclick = () => { loadTeam(true); loadGroups(true); renderPay(); $('#teamDlg').showModal(); };
 $('#teamChefBtn').onclick = () => openChef();
 $('#teamList').addEventListener('change', e => {
   const { i, k } = e.target.dataset; if (i === undefined) return;
@@ -2927,6 +2931,30 @@ $('#teamSave').onclick = async () => {
   }
   loadTeam(true); loadGroups(true); toast('Équipe enregistrée');
 };
+
+// ----- Fiche salaires : infos par personne (nom de famille, statut, catégorie, heures) et téléchargement -----
+function renderPay() {
+  if (!data || data.account.role !== 'admin') return;
+  const pi = data.config.payInfo || {};
+  const people = [...(data.config.parkChief && data.config.parkChief.name ? [{ id: 'chef-parc', name: data.config.parkChief.name, role: 'Chef de parc' }] : []),
+    { id: data.config.chef.id, name: data.config.chef.name, role: 'Chef terrain' }, ...activeEmps().map(e => ({ id: e.id, name: e.name, role: e.note || '' }))];
+  $('#payList').innerHTML = '<tr><th>Prénom</th><th>Nom de famille</th><th>Statut</th><th>Catégorie</th><th>Heures</th></tr>' + people.map(p => {
+    const x = pi[p.id] || {};
+    return `<tr data-pid="${p.id}"><td><b>${esc(p.name.split(' ')[0])}</b> <small class="muted">${esc(p.role)}</small></td>
+      <td><input data-k="lastName" value="${esc(x.lastName || p.name.split(' ').slice(1).join(' ').toUpperCase())}"></td>
+      <td><select data-k="statut">${[['E', 'E · Employé'], ['O', 'O · Ouvrier']].map(([v, l]) => `<option value="${v}" ${(x.statut || 'E') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
+      <td><input data-k="categorie" value="${esc(x.categorie || '')}" style="width:70px"></td>
+      <td><input data-k="heures" value="${esc(x.heures || '40h')}" style="width:70px"></td></tr>`;
+  }).join('');
+}
+$('#paySave').onclick = async () => {
+  const people = {};
+  document.querySelectorAll('#payList tr[data-pid]').forEach(tr => { people[tr.dataset.pid] = Object.fromEntries([...tr.querySelectorAll('[data-k]')].map(i => [i.dataset.k, i.value])); });
+  await api('/api/hr/payinfo', { people }).then(() => toast('Infos de la fiche salaires enregistrées')).catch(() => {});
+};
+const payDownload = () => downloadXlsx('/api/export-salaires.xlsx', {});
+$('#payDownload').onclick = payDownload;
+$('#payXlsx').onclick = payDownload;
 
 // ----- Groupes de week-end : une colonne par groupe, on déplace les prénoms -----
 let grp = null, grpSel = null, grpDirty = false;

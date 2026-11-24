@@ -954,3 +954,7 @@ body.employee .topbar .monthnav, body.employee .topbar .actions, body.employee #
 .cert-pick { display: grid; gap: 4px; font-size: 12.5px; }
 .cert-pick input[type=file] { font-size: 12px; max-width: 230px; }
 .cert-name { display: inline-flex; align-items: center; gap: 4px; font-weight: 500; }
+
+/* Codes de la fiche salaires */
+.c-SS, .c-ANC, .c-PC, .c-PATERNITE, .c-AT, .c-AJ, .c-CS, .c-FS, .c-MS { background: var(--conge); color: var(--conge-ink); }
+.c-RJ, .c-RS { background: var(--off); color: var(--off-ink); }
