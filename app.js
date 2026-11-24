@@ -2895,41 +2895,48 @@ function grpNextWeekend(k) {
 }
 function renderGroups() {
   if (!grp) return;
-  const cols = grp.map((g, k) => {
-    const people = g.filter(grpActive), over = people.length > 2, nw = grpNextWeekend(k);
-    const nd = nw && new Date(nw + 'T12:00:00');
-    return `<div class="grp-col ${over ? 'over' : ''}" data-g="${k}"><div class="grp-head"><b>Groupe ${k + 1}</b>${nd ? `<small>week-end le ${nd.getDate()}/${nd.getMonth() + 1}</small>` : ''}</div>
-      ${people.map(id => `<span class="grp-chip hrx-av-chip ${grpSel === id ? 'sel' : ''}" draggable="true" data-id="${id}"><i class="hrx-av ${hrAv(id)}">${esc(initials(grpName(id)))}</i>${esc(grpName(id))}</span>`).join('') || '<span class="grp-empty">Vide</span>'}
-      ${over ? '<span class="grp-warn">3 personnes : 2 maximum</span>' : ''}</div>`;
-  }).join('') + `<div class="grp-col new" data-g="${grp.length}"><div class="grp-head"><b>+ Nouveau groupe</b></div><span class="grp-empty">Glisse un prénom ici</span></div>`;
+  const actives = data.config.employees.filter(e => grpActive(e.id));
+  const groupOf = id => grp.findIndex(g => g.includes(id));
+  const rows = grp.map((g, k) => {
+    const people = g.filter(grpActive), nw = grpNextWeekend(k), nd = nw && new Date(nw + 'T12:00:00');
+    const sel = s => `<select data-g="${k}" data-s="${s}"><option value="">— choisir —</option>${actives.map(e => {
+      const o = groupOf(e.id);
+      return `<option value="${e.id}" ${people[s] === e.id ? 'selected' : ''}>${esc(e.name)}${o >= 0 && o !== k ? ` (Groupe ${o + 1})` : ''}</option>`;
+    }).join('')}</select>`;
+    return `<div class="grp-row"><div class="grp-name"><b>Groupe ${k + 1}</b>${nd ? `<small>week-end le ${nd.getDate()}/${nd.getMonth() + 1}</small>` : ''}</div>
+      ${sel(0)}${sel(1)}<button type="button" class="ghost grp-del" data-del="${k}" title="Supprimer le Groupe ${k + 1}">✕</button></div>`;
+  }).join('');
+  const alone = actives.filter(e => groupOf(e.id) < 0);
+  $('#grpBoard').innerHTML = rows + `<button type="button" id="grpAdd">+ Créer un groupe</button>`
+    + (alone.length ? `<p class="grp-warn">Sans groupe : ${alone.map(e => esc(e.name)).join(', ')}. Choisis-leur un groupe avant d'enregistrer.</p>` : '');
   const used = grp.filter(g => g.some(grpActive)).length;
   $('#grpInfo').textContent = `${used} groupe${used > 1 ? 's' : ''} : week-end obligatoire toutes les ${used} semaines`;
-  $('#grpBoard').innerHTML = cols;
   $('#grpSave').disabled = !grpDirty; $('#grpReset').hidden = !grpDirty;
 }
-function grpMove(id, k) {
-  if (!id || !Number.isInteger(k)) return;
-  if (grp[k] && grp[k].includes(id)) { grpSel = null; return renderGroups(); }
-  grp.forEach(g => { const i = g.indexOf(id); if (i >= 0) g.splice(i, 1); });
-  while (grp.length <= k) grp.push([]);
-  grp[k].push(id);
-  // Les groupes restés vides disparaissent (sauf s'ils gardent d'anciens employés).
-  grp = grp.filter(g => g.length);
-  grpSel = null; grpDirty = true; $('#grpErr').hidden = true; renderGroups();
-}
-$('#grpBoard').addEventListener('click', e => {
-  const chip = e.target.closest('.grp-chip');
-  if (chip) { grpSel = grpSel === chip.dataset.id ? null : chip.dataset.id; return renderGroups(); }
-  const col = e.target.closest('.grp-col');
-  if (col && grpSel) grpMove(grpSel, Number(col.dataset.g));
+// Choisir une personne pour un groupe : elle quitte son ancien groupe.
+$('#grpBoard').addEventListener('change', e => {
+  const s = e.target.closest('select[data-g]'); if (!s) return;
+  const k = Number(s.dataset.g), slot = Number(s.dataset.s), id = s.value;
+  const people = grp[k].filter(grpActive), gone = grp[k].filter(x => !grpActive(x));
+  if (id) grp.forEach(g => { const i = g.indexOf(id); if (i >= 0) g.splice(i, 1); });
+  const now = people.filter(x => x !== id);
+  if (id) now.splice(Math.min(slot, now.length), 0, id); else now.splice(slot, 1);
+  grp[k] = [...gone, ...now.slice(0, 2)];
+  grpDirty = true; $('#grpErr').hidden = true; renderGroups();
 });
-$('#grpBoard').addEventListener('dragstart', e => { const c = e.target.closest('.grp-chip'); if (c) { e.dataTransfer.setData('text/plain', c.dataset.id); e.dataTransfer.effectAllowed = 'move'; } });
-$('#grpBoard').addEventListener('dragover', e => { const col = e.target.closest('.grp-col'); if (col) { e.preventDefault(); document.querySelectorAll('.grp-col.drop').forEach(x => x.classList.toggle('drop', x === col)); col.classList.add('drop'); } });
-$('#grpBoard').addEventListener('dragleave', e => { const col = e.target.closest('.grp-col'); if (col && !col.contains(e.relatedTarget)) col.classList.remove('drop'); });
-$('#grpBoard').addEventListener('drop', e => { const col = e.target.closest('.grp-col'); if (!col) return; e.preventDefault(); col.classList.remove('drop'); grpMove(e.dataTransfer.getData('text/plain'), Number(col.dataset.g)); });
+$('#grpBoard').addEventListener('click', e => {
+  if (e.target.closest('#grpAdd')) { grp.push([]); grpDirty = true; return renderGroups(); }
+  const d = e.target.closest('[data-del]'); if (!d) return;
+  const k = Number(d.dataset.del), names = grp[k].filter(grpActive).map(grpName);
+  if (names.length && !confirm(`Supprimer le Groupe ${k + 1} ? ${names.join(' et ')} n'auront plus de groupe.`)) return;
+  grp.splice(k, 1); grpDirty = true; renderGroups();
+});
 $('#grpReset').onclick = () => loadGroups(true);
 $('#grpSave').onclick = async () => {
   $('#grpErr').hidden = true;
+  const alone = data.config.employees.filter(e => grpActive(e.id) && !grp.some(g => g.includes(e.id)));
+  if (alone.length) { $('#grpErr').textContent = 'Sans groupe : ' + alone.map(e => e.name).join(', '); $('#grpErr').hidden = false; return; }
+  if (grp.some(g => g.filter(grpActive).length === 0)) grp = grp.filter(g => g.some(grpActive) || g.length);
   try { await api('/api/groups', { groups: grp }); }
   catch (err) { $('#grpErr').textContent = 'Pas enregistré : ' + err.message; $('#grpErr').hidden = false; return; }
   grpDirty = false; loadGroups(true); loadTeam(true);

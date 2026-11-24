@@ -918,3 +918,12 @@ body.employee .topbar .monthnav, body.employee .topbar .actions, body.employee #
 .grp-empty { color: var(--muted); font-size: 12.5px; font-style: italic; }
 .grp-warn { color: var(--danger); font-size: 12px; font-weight: 600; }
 .grp-head { flex-direction: column; align-items: flex-start; gap: 0; } .grp-head b { white-space: nowrap; }
+
+/* Groupes de week-end : une ligne par groupe, 2 listes pour choisir les prénoms */
+.grp-board { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.grp-row { display: grid; grid-template-columns: 130px minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+.grp-name { display: grid; } .grp-name small { color: var(--muted); font-size: 11.5px; }
+.grp-row select { width: 100%; }
+.grp-del { color: var(--muted); }
+#grpAdd { justify-self: start; }
+@media (max-width: 700px) { .grp-row { grid-template-columns: 1fr auto; } .grp-row select { grid-column: 1 / -1; } .grp-name { grid-row: 1; } }
