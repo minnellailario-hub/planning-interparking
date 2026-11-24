@@ -939,3 +939,18 @@ body.employee .topbar .monthnav, body.employee .topbar .actions, body.employee #
 #grid th.frozen .n::after { content: " 🔒"; font-size: 10px; }
 #grid td.cell.frozen { cursor: not-allowed; background-image: repeating-linear-gradient(135deg, transparent 0 6px, rgba(71, 84, 103, .05) 6px 12px); }
 #grid td.cell.frozen.lock::after { content: ""; }
+
+/* Compteur des maladies et certificats */
+.sick-count tr[data-person] { cursor: pointer; }
+.sick-count tr.alert td { background: var(--warn-bg); }
+.sick-detail td { background: var(--surface-2); }
+.sick-detail ul { list-style: none; margin: 0; padding: 4px 0; display: grid; gap: 8px; }
+.sick-detail li { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.sick-detail .when { min-width: 190px; font-weight: 500; }
+.cert { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; padding: 3px 8px; border-radius: 8px; }
+.cert.ok { background: var(--ok-soft); color: var(--ok); } .cert.ok a { color: inherit; font-weight: 600; }
+.cert.missing { background: var(--danger-soft); color: var(--danger); font-weight: 600; }
+.cert-add { font-size: 12.5px; padding: 4px 10px; cursor: pointer; }
+.cert-pick { display: grid; gap: 4px; font-size: 12.5px; }
+.cert-pick input[type=file] { font-size: 12px; max-width: 230px; }
+.cert-name { display: inline-flex; align-items: center; gap: 4px; font-weight: 500; }

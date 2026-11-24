@@ -7,13 +7,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261124140955">
+  <link rel="stylesheet" href="style.css?v=20261124141857">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#1d2330">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="theme-shyfter.css?v=20261124140955">
-  <link rel="stylesheet" href="theme-refonte.css?v=20261124140955">
+  <link rel="stylesheet" href="theme-shyfter.css?v=20261124141857">
+  <link rel="stylesheet" href="theme-refonte.css?v=20261124141857">
   <!-- Apparence choisie sur cet appareil (nouveau thème par défaut, l'ancien reste disponible dans Paramètres). -->
   <!-- Apparence « Nouveau » (menu à gauche). La refonte (theme-refonte.css, classe refonte) reste dans les fichiers, inactive. -->
   <script>document.documentElement.classList.add('theme-new');</script>
@@ -201,6 +201,10 @@
           <label class="check"><input type="checkbox" id="sickRegen" checked> Recalculer l'horaire automatiquement</label>
           <div class="row"><button id="sickSave" class="primary">Valider</button></div>
           <div id="sickResult"></div>
+        </div>
+        <div class="card form-card admin-only" id="sickCounterCard">
+          <div class="card-head"><h3>Compteur des maladies</h3><span class="muted" id="sickCounterInfo"></span></div>
+          <div id="sickCounter"></div>
         </div>
         <div class="card form-card">
           <h3>Maladies en cours et à venir</h3>
@@ -672,7 +676,7 @@
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
-  <script src="backend.js?v=20261124140955"></script>
-  <script src="app.js?v=20261124140955"></script>
+  <script src="backend.js?v=20261124141857"></script>
+  <script src="app.js?v=20261124141857"></script>
 </body>
 </html>

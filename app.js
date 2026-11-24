@@ -1487,6 +1487,7 @@ function entriesDialog({ prefix, endpoint, withValue, describe, withChiefs }) {
         ${withValue ? `<label>Quoi <select data-i="${i}" data-k="value">${REQUEST_CHOICES.map(([v, l]) => `<option value="${v}" ${v === s.value ? 'selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
         <label>Du <input type="date" data-i="${i}" data-k="from" value="${s.from}"></label>
         <label>Au <input type="date" data-i="${i}" data-k="to" value="${s.to}"></label>
+        ${prefix === 'sick' && data.account.role === 'admin' ? `<label class="cert-pick">Certificat (facultatif) ${s.file ? `<span class="cert-name">📎 ${esc(s.file.name)} <button type="button" class="ghost" data-nofile="${i}" title="Retirer le certificat">✕</button></span>` : `<input type="file" accept="image/*,application/pdf" data-i="${i}" data-k="file">`}</label>` : ''}
         <button data-rm="${i}" class="ghost" title="Retirer cette ligne">✕</button>
       </div>`).join('');
   }
@@ -1502,10 +1503,12 @@ function entriesDialog({ prefix, endpoint, withValue, describe, withChiefs }) {
   };
   el('Rows').addEventListener('change', e => {
     const { i, k } = e.target.dataset; if (i === undefined) return;
+    if (k === 'file') { rows[i].file = e.target.files[0] || null; return render(); }
     rows[i][k] = e.target.value;
     if (k === 'from' && rows[i].to < rows[i].from) { rows[i].to = rows[i].from; render(); }
   });
   el('Rows').addEventListener('click', e => {
+    const nf = e.target.closest('button[data-nofile]'); if (nf) { rows[Number(nf.dataset.nofile)].file = null; return render(); }
     const b = e.target.closest('button[data-rm]'); if (!b) return;
     rows.splice(Number(b.dataset.rm), 1); render();
   });
@@ -1516,7 +1519,12 @@ function entriesDialog({ prefix, endpoint, withValue, describe, withChiefs }) {
     e.target.disabled = true; e.target.textContent = 'Calcul en cours…';
     try {
       month = rows.map(s => s.from).sort()[0].slice(0, 7);
-      const r = await api(endpoint, { entries: rows, regenerate: el('Regen').checked });
+      const r = await api(endpoint, { entries: rows.map(({ file, ...s }) => s), regenerate: el('Regen').checked });
+      // Certificats choisis sur les lignes : envoyés une fois la maladie enregistrée.
+      for (const s of rows.filter(s => s.file)) {
+        try { await sendCertificate(s.empId, s.from, s.to, s.file); }
+        catch (err) { toast(`Maladie enregistrée, mais certificat non envoyé : ${err.message}`); }
+      }
       const { regenerated, changes } = r.result;
       const nameOf = personName;
       const period = s => s.from === s.to ? `le ${fmtDate(s.from)}` : `du ${fmtDate(s.from)} au ${fmtDate(s.to)}`;
@@ -1527,10 +1535,62 @@ function entriesDialog({ prefix, endpoint, withValue, describe, withChiefs }) {
     } finally { e.target.disabled = false; e.target.textContent = 'Valider'; }
   };
 }
+// ----- Compteur des maladies (administrateurs) : jours, absences, certificats -----
+let sickOpen = null; // personne dont on voit le détail
+async function sendCertificate(empId, from, to, file) {
+  if (file.size > 10 * 1024 * 1024) throw new Error('fichier trop lourd (10 Mo maximum)');
+  const type = file.type || (/\.pdf$/i.test(file.name) ? 'application/pdf' : '');
+  const j = await invApi('/api/hr/certificate', { month, empId, from, to, name: file.name, type, data: await readB64(file) });
+  data = j; render();
+}
+function renderSickCounter() {
+  const s = data.sick, card = $('#sickCounterCard');
+  card.hidden = !s; if (!s) return;
+  const people = s.people;
+  const tot = people.reduce((n, p) => n + p.yearDays, 0), alerts = people.filter(p => p.alert).length;
+  $('#sickCounterInfo').textContent = `${tot} jour${tot > 1 ? 's' : ''} de maladie cette année${alerts ? ` · ${alerts} alerte${alerts > 1 ? 's' : ''}` : ''}`;
+  const dd = d => d.split('-').reverse().slice(0, 2).join('/');
+  $('#sickCounter').innerHTML = '<div class="scroll-x"><table class="list sick-count"><tr><th>Personne</th><th>Ce mois</th><th>Cette année</th><th>Absences (année)</th><th>6 derniers mois</th><th>Certificats</th><th></th></tr>'
+    + people.map(p => `<tr class="${p.alert ? 'alert' : ''}" data-person="${p.id}"><td><b>${esc(p.name)}</b></td>
+      <td>${p.monthDays ? p.monthDays + ' j' : '—'}</td><td>${p.yearDays ? '<b>' + p.yearDays + ' j</b>' : '—'}</td><td>${p.yearCount || '—'}</td>
+      <td>${p.last6 ? p.last6 : '—'}${p.alert ? ` <span class="tag warn">⚠ ${p.last6} absences en 6 mois</span>` : ''}</td>
+      <td>${!p.periods.length ? '—' : p.missing ? `<span class="tag negative">⚠ ${p.missing} manquant${p.missing > 1 ? 's' : ''}</span>` : '<span class="tag positive">✓ tous reçus</span>'}</td>
+      <td>${p.periods.length ? `<button class="ghost">${sickOpen === p.id ? 'Fermer' : 'Détail'}</button>` : ''}</td></tr>`
+      + (sickOpen === p.id ? `<tr class="sick-detail"><td colspan="7"><ul>${p.periods.map(a => `<li><span class="when">${a.from === a.to ? 'le ' + dd(a.from) : `du ${dd(a.from)} au ${dd(a.to)}`} · ${a.days} jour${a.days > 1 ? 's' : ''}</span>
+          ${a.certs.length ? a.certs.map(c => `<span class="cert ok">📎 <a href="#" data-cert="${c.id}">${esc(c.name)}</a> <button class="ghost" data-certdel="${c.id}" title="Retirer ce certificat">✕</button></span>`).join('') : '<span class="cert missing">⚠ certificat manquant</span>'}
+          <label class="btn cert-add">+ Certificat<input type="file" accept="image/*,application/pdf" hidden data-certup="${p.id}|${a.from}|${a.to}"></label></li>`).join('')}</ul></td></tr>` : '')).join('')
+    + `</table></div><p class="muted small">Alerte à partir de ${s.alertAt} absences sur les 6 derniers mois. Les certificats sont rangés dans le stockage privé (administrateurs seulement).</p>`;
+}
+$('#sickCounter').addEventListener('click', async e => {
+  const cert = e.target.closest('[data-cert]');
+  if (cert) {
+    e.preventDefault();
+    const q = { month, id: cert.dataset.cert };
+    if (!backend) { window.open('/api/hr/certificate/file?' + new URLSearchParams(q), '_blank'); return; }
+    const w = window.open('', '_blank');
+    const out = await backend.handle('GET', '/api/hr/certificate/file', q, {});
+    if (!out.file) { if (w) w.close(); return toast((out.json && out.json.error) || 'Ouverture impossible'); }
+    const url = URL.createObjectURL(new Blob([out.file], { type: out.type }));
+    if (w) w.location.href = url; else saveFile(new File([out.file], out.filename, { type: out.type }));
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    return;
+  }
+  const del = e.target.closest('[data-certdel]');
+  if (del) { if (confirm('Retirer ce certificat ? Le fichier sera supprimé.')) { const j = await invApi('/api/hr/certificate/delete', { month, id: del.dataset.certdel }).catch(() => null); if (j) { data = j; render(); toast('Certificat retiré'); } } return; }
+  if (e.target.closest('label, input')) return;
+  const tr = e.target.closest('tr[data-person]');
+  if (tr) { sickOpen = sickOpen === tr.dataset.person ? null : tr.dataset.person; renderSickCounter(); }
+});
+$('#sickCounter').addEventListener('change', async e => {
+  const up = e.target.closest('input[data-certup]'); if (!up || !up.files.length) return;
+  const [empId, from, to] = up.dataset.certup.split('|');
+  try { await sendCertificate(empId, from, to, up.files[0]); toast('Certificat ajouté'); } catch (err) { toast(err.message); }
+});
 // Maladies / formations déjà dans l'horaire : on peut changer les dates ou les supprimer (l'horaire est recalculé).
 const ABSENCE_LISTS = [{ code: 'MALADIE', prefix: 'sick', word: 'maladie' }, { code: 'FORMATION', prefix: 'form', word: 'formation' }];
 let absEdit = null; // période en cours de modification : `${code}|${empId}|${from}`
 function renderAbsences() {
+  renderSickCounter();
   const nameOf = personName;
   for (const { code, prefix, word } of ABSENCE_LISTS) {
     const list = (data.absences || []).filter(a => a.code === code);
