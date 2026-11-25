@@ -3123,11 +3123,13 @@ $('#forgotForm').onsubmit = e => {
   });
 };
 // Arrivée depuis le lien de l'email : choisir le nouveau mot de passe.
+let activation = null; // lien d'invitation en attente : { token, type }
 $('#resetForm').onsubmit = e => {
   e.preventDefault(); loginMsg('');
   if ($('#rPass').value !== $('#rPass2').value) return loginMsg('Les deux mots de passe ne sont pas identiques.');
   busy($('#rSave'), async () => {
-    await authCall('/api/auth/password', { password: $('#rPass').value });
+    if (activation) { await authCall('/api/auth/activate', { ...activation, password: $('#rPass').value }); activation = null; }
+    else await authCall('/api/auth/password', { password: $('#rPass').value });
     history.replaceState(null, '', location.pathname);
     $('#login').hidden = true;
     await api('/api/state');
@@ -3177,6 +3179,18 @@ if (backend && 'serviceWorker' in navigator) navigator.serviceWorker.register('s
   const here = location.pathname;
   // Version web : retour du lien « mot de passe oublié » (#access_token=…&type=recovery, ou #error=…).
   const hash = location.hash.slice(1);
+  // Lien d'invitation de l'outil : on garde le code, la personne choisit son mot de passe (le code sert à ce moment-là).
+  if (backend && /(^|&)activer=/.test(hash)) {
+    const p = new URLSearchParams(hash);
+    activation = { token: p.get('activer'), type: p.get('type') || 'invite' };
+    history.replaceState(null, '', here);
+    showLogin();
+    $('#loginForm').hidden = true; $('#resetForm').hidden = false;
+    $('#resetForm p.muted').textContent = 'Bienvenue ! Choisis ton mot de passe (6 caractères minimum). Tu te connecteras ensuite avec ton adresse e-mail et ce mot de passe.';
+    $('#rSave').textContent = 'Enregistrer et ouvrir mon espace';
+    $('#rPass').focus();
+    return;
+  }
   if (backend && /type=(recovery|invite)|error_description=/.test(hash)) {
     history.replaceState(null, '', here);
     if (/type=invite/.test(hash)) params.set('invite', '1');
