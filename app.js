@@ -1935,6 +1935,7 @@ const toMin = s => { const [h, m] = s.split(':').map(Number); return h * 60 + m;
 const isAdmin = () => data && data.account && data.account.role === 'admin';
 const canRemark = id => isAdmin() && data.config.employees.some(e => e.id === id);
 function setZTab(t) {
+  if (t === 'team' && document.body.classList.contains('employee')) t = 'now'; // pas d'onglet « Équipe » pour un employé
   zTab = t;
   for (const [k, pane] of [['now', '#zNowPane'], ['day', '#zDayPane'], ['team', '#zTeamPane'], ['me', '#zMePane']]) {
     $(pane).hidden = k !== t;

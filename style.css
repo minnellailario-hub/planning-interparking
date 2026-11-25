@@ -1017,3 +1017,5 @@ body.readonly #znEvent, body.readonly #znMsg { display: none !important; }
 .zme-head p { margin: 2px 0 0; }
 .zme-sum { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
 .zme-sum .zn { font-weight: 600; font-size: 12px; padding: 3px 10px; border-radius: 8px; }
+/* Zones : pas d'onglet « Équipe » pour un compte employé */
+body.employee #ztTeam { display: none !important; }
