@@ -7,13 +7,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261125155026">
+  <link rel="stylesheet" href="style.css?v=20261125161934">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#1d2330">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="theme-shyfter.css?v=20261125155026">
-  <link rel="stylesheet" href="theme-refonte.css?v=20261125155026">
+  <link rel="stylesheet" href="theme-shyfter.css?v=20261125161934">
+  <link rel="stylesheet" href="theme-refonte.css?v=20261125161934">
   <!-- Apparence choisie sur cet appareil (nouveau thème par défaut, l'ancien reste disponible dans Paramètres). -->
   <!-- Apparence « Nouveau » (menu à gauche). La refonte (theme-refonte.css, classe refonte) reste dans les fichiers, inactive. -->
   <script>document.documentElement.classList.add('theme-new');</script>
@@ -50,7 +50,8 @@
     <aside class="sidebar" id="sidebar">
       <div class="side-brand">
         <img src="logo.svg" alt="Interparking" class="logo">
-        <span class="side-sub">Westland Shopping · Planning</span>
+        <span class="side-sub" id="sideSub">Westland Shopping · Planning</span>
+        <div class="site-switch" id="siteSwitch" hidden></div>
       </div>
       <nav class="side-nav">
         <button class="nav me-nav" data-go="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.3-6 8-6s7 2 8 6"/></svg>Mon espace</button>
@@ -243,7 +244,7 @@
 
       <!-- Équipe -->
       <section class="page" id="teamDlg" data-page="team" data-title="Équipe" data-sub="Noms, groupes de week-end, arrivées et départs. Une personne qui part garde son historique.">
-        <div class="card grp-card">
+        <div class="card grp-card no-bordet">
           <div class="card-head"><h3>Groupes de week-end</h3><span class="muted" id="grpInfo"></span></div>
           <p class="muted">Pour chaque groupe, choisis les personnes dans les listes (« + ajouter une personne » pour en mettre autant que tu veux). « + Créer un groupe » en ajoute un. <b>L'horaire déjà fait ne change pas</b> : les nouveaux groupes s'appliquent quand tu cliques sur « Générer le mois ».</p>
           <div class="grp-board" id="grpBoard"></div>
@@ -541,7 +542,7 @@
 
       <section class="page" data-page="stats" data-title="Statistiques" data-sub-emp="Répartition des horaires, des matchs et des dimanches d'ouverture." data-sub="Roulement des matchs et des dimanches d'ouverture, compteurs du mois.">
         <div class="card">
-          <h3>Roulement foot ⚽ et dimanches d'ouverture <span class="muted" id="dutySeason"></span></h3>
+          <h3 class="no-bordet-card">Roulement foot ⚽ et dimanches d'ouverture <span class="muted" id="dutySeason"></span></h3>
           <p class="muted no-emp">Tour de rôle fixe : chaque match (et chaque dimanche d'ouverture) va au suivant de la liste, en sautant ceux qui sont absents ou en week-end obligatoire. Change l'ordre avec ↑ ↓ puis régénère le mois. Les compteurs repartent à zéro chaque saison (juillet → juin).</p>
           <div class="duty-grid">
             <div class="scroll-x"><table id="dutyFoot" class="stats"></table></div>
@@ -549,7 +550,7 @@
           </div>
         </div>
         <div class="card">
-          <h3>Matchs de la saison ⚽</h3>
+          <h3 class="no-bordet-card">Matchs de la saison ⚽</h3>
           <div class="scroll-x"><table id="footStats" class="stats"></table></div>
         </div>
         <div class="card">
@@ -557,7 +558,7 @@
           <div class="scroll-x"><table id="stats" class="stats"></table></div>
         </div>
         <div class="card">
-          <h3>Régularisation</h3>
+          <h3 class="no-bordet-card">Régularisation</h3>
           <p class="muted no-emp">Qui a fait plus ou moins d'un horaire que les autres le mois d'avant : « Générer le mois » lui en donne moins ou plus ce mois-ci.</p>
           <p class="muted emp-only">Équilibre des horaires par rapport au mois précédent.</p>
           <div class="scroll-x"><table id="gapStats" class="stats"></table></div>
@@ -574,12 +575,12 @@
             <button type="button" data-theme="classic"><span class="prev p-classic"><i></i><i></i></span><b>Classique</b><span class="muted">L'apparence d'avant</span></button>
           </div>
         </div>
-        <div class="card">
+        <div class="card no-bordet">
           <h3>Roulement des week-ends</h3>
           <p class="muted">Choisis un samedi et le groupe qui est en week-end ce jour-là. Le reste du roulement se calcule tout seul.</p>
           <div class="row"><input type="date" id="refSat"><select id="refGroup"></select><button id="saveRotation" class="primary">Enregistrer</button></div>
         </div>
-        <div class="card">
+        <div class="card no-bordet">
           <h3>Semaine du lundi au vendredi de <span id="chefName"></span></h3>
           <div class="row"><select id="chefWeek"></select><button id="saveChef" class="primary">Enregistrer</button></div>
         </div>
@@ -701,7 +702,7 @@
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
-  <script src="backend.js?v=20261125155026"></script>
-  <script src="app.js?v=20261125155026"></script>
+  <script src="backend.js?v=20261125161934"></script>
+  <script src="app.js?v=20261125161934"></script>
 </body>
 </html>

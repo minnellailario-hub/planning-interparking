@@ -68,9 +68,33 @@ function monthHours(r) {
   return Object.entries(r.cells).filter(([d, c]) => d.startsWith(month) && c && c.kind === 'work').reduce((n, [, c]) => n + (parseInt(shiftDur(c.label)) || 0), 0);
 }
 
+// ----- Parkings liés : Westland et Bordet (sélecteur en haut à gauche) -----
+const SITE_HIDDEN = ['zones', 'fixed', 'calendar', 'students']; // pages sans objet à Bordet
+function renderSite() {
+  const acc = data.account || {}, site = acc.site || 'westland', sites = acc.sites || [];
+  document.body.classList.toggle('site-bordet', site === 'bordet');
+  $('#sideSub').textContent = site === 'bordet' ? 'Bordet · Planning' : 'Westland Shopping · Planning';
+  const sw = $('#siteSwitch');
+  sw.hidden = sites.length < 2;
+  if (sites.length > 1) sw.innerHTML = sites.map(s => `<button type="button" data-ws="${s.id}" class="${s.id === acc.workspaceId ? 'on' : ''}">${esc(s.name)}</button>`).join('');
+  if (site === 'bordet' && SITE_HIDDEN.includes(document.body.dataset.page)) go('planning');
+}
+$('#siteSwitch').addEventListener('click', async e => {
+  const b = e.target.closest('[data-ws]'); if (!b || b.classList.contains('on')) return;
+  $('#siteSwitch').querySelectorAll('button').forEach(x => x.disabled = true);
+  try {
+    await api('/api/workspace/switch', { id: b.dataset.ws });
+    access = null;
+    if (document.body.dataset.page === 'agenda') loadAgenda();
+    if (document.body.dataset.page === 'invoices' && typeof loadInvoices === 'function') loadInvoices();
+    toast(`${b.textContent} ouvert`);
+  } catch {} finally { $('#siteSwitch').querySelectorAll('button').forEach(x => x.disabled = false); }
+});
+
 function render() {
   if (data.account && data.account.role === 'employee') return renderEmployee();
   document.body.classList.remove('employee');
+  renderSite();
   const v = data.view;
   const [y, m] = month.split('-').map(Number);
   $('#monthTitle').textContent = `${MONTHS[m - 1]} ${y}`;
@@ -134,8 +158,8 @@ function render() {
   h += '</tr></tbody>';
   $('#grid').innerHTML = h;
 
-  $('#legend').innerHTML = [['8-16', '8-16'], ['10-18', '10-18'], ['12-20', '12-20'], ['FOOT', '⚽ Horaire foot'], ['CHEF', 'Chef terrain'],
-    ['REPOS', 'R = Repos'], ['WE', 'WE = Week-end'], ['RTT', 'RTT'], ['RECUP', 'Réc = Récup (dimanche ou férié)'], ['CONGE', 'CG = Congé'], ['MALADIE', 'M = Maladie'], ['FORMATION', 'For = Formation']]
+  $('#legend').innerHTML = (v.site === 'bordet' ? [['7-15', '7-15'], ['11-19', '11-19 (mercredi)'], ['REPOS', 'R = Repos'], ['WE', 'WE = Week-end'], ['CONGE', 'CG = Congé'], ['MALADIE', 'M = Maladie'], ['FORMATION', 'For = Formation']] : [['8-16', '8-16'], ['10-18', '10-18'], ['12-20', '12-20'], ['FOOT', '⚽ Horaire foot'], ['CHEF', 'Chef terrain'],
+    ['REPOS', 'R = Repos'], ['WE', 'WE = Week-end'], ['RTT', 'RTT'], ['RECUP', 'Réc = Récup (dimanche ou férié)'], ['CONGE', 'CG = Congé'], ['MALADIE', 'M = Maladie'], ['FORMATION', 'For = Formation']])
     .map(([c, l]) => `<span><span class="sw c-${c}">&nbsp;</span>${l}</span>`).join('');
 
   $('#warnings').innerHTML = !v.generated ? '<li class="ok">Mois pas encore généré.</li>'
@@ -1276,7 +1300,7 @@ function renderOverview(animate = false) {
 // Compteurs du mois, roulement foot / dimanches et matchs de la saison (page Statistiques ; aussi pour l'espace employé).
 function renderStatsPage(v) {
   if (!v || !v.stats || !v.stats.length) { $('#stats').innerHTML = '<tr><td class="muted">Pas encore de chiffres ce mois-ci.</td></tr>'; $('#footStats').innerHTML = ''; renderDuty(); return; }
-  const cols = [['8-16', '8-16'], ['10-18', '10-18'], ['12-20', '12-20'], ['foot', '⚽ mois'], ['footSeason', '⚽ saison'], ['sat8', 'Sam. 8h saison'], ['REPOS', 'Repos'], ['RTT', 'RTT'], ['worked', 'Jours trav.']];
+  const cols = v.statCols || [['8-16', '8-16'], ['10-18', '10-18'], ['12-20', '12-20'], ['foot', '⚽ mois'], ['footSeason', '⚽ saison'], ['sat8', 'Sam. 8h saison'], ['REPOS', 'Repos'], ['RTT', 'RTT'], ['worked', 'Jours trav.']];
   const spread = k => { const xs = v.stats.map(s => s[k]); return Math.max(...xs) - Math.min(...xs); };
   let s = '<tr><th></th>' + cols.map(c => `<th>${c[1]}</th>`).join('') + '</tr>';
   for (const st of v.stats) {
@@ -1327,7 +1351,7 @@ go('dashboard');
 
 // ----- Vue « jour par jour » (pratique sur téléphone) -----
 const DOW_FULL = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-const SHIFT_ORDER = ['8-16', '10-18', '11-19', '12-20', 'FOOT', 'CHEF'];
+const SHIFT_ORDER = ['7-15', '8-16', '10-18', '11-19', '12-20', 'FOOT', 'CHEF'];
 function renderDays() {
   const v = data.view;
   const today = new Date().toISOString().slice(0, 10);
@@ -1434,7 +1458,7 @@ function openPop(td) {
     hp += '<button data-v="auto" class="auto">CP (automatique)</button>';
     return showPop(td, hp, emp, date);
   }
-  const opts = row.isChef ? [data.config.chef.shift] : day.openSunday ? ['11-19'] : ['8-16', '10-18', '12-20'];
+  const opts = data.view.shiftChoices ? data.view.shiftChoices.slice() : row.isChef ? [data.config.chef.shift] : day.openSunday ? ['11-19'] : ['8-16', '10-18', '12-20'];
   if (day.match && !row.isChef) opts.push('FOOT');
   let h = `<div class="ttl">${esc(row.name)} – ${day.dowLabel} ${fmtDate(date)}</div>`;
   if (row.isStudent) {

@@ -151,6 +151,7 @@ label.check { margin: 10px 0; }
 .c-FOOT { background: var(--foot); color: var(--foot-ink); }
 .c-CHEF { background: var(--chef); color: var(--text); }
 .c-11-19 { background: var(--rtt); color: var(--rtt-ink); }
+.c-7-15 { background: var(--s8); color: var(--s8-ink); }
 .c-STUDENT { background: var(--s10); color: var(--s10-ink); }
 .c-STUDENT.auto { background: transparent; color: var(--s10-ink); outline: 1px dashed var(--s10-ink); outline-offset: -1px; }
 .c-NONE { color: var(--muted); }
@@ -1050,3 +1051,11 @@ body.employee .emp-only { display: block; }
 @keyframes hrxFlash { 0%, 60% { background: #fff3c4; } 100% { background: transparent; } }
 .drop-msg { flex-basis: 100%; margin: 6px 0 0; font-size: 12.5px; color: var(--accent); font-weight: 600; }
 .drop-msg.bad { color: #b42318; font-weight: 500; }
+
+/* Parkings liés : sélecteur Westland | Bordet, et ce qui n'existe pas à Bordet */
+.site-switch { display: flex; gap: 2px; padding: 3px; margin-top: 10px; border-radius: 10px; background: var(--line); }
+.site-switch button { flex: 1; border: 0; background: transparent; padding: 6px 8px; border-radius: 8px; font-weight: 600; font-size: 13px; color: var(--muted); cursor: pointer; }
+.site-switch button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+body.site-bordet .nav[data-go="zones"], body.site-bordet .nav[data-go="fixed"], body.site-bordet .nav[data-go="calendar"], body.site-bordet .nav[data-go="students"],
+body.site-bordet #pubBar, body.site-bordet #rotBar, body.site-bordet #teamAccessCard, body.site-bordet .no-bordet { display: none !important; }
+body.site-bordet .card:has(> .no-bordet-card) { display: none !important; }
