@@ -989,3 +989,12 @@ body.employee .topbar .monthnav, body.employee .topbar .actions, body.employee #
 .emp-row { grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr) auto; }
 @media (max-width: 900px) { .emp-row { grid-template-columns: 36px 1fr 1fr; } .emp-act { grid-column: 1 / -1; } }
 @media (max-width: 520px) { .emp-row { grid-template-columns: 1fr 1fr; } }
+
+/* Espace employé : choix Semaine / Mois et séparateurs de semaines dans la vue du mois */
+.me-scope { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--line); margin-bottom: 10px; }
+.me-scope button { border: 0; background: transparent; padding: 6px 14px; border-radius: 8px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.me-scope button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.me-wsep { padding: 8px 18px; font-size: 12px; font-weight: 600; color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--line); text-transform: uppercase; letter-spacing: .03em; }
+.me-team.month th, .me-team.month td { padding: 5px 2px; min-width: 34px; }
+.me-team.month td span { padding: 2px 4px; font-size: 11px; }
+.me-team.month tbody th { position: sticky; left: 0; background: var(--surface); z-index: 1; }

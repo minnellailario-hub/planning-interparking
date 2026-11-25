@@ -552,6 +552,8 @@ $('#hrExportHours').onclick = () => downloadXlsx('/api/export-hours.xlsx', hrSel
 
 // ----- Espace employé : son horaire publié, l'équipe, ses zones du jour et ses heures -----
 let meTab = 'mine', meWeek = null;
+// Vue de l'horaire dans l'espace employé : la semaine ou tout le mois (par défaut). Gardée sur l'appareil.
+let meScope = (() => { try { return localStorage.getItem('meScope') === 'week' ? 'week' : 'month'; } catch { return 'month'; } })(), meYm = null;
 const ME_OFF = OFF;
 const ME_SHORT = SHORT;
 const DOW_FR = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
@@ -587,6 +589,7 @@ const zoneName = (code, z) => code === 'D' ? 'Dispatch' : code === 'T' ? 'Toutes
 function renderMe() {
   const me = data.me; if (!me) return;
   if (!meWeek) meWeek = mondayOf(me.today);
+  if (!meYm) meYm = me.today.slice(0, 7);
   document.querySelectorAll('#meTabs [data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === meTab));
   const c = meCell(me.today), zone = myZoneNow();
   // Prochain jour de travail après aujourd'hui (dans les mois publiés).
@@ -602,12 +605,24 @@ function renderMe() {
   $('#meBody').innerHTML = meTab === 'mine' ? meMine() : meTab === 'team' ? meTeam() : meTab === 'zones' ? meZones() : meHoursHtml();
 }
 function meWeekNav() {
+  const sw = `<div class="me-scope"><button class="${meScope === 'week' ? 'on' : ''}" data-ms="week">Semaine</button><button class="${meScope === 'month' ? 'on' : ''}" data-ms="month">Mois</button></div>`;
+  if (meScope === 'month') {
+    const [y, m] = meYm.split('-').map(Number);
+    return `${sw}<div class="me-weeknav"><button class="icon-btn" data-mm="-1" aria-label="Mois précédent">‹</button>
+      <span>${MONTHS[m - 1]} ${y}</span>
+      <button class="icon-btn" data-mm="1" aria-label="Mois suivant">›</button>${meYm !== data.me.today.slice(0, 7) ? '<button class="ghost" data-mm="0">Ce mois</button>' : ''}</div>`;
+  }
   const a = new Date(meWeek + 'T12:00:00'), b = new Date(addDay(meWeek, 6) + 'T12:00:00');
-  return `<div class="me-weeknav"><button class="icon-btn" data-mw="-7" aria-label="Semaine précédente">‹</button>
+  return `${sw}<div class="me-weeknav"><button class="icon-btn" data-mw="-7" aria-label="Semaine précédente">‹</button>
     <span>Semaine du ${a.getDate()}${a.getMonth() !== b.getMonth() ? ' ' + MONTHS[a.getMonth()] : ''} au ${b.getDate()} ${MONTHS[b.getMonth()]}</span>
     <button class="icon-btn" data-mw="7" aria-label="Semaine suivante">›</button>${meWeek !== mondayOf(data.me.today) ? '<button class="ghost" data-mw="0">Cette semaine</button>' : ''}</div>`;
 }
-const weekDates = () => [...Array(7)].map((_, i) => addDay(meWeek, i));
+// Jours affichés : les 7 jours de la semaine, ou tous les jours du mois choisi.
+const weekDates = () => {
+  if (meScope !== 'month') return [...Array(7)].map((_, i) => addDay(meWeek, i));
+  const out = []; for (let d = meYm + '-01'; d.slice(0, 7) === meYm; d = addDay(d, 1)) out.push(d);
+  return out;
+};
 function meMine() {
   let total = 0;
   const rows = weekDates().map(d => {
@@ -618,15 +633,17 @@ function meMine() {
     else what = `<span class="me-off">${c ? esc(ME_OFF[c.o] || c.o) : 'Pas de travail'}</span>`;
     const tags = [info && info.holiday ? `🎉 ${esc(info.holiday)}` : '', info && info.match ? `⚽ ${esc(info.match.opponent)}${info.match.time ? ' · ' + esc(info.match.time) : ''}` : '', info && info.open ? '🛍 Dimanche d\'ouverture' : '']
       .filter(Boolean).map(x => `<span class="tag">${x}</span>`).join('');
-    return `<div class="me-day ${d === data.me.today ? 'today' : ''}"><div class="me-date"><span>${DOW_LONG[dt.getDay()]}</span><b>${dt.getDate()}</b></div>
+    const mo = new Date(mondayOf(d) + 'T12:00:00');
+    const sep = meScope === 'month' && (dt.getDay() === 1 || dt.getDate() === 1) ? `<div class="me-wsep">Semaine du ${mo.getDate()} ${MONTHS[mo.getMonth()].toLowerCase()}</div>` : '';
+    return `${sep}<div class="me-day ${d === data.me.today ? 'today' : ''}"><div class="me-date"><span>${DOW_LONG[dt.getDay()]}</span><b>${dt.getDate()}</b></div>
       <div class="me-what">${what}${tags ? `<div class="me-tags">${tags}</div>` : ''}</div></div>`;
   }).join('');
-  return `${meWeekNav()}<div class="card me-week">${rows}</div><p class="me-total"><b>${total}h</b> prévues cette semaine</p>`;
+  return `${meWeekNav()}<div class="card me-week">${rows}</div><p class="me-total"><b>${total}h</b> ${meScope === 'month' ? 'ce mois-ci' : 'cette semaine'}</p>`;
 }
 // L'équipe de la semaine, comme la feuille affichée au bureau.
 function meTeam() {
   const days = weekDates(), ms = [...new Set(days.map(d => d.slice(0, 7)))].map(ym => data.me.months.find(m => m.ym === ym)).filter(Boolean);
-  if (!ms.length) return `${meWeekNav()}<div class="card hrx-empty"><span>🗓</span><p>Pas encore publié</p><small>L'horaire de cette semaine apparaîtra ici quand il sera publié.</small></div>`;
+  if (!ms.length) return `${meWeekNav()}<div class="card hrx-empty"><span>🗓</span><p>Pas encore publié</p><small>L'horaire ${meScope === 'month' ? 'de ce mois' : 'de cette semaine'} apparaîtra ici quand il sera publié.</small></div>`;
   const people = [];
   for (const m of ms) for (const r of m.rows) if (!people.some(p => p.id === r.id)) people.push({ id: r.id, name: r.name, chef: r.chef });
   const cellAt = (id, d) => { const m = meMonth(d); const r = m && m.rows.find(x => x.id === id); return m ? (r && r.cells[d]) || null : undefined; };
@@ -636,7 +653,7 @@ function meTeam() {
   const stud = [];
   for (const m of ms) for (const s of m.students) { const ex = stud.find(x => x.name === s.name); if (ex) Object.assign(ex.cells, s.cells); else stud.push({ name: s.name, cells: { ...s.cells } }); }
   const sbody = stud.filter(s => days.some(d => s.cells[d] && s.cells[d].w)).map(s => `<tr class="stud"><th>${esc(s.name)}</th>${days.map(d => { const c = s.cells[d]; return c && c.w ? `<td><span class="c-STUDENT">${esc(c.w.replace('⚽', '').trim())}</span></td>` : '<td></td>'; }).join('')}</tr>`).join('');
-  return `${meWeekNav()}<div class="card me-teamcard"><table class="me-team"><thead><tr><th></th>${head}</tr></thead><tbody>${body}${sbody}</tbody></table></div>`;
+  return `${meWeekNav()}<div class="card me-teamcard"><table class="me-team${meScope === 'month' ? ' month' : ''}"><thead><tr><th></th>${head}</tr></thead><tbody>${body}${sbody}</tbody></table></div>`;
 }
 // Zones du jour : son parcours heure par heure, puis toute l'équipe.
 function meZones() {
@@ -688,6 +705,14 @@ function meHoursHtml() {
 }
 $('#meTabs').addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (b) { meTab = b.dataset.t; renderMe(); } });
 $('#meBody').addEventListener('click', e => {
+  const s = e.target.closest('[data-ms]');
+  if (s) { meScope = s.dataset.ms; try { localStorage.setItem('meScope', meScope); } catch {} return renderMe(); }
+  const mm = e.target.closest('[data-mm]');
+  if (mm) {
+    if (mm.dataset.mm === '0') meYm = data.me.today.slice(0, 7);
+    else { const [y, m] = meYm.split('-').map(Number), x = new Date(y, m - 1 + Number(mm.dataset.mm), 1); meYm = `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}`; }
+    return renderMe();
+  }
   const b = e.target.closest('[data-mw]'); if (!b) return;
   meWeek = b.dataset.mw === '0' ? mondayOf(data.me.today) : addDay(meWeek, Number(b.dataset.mw)); renderMe();
 });
