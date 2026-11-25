@@ -1728,6 +1728,7 @@ function renderZones() {
   $('#zvZones').classList.toggle('on', zView === 'zones');
   if (data) renderZTeam();
   if (zTab === 'now') renderNow();
+  if (zTab === 'me') renderMyDay();
   $('#zLegend').innerHTML = ['Z1', 'Z2', 'Z3', 'D', 'T'].map(z => `<span><i class="z-${z}"></i>${Z_LABEL[z]} · ${Z_PLACE[z]}</span>`).join('') + '<span>☕ Pause 30 min</span><span>🔒 Changé à la main</span>';
   const z = zData;
   if (!z || z.date !== zDate) { $('#zBox').innerHTML = '<p class="muted pad">Chargement…</p>'; return; }
@@ -1935,7 +1936,7 @@ const isAdmin = () => data && data.account && data.account.role === 'admin';
 const canRemark = id => isAdmin() && data.config.employees.some(e => e.id === id);
 function setZTab(t) {
   zTab = t;
-  for (const [k, pane] of [['now', '#zNowPane'], ['day', '#zDayPane'], ['team', '#zTeamPane']]) {
+  for (const [k, pane] of [['now', '#zNowPane'], ['day', '#zDayPane'], ['team', '#zTeamPane'], ['me', '#zMePane']]) {
     $(pane).hidden = k !== t;
     document.querySelector(`.ztabs [data-ztab="${k}"]`).classList.toggle('on', k === t);
   }
@@ -1943,6 +1944,39 @@ function setZTab(t) {
 document.querySelector('.ztabs').addEventListener('click', e => {
   const b = e.target.closest('[data-ztab]'); if (!b) return;
   setZTab(b.dataset.ztab); renderZones();
+});
+
+// « Ma journée » : la journée d'une seule personne. Un employé ne voit que lui ; le chef choisit la personne.
+let zMeWho = (() => { try { return localStorage.getItem('zMeWho') || ''; } catch { return ''; } })();
+function renderMyDay() {
+  const z = zData, box = $('#zMe');
+  if (!z || z.date !== zDate) { box.innerHTML = '<p class="muted pad">Chargement…</p>'; return; }
+  const emp = document.body.classList.contains('employee');
+  const myId = emp ? data.me.id : (z.people.some(p => p.id === zMeWho) ? zMeWho : (data && data.config && data.config.chef.id));
+  const p = z.people.find(x => x.id === myId);
+  const pick = emp ? '' : `<div class="row zme-pick"><label>Personne <select id="zMeSel">${z.people.map(x => `<option value="${x.id}" ${x.id === myId ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}${p ? '' : '<option selected>—</option>'}</select></label></div>`;
+  if (z.closed) { box.innerHTML = pick + '<div class="card hrx-empty"><span>🔒</span><p>Westland fermé ce jour-là</p></div>'; return; }
+  if (!p) { box.innerHTML = pick + `<div class="card hrx-empty"><span>🙂</span><p>${emp ? 'Tu ne travailles pas ce jour-là' : 'Personne choisie absente ce jour-là'}</p></div>`; return; }
+  const today = zDate === localDay(), m = nowMin();
+  const zc = code => code === 'D' ? 'zD' : code === 'T' ? 'zT' : 'z' + String(code).slice(1);
+  const name = code => (Z_LABEL[code] || code) + (Z_PLACE[code] ? ' · ' + Z_PLACE[code] : '');
+  const rows = z.slots.map((s, i) => {
+    const c = p.cells[i]; if (!c || !c.code) return '';
+    const cls = today && m >= s.start * 60 && m < s.end * 60 ? 'now' : today && m >= s.end * 60 ? 'past' : '';
+    return `<li class="${cls}"><span class="t">${s.start}h – ${s.end}h</span><span class="zn ${zc(c.code)}">${esc(name(c.code))}</span>${p.pause && p.pause.slot === i ? `<span class="tag">☕ Pause ${esc(p.pause.start)} – ${esc(p.pause.end)}</span>` : ''}</li>`;
+  }).join('');
+  const count = code => p.cells.filter(c => c && c.code === code).length;
+  const sum = ['Z1', 'Z2', 'Z3', 'D', 'T'].filter(k => count(k)).map(k => `<span class="zn ${zc(k)}">${Z_LABEL[k]} : ${count(k)} h</span>`).join('');
+  box.innerHTML = `${pick}<div class="card zme">
+      <div class="zme-head"><i class="hrx-av ${hrAv(p.id)}">${esc(initials(p.name))}</i>
+        <div><h3>${esc(p.name)}</h3><p class="muted">${esc($('#zTitle').textContent)} · ${esc(p.raw || p.shift || '')}${p.arrive ? ` · arrive à ${esc(p.arrive)}` : ''}${p.pause ? ` · pause ${esc(p.pause.start)} – ${esc(p.pause.end)}` : ''}</p></div></div>
+      ${sum ? `<div class="zme-sum">${sum}</div>` : ''}
+      <ol class="me-path">${rows}</ol></div>`;
+}
+$('#zMe').addEventListener('change', e => {
+  if (e.target.id !== 'zMeSel') return;
+  zMeWho = e.target.value; try { localStorage.setItem('zMeWho', zMeWho); } catch {}
+  renderMyDay();
 });
 
 function renderNow() {

@@ -7,13 +7,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261125150752">
+  <link rel="stylesheet" href="style.css?v=20261125151256">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#1d2330">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="theme-shyfter.css?v=20261125150752">
-  <link rel="stylesheet" href="theme-refonte.css?v=20261125150752">
+  <link rel="stylesheet" href="theme-shyfter.css?v=20261125151256">
+  <link rel="stylesheet" href="theme-refonte.css?v=20261125151256">
   <!-- Apparence choisie sur cet appareil (nouveau thème par défaut, l'ancien reste disponible dans Paramètres). -->
   <!-- Apparence « Nouveau » (menu à gauche). La refonte (theme-refonte.css, classe refonte) reste dans les fichiers, inactive. -->
   <script>document.documentElement.classList.add('theme-new');</script>
@@ -426,12 +426,18 @@
             <button id="ztNow" role="tab" data-ztab="now">Maintenant</button>
             <button id="ztDay" role="tab" data-ztab="day">Journée</button>
             <button id="ztTeam" role="tab" data-ztab="team">Équipe</button>
+            <button id="ztMe" role="tab" data-ztab="me">Ma journée</button>
           </div>
         </div>
 
         <!-- Maintenant : le créneau en cours, sur le terrain -->
         <div id="zNowPane" class="zpane">
           <div id="zNow"></div>
+        </div>
+
+        <!-- Ma journée : le parcours d'une seule personne, heure par heure -->
+        <div id="zMePane" class="zpane" hidden>
+          <div id="zMe"></div>
         </div>
 
         <!-- Journée : le tableau complet -->
@@ -683,7 +689,7 @@
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
-  <script src="backend.js?v=20261125150752"></script>
-  <script src="app.js?v=20261125150752"></script>
+  <script src="backend.js?v=20261125151256"></script>
+  <script src="app.js?v=20261125151256"></script>
 </body>
 </html>
