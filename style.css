@@ -1024,3 +1024,5 @@ body.employee #ztTeam { display: none !important; }
 #gapStats td.gaps { text-align: left; }
 .gap { display: inline-block; padding: 2px 8px; border-radius: 8px; font-weight: 600; font-size: 12px; margin: 1px 2px; }
 .gap.plus { background: #fde8e8; color: #b42318; } .gap.minus { background: #dcfae6; color: #067647; }
+.gap.even { background: var(--surface-2); color: var(--muted); }
+#gapStats td.gaps { text-align: center; white-space: nowrap; }

@@ -557,7 +557,7 @@ function renderEmployee() {
   $('#accountBtn').hidden = data.account.mode !== 'cloud';
   if (!EMP_PAGES.includes(document.body.dataset.page)) go('me');
   renderMe();
-  if (document.body.dataset.page === 'stats') renderStatsPage(data.stats ? { stats: data.stats.rows } : null);
+  if (document.body.dataset.page === 'stats') renderStatsPage(data.stats ? { stats: data.stats.rows, month: data.stats.month } : null);
 }
 // Zone de la personne maintenant (ou la prochaine aujourd'hui).
 function myZoneNow() {
@@ -909,7 +909,7 @@ function go(page) {
   else if (!emp && page === 'me') page = 'dashboard';
   // Employé : Statistiques et Zones en lecture seule ; Agenda et Reporting modifiables.
   if (emp) document.body.classList.toggle('readonly', ['zones', 'stats'].includes(page));
-  if (emp && page === 'stats' && data && data.me) renderStatsPage(data.stats ? { stats: data.stats.rows } : null);
+  if (emp && page === 'stats' && data && data.me) renderStatsPage(data.stats ? { stats: data.stats.rows, month: data.stats.month } : null);
   const el = PAGES.find(p => p.dataset.page === page) || PAGES[0];
   if (rfOn() && el.dataset.page === 'dashboard') return openTab(rfTab);
   if (rfOn() && el.dataset.page !== 'me') rfOpen(el);
@@ -1155,9 +1155,17 @@ function renderStatsPage(v) {
   $('#stats').innerHTML = s;
   // Écart du mois d'avant : ce que « Générer le mois » rattrape (+ = en a fait trop, − = pas assez).
   const gq = v.stats.filter(st => st.gapPrev);
-  const gtxt = g => ['8-16', '10-18', '12-20'].map(t => [t, Math.round(g[t] || 0)]).filter(([, n]) => n)
-    .map(([t, n]) => `<span class="gap ${n > 0 ? 'plus' : 'minus'}">${t} ${n > 0 ? '+' : '−'}${Math.abs(n)}</span>`).join(' ') || '<span class="muted">équilibré</span>';
-  $('#gapStats').innerHTML = gq.length ? "<tr><th>Employé</th><th>Écart du mois d'avant</th></tr>" + gq.map(st => `<tr><td>${esc(st.name)}</td><td class="gaps">${gtxt(st.gapPrev)}</td></tr>`).join('')
+  // Pour chaque horaire : nombre le mois d'avant, écart exact avec la moyenne (au prorata des jours), puis ce mois-ci.
+  const cur = v.month || month || '';
+  const mName = ym => ym ? ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'][Number(ym.slice(5)) - 1] : '';
+  const prevYm = cur ? (() => { const [y, m] = cur.split('-').map(Number), d = new Date(y, m - 2, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })() : '';
+  const fx = n => (n > 0 ? '+' : n < 0 ? '−' : '') + String(Math.abs(n)).replace('.', ',');
+  const gcell = (st, t) => {
+    const n = st.gapPrev.gap[t] || 0, big = Math.abs(n) >= 0.5;
+    return `<td class="gaps"><b>${st.gapPrev.count[t]}</b> <span class="gap ${big ? (n > 0 ? 'plus' : 'minus') : 'even'}" title="${n > 0 ? 'en a fait trop' : n < 0 ? 'pas assez' : 'pile la moyenne'}">${big ? fx(n) : '='}</span> <span class="muted">→</span> <b>${st[t]}</b></td>`;
+  };
+  $('#gapStats').innerHTML = gq.length ? `<tr><th>Employé</th>${['8-16', '10-18', '12-20'].map(t => `<th>${t}<br><small class="muted">${mName(prevYm)} · écart → ${mName(cur)}</small></th>`).join('')}</tr>`
+    + gq.map(st => `<tr><td>${esc(st.name)}</td>${['8-16', '10-18', '12-20'].map(t => gcell(st, t)).join('')}</tr>`).join('')
     : "<tr><td class='muted'>Pas de mois d'avant à comparer.</td></tr>";
 
   renderDuty();
