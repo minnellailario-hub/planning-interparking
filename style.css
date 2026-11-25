@@ -1019,3 +1019,8 @@ body.readonly #znEvent, body.readonly #znMsg { display: none !important; }
 .zme-sum .zn { font-weight: 600; font-size: 12px; padding: 3px 10px; border-radius: 8px; }
 /* Zones : pas d'onglet « Équipe » pour un compte employé */
 body.employee #ztTeam { display: none !important; }
+
+/* Statistiques › Régularisation */
+#gapStats td.gaps { text-align: left; }
+.gap { display: inline-block; padding: 2px 8px; border-radius: 8px; font-weight: 600; font-size: 12px; margin: 1px 2px; }
+.gap.plus { background: #fde8e8; color: #b42318; } .gap.minus { background: #dcfae6; color: #067647; }

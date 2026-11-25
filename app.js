@@ -1153,6 +1153,12 @@ function renderStatsPage(v) {
     }).join('') + '</tr>';
   }
   $('#stats').innerHTML = s;
+  // Écart du mois d'avant : ce que « Générer le mois » rattrape (+ = en a fait trop, − = pas assez).
+  const gq = v.stats.filter(st => st.gapPrev);
+  const gtxt = g => ['8-16', '10-18', '12-20'].map(t => [t, Math.round(g[t] || 0)]).filter(([, n]) => n)
+    .map(([t, n]) => `<span class="gap ${n > 0 ? 'plus' : 'minus'}">${t} ${n > 0 ? '+' : '−'}${Math.abs(n)}</span>`).join(' ') || '<span class="muted">équilibré</span>';
+  $('#gapStats').innerHTML = gq.length ? "<tr><th>Employé</th><th>Écart du mois d'avant</th></tr>" + gq.map(st => `<tr><td>${esc(st.name)}</td><td class="gaps">${gtxt(st.gapPrev)}</td></tr>`).join('')
+    : "<tr><td class='muted'>Pas de mois d'avant à comparer.</td></tr>";
 
   renderDuty();
   // Matchs de la saison, par personne.
