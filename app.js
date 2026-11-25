@@ -110,7 +110,7 @@ function render() {
     h += `<tr class="${r.isChef || r.isParkChief ? 'chef' : k === firstEmp && k > 0 ? 'sep' : ''}"><td class="name"><div class="namebox"><i class="av ${avColor(r.id)}">${initials(r.name)}</i><span>${esc(r.name)}${r.note ? `<small>${esc(r.note)}</small>` : ''}${(wide ? hoursOn(r, gd.map(d => d.date)) : monthHours(r)) ? `<small class="hrs">${wide ? hoursOn(r, gd.map(d => d.date)) + 'h cette semaine' : monthHours(r) + 'h ce mois'}</small>` : ''}</span>${r.isChef || r.isParkChief ? `<button class="edit-chef ghost" title="Modifier le chef terrain et le chef de parc">✎</button>` : `<button class="edit-emp ghost" data-id="${r.id}" title="Modifier ou supprimer ${esc(r.name)}">✎</button>`}</div></td>`;
     for (const d of gd) {
       const c = r.cells[d.date];
-      h += `<td class="cell ${colCls(d)} ${c && c.locked ? 'lock' : ''}" data-emp="${r.id}" data-date="${d.date}">${cellHtml(c, r.isChef, wide)}</td>`;
+      h += `<td class="cell ${colCls(d)} ${c && c.pinned ? 'lock' : ''}" data-emp="${r.id}" data-date="${d.date}">${cellHtml(c, r.isChef, wide)}</td>`;
     }
     h += '</tr>';
   });
@@ -121,7 +121,7 @@ function render() {
     for (const d of gd) {
       const c = r.cells[d.date];
       const inner = !c ? '' : c.kind === 'off' ? '<span class="c-NONE">—</span>' : `<span class="c-STUDENT ${c.auto ? 'auto' : ''}"><b class="t">${esc(wide ? fullTimes(c.label.replace('⚽', '').trim()) : c.label)}</b>${wide && shiftDur(c.label) ? `<small class="dur">${shiftDur(c.label)}${c.shift === 'FOOT' ? ' · ⚽ Foot' : ''}</small>` : ''}</span>`;
-      h += `<td class="cell ${colCls(d)} ${c && c.locked ? 'lock' : ''}" data-emp="${r.id}" data-date="${d.date}">${inner}</td>`;
+      h += `<td class="cell ${colCls(d)} ${c && c.pinned ? 'lock' : ''}" data-emp="${r.id}" data-date="${d.date}">${inner}</td>`;
     }
     h += '</tr>';
   });
@@ -1247,7 +1247,9 @@ function openPop(td) {
   }
   for (const o of opts) h += `<button data-v="${o}" class="c-${row.isChef ? 'CHEF' : o}">${o === 'FOOT' ? '⚽ ' + day.match.shift : o}</button>`;
   for (const k of Object.keys(OFF)) if (!row.isChef || ['REPOS', 'CONGE', 'MALADIE', 'FORMATION', 'RTT', ...PAY_CODES].includes(k)) h += `<button data-v="${k}" class="c-${k}">${OFF[k]}</button>`;
-  h += `<button data-v="auto" class="auto">Automatique (déverrouiller)</button>`;
+  const cur = row.cells[date];
+  if (cur && !row.isChef) h += cur.pinned ? `<button data-v="unlock" class="auto">🔓 Déverrouiller</button>` : `<button data-v="lock" class="auto">🔒 Verrouiller (garder en régénérant)</button>`;
+  h += `<button data-v="auto" class="auto">Automatique (vider la case)</button>`;
   showPop(td, h, emp, date);
 }
 function showPop(td, h, emp, date) {
