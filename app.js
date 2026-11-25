@@ -387,16 +387,27 @@ document.addEventListener('drop', e => {
       files = [new File([html], `${title} - ${localDay()}.html`, { type: 'text/html' })];
     }
   }
-  files = files.filter(f => f.size > 0);
+  // Détail de ce qui est arrivé (pour comprendre si Outlook ne donne rien).
+  const got = [...(dt.types || [])].join(', ') + (files.length ? ` · ${files.map(f => `${f.name || 'sans nom'} ${f.size} o`).join(', ')}` : '')
+    + ` · éléments : ${[...(dt.items || [])].map(i => i.kind + ':' + (i.type || '?')).join(', ') || 'aucun'}`;
+  dropFinish(t, files, got);
+});
+// Un fichier annoncé vide (fichier « virtuel » d'Outlook) peut parfois se lire quand même : on essaie.
+async function dropFinish(t, files, got) {
+  const ok = [];
+  for (const f of files) {
+    if (f.size > 0) { ok.push(f); continue; }
+    try { const buf = await f.arrayBuffer(); if (buf.byteLength) ok.push(new File([buf], f.name || 'mail.msg', { type: f.type || 'application/vnd.ms-outlook' })); } catch {}
+  }
+  files = ok;
   if (!files.length) {
-    const types = [...(dt.types || [])].filter(x => x !== 'Files').join(', ');
-    const msg = "Outlook n'a pas donné le fichier du mail. Enregistre d'abord le mail (dans Outlook : Fichier › Enregistrer sous, ou glisse-le sur le Bureau), puis glisse ce fichier ici ou utilise « Joindre »." + (types ? ` (reçu : ${types})` : '');
-    dropMsg(t, msg, true); return toast("Le mail n'a pas pu être joint : voir le message dans la zone.");
+    const msg = "Outlook n'a pas donné le fichier du mail. Glisse d'abord le mail sur le Bureau (ou dans Outlook : Fichier › Enregistrer sous), puis glisse ce fichier ici ou utilise « Joindre ».";
+    dropMsg(t, msg + ` (détail : ${got || 'rien'})`, true); return toast("Le mail n'a pas pu être joint : voir le message dans la zone.");
   }
   if (t.dataset.drop === 'compose') { hrPending.push(...files); renderHrPending(); dropMsg(t, `${files.length > 1 ? files.length + ' fichiers prêts' : 'Fichier prêt'} : il sera joint quand tu enregistres la remarque.`); return; }
   dropMsg(t, 'Envoi en cours…');
   uploadHrFiles(files, t.dataset.drop === 'docs' ? null : t.dataset.drop);
-});
+}
 $('#hrxFiles').addEventListener('change', e => { hrPending.push(...e.target.files); e.target.value = ''; renderHrPending(); });
 $('#hrxPending').addEventListener('click', e => { const b = e.target.closest('[data-pendel]'); if (b) { hrPending.splice(Number(b.dataset.pendel), 1); renderHrPending(); } });
 $('#hrSheet').addEventListener('change', e => {
