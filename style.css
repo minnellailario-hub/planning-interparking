@@ -1048,3 +1048,5 @@ body.employee .emp-only { display: block; }
 [data-drop].drop-on { outline: 2px dashed var(--accent); outline-offset: 2px; background: var(--accent-soft); }
 .hrx-item.flash { animation: hrxFlash 2.4s ease; }
 @keyframes hrxFlash { 0%, 60% { background: #fff3c4; } 100% { background: transparent; } }
+.drop-msg { flex-basis: 100%; margin: 6px 0 0; font-size: 12.5px; color: var(--accent); font-weight: 600; }
+.drop-msg.bad { color: #b42318; font-weight: 500; }

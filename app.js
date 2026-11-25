@@ -360,14 +360,41 @@ function openDeepLink(d) {
 }
 // Glisser-déposer : sur une remarque, dans le formulaire, ou dans les documents.
 function dropTarget(e) { return e.target.closest && e.target.closest('#hrSheet [data-drop]'); }
-document.addEventListener('dragover', e => { const t = dropTarget(e); if (!t) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; t.classList.add('drop-on'); });
+// Effet de dépôt accepté par ce qu'on glisse : Outlook ne propose souvent que « déplacer » ; si on demande « copier »,
+// le navigateur refuse le dépôt sans rien dire.
+const dropEffectFor = dt => { const a = String(dt.effectAllowed || 'all').toLowerCase(); return /copy|all|uninitialized/.test(a) ? 'copy' : /move/.test(a) ? 'move' : /link/.test(a) ? 'link' : 'copy'; };
+// Message affiché quelques secondes dans la zone de dépôt (en plus du petit message en bas).
+function dropMsg(t, text, bad) {
+  let p = t.querySelector(':scope > .drop-msg');
+  if (!p) { p = document.createElement('p'); p.className = 'drop-msg'; t.appendChild(p); }
+  p.textContent = text; p.classList.toggle('bad', !!bad);
+  clearTimeout(p._t); p._t = setTimeout(() => p.remove(), bad ? 12000 : 5000);
+}
+document.addEventListener('dragover', e => { const t = dropTarget(e); if (!t) return; e.preventDefault(); e.dataTransfer.dropEffect = dropEffectFor(e.dataTransfer); t.classList.add('drop-on'); });
 document.addEventListener('dragleave', e => { const t = dropTarget(e); if (t && !t.contains(e.relatedTarget)) t.classList.remove('drop-on'); });
 document.addEventListener('drop', e => {
   const t = dropTarget(e); if (!t) return;
   e.preventDefault(); t.classList.remove('drop-on');
-  const files = [...(e.dataTransfer.files || [])];
-  if (!files.length) return toast("Rien à joindre : depuis Outlook, enregistre d'abord le mail (Fichier › Enregistrer sous), puis glisse le fichier.");
-  if (t.dataset.drop === 'compose') { hrPending.push(...files); renderHrPending(); return; }
+  const dt = e.dataTransfer;
+  let files = [...(dt.files || [])];
+  // Certains navigateurs ne donnent le fichier que par la liste des éléments glissés.
+  if (!files.length) files = [...(dt.items || [])].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean);
+  // Outlook (nouveau) ou Outlook sur le web : pas de fichier, mais le contenu du mail en HTML → joint comme page .html.
+  if (!files.length) {
+    const html = dt.getData('text/html');
+    if (html && html.replace(/<[^>]+>/g, '').trim().length > 20) {
+      const title = ((/<title>([^<]{1,80})/i.exec(html) || [])[1] || 'mail').replace(/[^\wÀ-ÿ -]+/g, ' ').trim() || 'mail';
+      files = [new File([html], `${title} - ${localDay()}.html`, { type: 'text/html' })];
+    }
+  }
+  files = files.filter(f => f.size > 0);
+  if (!files.length) {
+    const types = [...(dt.types || [])].filter(x => x !== 'Files').join(', ');
+    const msg = "Outlook n'a pas donné le fichier du mail. Enregistre d'abord le mail (dans Outlook : Fichier › Enregistrer sous, ou glisse-le sur le Bureau), puis glisse ce fichier ici ou utilise « Joindre »." + (types ? ` (reçu : ${types})` : '');
+    dropMsg(t, msg, true); return toast("Le mail n'a pas pu être joint : voir le message dans la zone.");
+  }
+  if (t.dataset.drop === 'compose') { hrPending.push(...files); renderHrPending(); dropMsg(t, `${files.length > 1 ? files.length + ' fichiers prêts' : 'Fichier prêt'} : il sera joint quand tu enregistres la remarque.`); return; }
+  dropMsg(t, 'Envoi en cours…');
   uploadHrFiles(files, t.dataset.drop === 'docs' ? null : t.dataset.drop);
 });
 $('#hrxFiles').addEventListener('change', e => { hrPending.push(...e.target.files); e.target.value = ''; renderHrPending(); });
