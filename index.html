@@ -7,13 +7,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261125153046">
+  <link rel="stylesheet" href="style.css?v=20261125153411">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#1d2330">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="theme-shyfter.css?v=20261125153046">
-  <link rel="stylesheet" href="theme-refonte.css?v=20261125153046">
+  <link rel="stylesheet" href="theme-shyfter.css?v=20261125153411">
+  <link rel="stylesheet" href="theme-refonte.css?v=20261125153411">
   <!-- Apparence choisie sur cet appareil (nouveau thème par défaut, l'ancien reste disponible dans Paramètres). -->
   <!-- Apparence « Nouveau » (menu à gauche). La refonte (theme-refonte.css, classe refonte) reste dans les fichiers, inactive. -->
   <script>document.documentElement.classList.add('theme-new');</script>
@@ -413,7 +413,7 @@
 
       <!-- Statistiques -->
       <!-- Zones & dispatch -->
-      <section class="page" data-page="zones" data-title="Zones &amp; dispatch" data-sub="Sur le terrain : qui doit être où maintenant, les pauses, les imprévus et les remarques. La journée complète et l'équipe sont dans les autres onglets.">
+      <section class="page" data-page="zones" data-title="Zones &amp; dispatch" data-sub-emp="Répartition des zones et du dispatch, heure par heure." data-sub="Sur le terrain : qui doit être où maintenant, les pauses, les imprévus et les remarques. La journée complète et l'équipe sont dans les autres onglets.">
         <div class="planning-bar zones-bar">
           <div class="monthnav">
             <button id="zPrev" class="icon-btn" aria-label="Jour précédent">‹</button>
@@ -447,8 +447,8 @@
               <button id="zvPeople" role="tab">Par personne</button>
               <button id="zvZones" role="tab">Par zone</button>
             </div>
-            <button id="zReset" class="ghost" title="Enlever les changements faits à la main ce jour-là">Tout remettre en auto</button>
-            <button id="zExport">Excel du jour</button>
+            <button id="zReset" class="ghost no-emp" title="Enlever les changements faits à la main ce jour-là">Tout remettre en auto</button>
+            <button id="zExport" class="no-emp">Excel du jour</button>
           </div>
           <div class="card flat tablewrap" id="zBox"></div>
           <div class="legend" id="zLegend"></div>
@@ -488,7 +488,7 @@
 
       <!-- Reporting -->
       <!-- Agenda : éléments pour l'agenda partagé Outlook des contrôleurs -->
-      <section class="page" data-page="agenda" data-title="Agenda" data-sub="Tickets PLANON, matériel, livraisons, événements, foot, tâches : le titre se fait tout seul, puis « Ajouter à Outlook » ouvre le rendez-vous déjà rempli pour l'agenda partagé EXPLOITATION.">
+      <section class="page" data-page="agenda" data-title="Agenda" data-sub-emp="Interventions, livraisons, événements et tâches du parking." data-sub="Tickets PLANON, matériel, livraisons, événements, foot, tâches : le titre se fait tout seul, puis « Ajouter à Outlook » ouvre le rendez-vous déjà rempli pour l'agenda partagé EXPLOITATION.">
         <div class="planning-bar">
           <div class="monthnav">
             <button id="agPrev" class="icon-btn" aria-label="Mois précédent">‹</button>
@@ -500,7 +500,7 @@
         <div id="agBox"></div>
       </section>
 
-      <section class="page" data-page="log" data-title="Reporting" data-sub="Les événements de la journée, notés au fur et à mesure. Modifiables le jour même ; le soir, envoie le rapport PDF au chef de parc.">
+      <section class="page" data-page="log" data-title="Reporting" data-sub-emp="Événements de la journée sur le parking." data-sub="Les événements de la journée, notés au fur et à mesure. Modifiables le jour même ; le soir, envoie le rapport PDF au chef de parc.">
         <div class="planning-bar log-bar">
           <div class="monthnav">
             <button id="lPrev" class="icon-btn" aria-label="Jour précédent">‹</button>
@@ -533,7 +533,7 @@
         </div>
       </section>
 
-      <section class="page" data-page="stats" data-title="Statistiques" data-sub="Roulement des matchs et des dimanches d'ouverture, compteurs du mois.">
+      <section class="page" data-page="stats" data-title="Statistiques" data-sub-emp="Répartition des horaires, des matchs et des dimanches d'ouverture." data-sub="Roulement des matchs et des dimanches d'ouverture, compteurs du mois.">
         <div class="card">
           <h3>Roulement foot ⚽ et dimanches d'ouverture <span class="muted" id="dutySeason"></span></h3>
           <p class="muted no-emp">Tour de rôle fixe : chaque match (et chaque dimanche d'ouverture) va au suivant de la liste, en sautant ceux qui sont absents ou en week-end obligatoire. Change l'ordre avec ↑ ↓ puis régénère le mois. Les compteurs repartent à zéro chaque saison (juillet → juin).</p>
@@ -552,7 +552,8 @@
         </div>
         <div class="card">
           <h3>Régularisation</h3>
-          <p class="muted">Qui a fait plus ou moins d'un horaire que les autres le mois d'avant : « Générer le mois » lui en donne moins ou plus ce mois-ci.</p>
+          <p class="muted no-emp">Qui a fait plus ou moins d'un horaire que les autres le mois d'avant : « Générer le mois » lui en donne moins ou plus ce mois-ci.</p>
+          <p class="muted emp-only">Équilibre des horaires par rapport au mois précédent.</p>
           <div class="scroll-x"><table id="gapStats" class="stats"></table></div>
         </div>
       </section>
@@ -694,7 +695,7 @@
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
-  <script src="backend.js?v=20261125153046"></script>
-  <script src="app.js?v=20261125153046"></script>
+  <script src="backend.js?v=20261125153411"></script>
+  <script src="app.js?v=20261125153411"></script>
 </body>
 </html>

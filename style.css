@@ -1026,3 +1026,7 @@ body.employee #ztTeam { display: none !important; }
 .gap.plus { background: #fde8e8; color: #b42318; } .gap.minus { background: #dcfae6; color: #067647; }
 .gap.even { background: var(--surface-2); color: var(--muted); }
 #gapStats td.gaps { text-align: left; line-height: 1.9; }
+
+/* Front office (compte employé) : textes réservés à l'un ou l'autre */
+.emp-only { display: none; }
+body.employee .emp-only { display: block; }

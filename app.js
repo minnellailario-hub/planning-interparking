@@ -899,6 +899,8 @@ setInterval(async () => {
 
 // ----- Navigation entre les pages -----
 const PAGES = [...document.querySelectorAll('.page')];
+// Compte employé (front office) : textes de présentation, sans les consignes du chef terrain.
+const isEmpView = () => document.body.classList.contains('employee');
 // Auteur d'un élément : un nom (compte employé) ou une adresse e-mail, dont on garde la partie avant @.
 const personLabel = s => String(s || '').includes('@') ? String(s).split('@')[0] : String(s || '');
 // Pages ouvertes à un compte employé.
@@ -916,7 +918,8 @@ function go(page) {
   document.body.dataset.page = el.dataset.page;
   if (!rfOn() || el.dataset.page === 'me') PAGES.forEach(p => { p.hidden = p !== el; });
   $('#pageTitle').textContent = el.dataset.title;
-  $('#pageSub').textContent = el.dataset.sub || '';
+  // Espace employé : sous-titres de présentation (pas les consignes destinées au chef terrain).
+  $('#pageSub').textContent = (emp && el.dataset.subEmp) || el.dataset.sub || '';
   document.querySelectorAll('.nav[data-go]').forEach(b => b.classList.toggle('on', b.dataset.go === el.dataset.page));
   document.body.classList.remove('menu-open');
   try { localStorage.setItem('page', el.dataset.page); } catch {}
@@ -1745,11 +1748,11 @@ function renderZones() {
   if (data) renderZTeam();
   if (zTab === 'now') renderNow();
   if (zTab === 'me') renderMyDay();
-  $('#zLegend').innerHTML = ['Z1', 'Z2', 'Z3', 'D', 'T'].map(z => `<span><i class="z-${z}"></i>${Z_LABEL[z]} · ${Z_PLACE[z]}</span>`).join('') + '<span>☕ Pause 30 min</span><span>🔒 Changé à la main</span>';
+  $('#zLegend').innerHTML = ['Z1', 'Z2', 'Z3', 'D', 'T'].map(z => `<span><i class="z-${z}"></i>${Z_LABEL[z]} · ${Z_PLACE[z]}</span>`).join('') + '<span>☕ Pause 30 min</span>' + (isEmpView() ? '' : '<span>🔒 Changé à la main</span>');
   const z = zData;
   if (!z || z.date !== zDate) { $('#zBox').innerHTML = '<p class="muted pad">Chargement…</p>'; return; }
   if (z.closed) { $('#zBox').innerHTML = "<p class=\"muted pad\">Westland fermé ce jour-là. Si vous travaillez quand même, ajoute les personnes dans « Équipe du jour » ci-dessus.</p>"; return; }
-  if (!z.people.length) { $('#zBox').innerHTML = "<p class=\"muted pad\">Pas encore d'équipe pour ce jour. Ajoute les personnes et leur horaire dans « Équipe du jour » ci-dessus, puis enregistre.</p>"; return; }
+  if (!z.people.length) { $('#zBox').innerHTML = isEmpView() ? "<p class='muted pad'>Pas d'équipe prévue ce jour-là.</p>" : "<p class=\"muted pad\">Pas encore d'équipe pour ce jour. Ajoute les personnes et leur horaire dans « Équipe du jour » ci-dessus, puis enregistre.</p>"; return; }
   if (isPhone()) { $('#zBox').innerHTML = zonesCards(z); return; }
   const head = `<tr><th class="name">${zView === 'people' ? 'Personne' : 'Zone'}</th>${zView === 'people' ? '<th>Horaire</th>' : ''}${z.slots.map(s => `<th>${s.label}</th>`).join('')}${zView === 'people' ? '<th>Pause</th>' : ''}</tr>`;
   let body = '';
@@ -2008,7 +2011,7 @@ function renderNow() {
       <button id="znMsg">💬 Message du jour</button>
     </div>${absents.length || lates.length ? `<div class="znow-events">${[...absents, ...lates].join('')}</div>` : ''}`;
   if (z.closed || !z.people.length) {
-    box.innerHTML = `<div class="card"><p class="muted">${z.closed ? 'Westland fermé ce jour-là.' : "Personne dans l'équipe de ce jour."} Regarde l'onglet « Équipe » pour ajouter du monde.</p></div>` + (z.people.length || (z.absent || []).length ? tools : '');
+    box.innerHTML = `<div class="card"><p class="muted">${z.closed ? 'Westland fermé ce jour-là.' : isEmpView() ? "Pas d'équipe prévue ce jour-là." : "Personne dans l'équipe de ce jour."}${isEmpView() ? '' : " Regarde l'onglet « Équipe » pour ajouter du monde."}</p></div>` + (z.people.length || (z.absent || []).length ? tools : '');
     return;
   }
   // Créneau affiché : celui en cours aujourd'hui ; avant l'ouverture le premier ; un autre jour, le premier aussi.
@@ -2068,7 +2071,7 @@ function renderNow() {
     ${pNow.length ? `<p><b>En pause :</b> ${pNow.map(p => `${esc(p.name)} jusqu'à ${p.pause.end}`).join(', ')}</p>` : ''}
     ${pNext.length ? `<p><b>${today ? 'Ensuite' : 'Pauses du jour'} :</b> ${pNext.map(p => `${p.pause.start} ${esc(p.name)}`).join(' · ')}</p>` : (pNow.length ? '' : '<p class="muted">Plus de pause aujourd\'hui.</p>')}
   </div>`;
-  const sheetInfo = z.plan ? `<p class="znow-plan">📋 Feuille <b>« ${esc(z.plan.title)} »</b> de l'horaire fixe</p>` : '<p class="znow-plan muted">Pas de feuille de l\'horaire fixe pour cette équipe : tournantes calculées pour le jour.</p>';
+  const sheetInfo = isEmpView() ? '' : z.plan ? `<p class="znow-plan">📋 Feuille <b>« ${esc(z.plan.title)} »</b> de l'horaire fixe</p>` : '<p class="znow-plan muted">Pas de feuille de l\'horaire fixe pour cette équipe : tournantes calculées pour le jour.</p>';
   box.innerHTML = `<div class="znow-head">${head}</div>${sheetInfo}${tools}<div class="znow-grid ${alone.length ? 'alone' : ''}">${cards}</div>
     <div class="znow-side">${next}${pauseCard}</div>
     ${isAdmin() ? '<p class="muted small">Touche un nom pour faire une remarque.</p>' : ''}`;
