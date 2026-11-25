@@ -957,7 +957,7 @@ body.employee .topbar .monthnav, body.employee .topbar .actions, body.employee #
 .cert-name { display: inline-flex; align-items: center; gap: 4px; font-weight: 500; }
 
 /* Codes de la fiche salaires */
-.c-SS, .c-ANC, .c-PC, .c-PATERNITE, .c-AT, .c-AJ, .c-CS, .c-FS, .c-MS { background: var(--conge); color: var(--conge-ink); }
+.c-SS, .c-ANC, .c-PC, .c-PATERNITE, .c-AT, .c-AJ, .c-CS, .c-FS, .c-MS, .c-T03 { background: var(--conge); color: var(--conge-ink); }
 .c-RJ, .c-RS { background: var(--off); color: var(--off-ink); }
 
 /* Équipe : une ligne par personne (prénom, nom, fonction, arrivée, départ, retirer) */

@@ -1,10 +1,10 @@
 'use strict';
 const $ = s => document.querySelector(s);
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-const OFF = { REPOS: 'Repos', WE: 'Week-end', RTT: 'RTT', RECUP: 'Récup', CONGE: 'Congé', MALADIE: 'Maladie', FORMATION: 'Formation', SS: 'Sans solde', ANC: 'Ancienneté', PC: 'Petit chômage', PATERNITE: 'Paternité', AT: 'Accident travail', AJ: 'Absence justifiée', RJ: 'Récup férié', CS: 'Congé syndical', RS: 'Récup syndicale', FS: 'Form. syndicale', MS: 'Mission syndicale' };
-const SHORT = { REPOS: 'R', WE: 'WE', RTT: 'RTT', RECUP: 'Réc', CONGE: 'CG', MALADIE: 'M', FORMATION: 'For', SS: 'SS', ANC: 'ANC', PC: 'PC', PATERNITE: 'Pat', AT: 'AT', AJ: 'AJ', RJ: 'RJ', CS: 'CS', RS: 'RS', FS: 'FS', MS: 'MS' };
+const OFF = { REPOS: 'Repos', WE: 'Week-end', RTT: 'RTT', RECUP: 'Récup', CONGE: 'Congé', MALADIE: 'Maladie', FORMATION: 'Formation', SS: 'Sans solde', ANC: 'Ancienneté', PC: 'Petit chômage', PATERNITE: 'Paternité', AT: 'Accident travail', AJ: 'Absence justifiée', RJ: 'Récup férié', CS: 'Congé syndical', RS: 'Récup syndicale', FS: 'Form. syndicale', MS: 'Mission syndicale', T03: '4/5 (non presté)' };
+const SHORT = { REPOS: 'R', WE: 'WE', RTT: 'RTT', RECUP: 'Réc', CONGE: 'CG', MALADIE: 'M', FORMATION: 'For', SS: 'SS', ANC: 'ANC', PC: 'PC', PATERNITE: 'Pat', AT: 'AT', AJ: 'AJ', RJ: 'RJ', CS: 'CS', RS: 'RS', FS: 'FS', MS: 'MS', T03: 'T03' };
 // Codes de la fiche salaires (en plus de Congé, Maladie, Formation, RTT, Récup).
-const PAY_CODES = ['SS', 'ANC', 'PC', 'PATERNITE', 'AT', 'AJ', 'RJ', 'CS', 'RS', 'FS', 'MS'];
+const PAY_CODES = ['SS', 'ANC', 'PC', 'PATERNITE', 'AT', 'AJ', 'RJ', 'CS', 'RS', 'FS', 'MS', 'T03'];
 
 let month = (() => {
   try { const m = localStorage.getItem('month'); if (/^\d{4}-\d{2}$/.test(m)) return m; } catch {}
