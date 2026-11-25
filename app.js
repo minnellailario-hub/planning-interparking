@@ -2893,9 +2893,6 @@ function renderTeam() {
       <i class="hrx-av ${t.id ? hrAv(t.id) : 'c0'}">${esc(initials(`${f} ${l}`) || '+')}</i>
       <label>Prénom<input type="text" data-i="${i}" data-k="first" value="${esc(f)}" placeholder="Prénom"></label>
       <label>Nom<input type="text" data-i="${i}" data-k="last" value="${esc(l)}" placeholder="Nom de famille"></label>
-      <label class="emp-fn">Fonction<input type="text" data-i="${i}" data-k="note" value="${esc(t.note || '')}" placeholder="ex. CDR"></label>
-      <label>Arrivée<input type="date" data-i="${i}" data-k="start" value="${t.start || ''}"></label>
-      <label>Départ<input type="date" data-i="${i}" data-k="end" value="${t.end || ''}"></label>
       <div class="emp-act">${gone(t) ? `<span class="tag">Parti le ${fmtDate(t.end)}</span>` : ''}<button type="button" class="ghost emp-rm" data-rm="${i}" title="Retirer ${esc(f)} de l'équipe">Retirer</button></div>
       ${ask ? `<div class="emp-ask">
         <b>Retirer ${esc(f)} de l'équipe ?</b>
