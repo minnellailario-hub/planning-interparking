@@ -141,24 +141,7 @@ function render() {
   $('#warnings').innerHTML = !v.generated ? '<li class="ok">Mois pas encore généré.</li>'
     : v.warnings.length ? v.warnings.map(w => `<li>${esc(w)}</li>`).join('') : '<li class="ok">Aucune alerte, toutes les règles sont respectées.</li>';
 
-  const cols = [['8-16', '8-16'], ['10-18', '10-18'], ['12-20', '12-20'], ['foot', '⚽ mois'], ['footSeason', '⚽ saison'], ['sat8', 'Sam. 8h saison'], ['REPOS', 'Repos'], ['RTT', 'RTT'], ['worked', 'Jours trav.']];
-  const spread = k => { const xs = v.stats.map(s => s[k]); return Math.max(...xs) - Math.min(...xs); };
-  let s = '<tr><th></th>' + cols.map(c => `<th>${c[1]}</th>`).join('') + '</tr>';
-  for (const st of v.stats) {
-    s += `<tr><td>${esc(st.name)}</td>` + cols.map(([k]) => {
-      const xs = v.stats.map(x => x[k]);
-      const hi = ['8-16', '10-18', '12-20'].includes(k) && spread(k) > 1 && st[k] === Math.max(...xs);
-      return `<td class="${hi ? 'hi' : ''}">${st[k]}</td>`;
-    }).join('') + '</tr>';
-  }
-  $('#stats').innerHTML = s;
-
-  renderDuty();
-  // Matchs de la saison, par personne.
-  const rot = v.stats.slice().sort((a, b) => a.footSeason - b.footSeason || (a.lastFoot || '').localeCompare(b.lastFoot || ''));
-  $('#footStats').innerHTML = '<tr><th>Employé</th><th>Ce mois</th><th>Saison</th><th>Matchs de la saison</th></tr>'
-    + rot.map(st => `<tr><td>${esc(st.name)}</td><td>${st.foot}</td><td>${st.footSeason}</td>
-      <td class="footlist">${st.footList.length ? st.footList.map(m => `<span>${fmtDate(m.date)}${m.opponent ? ' · ' + esc(m.opponent) : ''}</span>`).join('') : '—'}</td></tr>`).join('');
+  renderStatsPage(v);
 
   renderDays();
   renderDashboard();
@@ -572,8 +555,9 @@ function renderEmployee() {
   document.body.classList.add('employee');
   document.body.classList.remove('readonly');
   $('#accountBtn').hidden = data.account.mode !== 'cloud';
-  if (document.body.dataset.page !== 'me') go('me');
+  if (!EMP_PAGES.includes(document.body.dataset.page)) go('me');
   renderMe();
+  if (document.body.dataset.page === 'stats') renderStatsPage(data.stats ? { stats: data.stats.rows } : null);
 }
 // Zone de la personne maintenant (ou la prochaine aujourd'hui).
 function myZoneNow() {
@@ -759,14 +743,22 @@ function renderPubBar() {
     el.innerHTML = `<span class="ic">👁</span><span><b>L'équipe ne voit pas encore ${name}.</b> Publie-le quand il est prêt : chacun le verra dans son espace et sera prévenu.</span><button class="primary" id="pubGo">Publier ${MONTHS[Number(month.slice(5)) - 1]}</button>`;
   } else if (!p.people.length && !p.students) {
     el.className = 'pub-bar ok';
-    el.innerHTML = `<span class="ic">✓</span><span><b>Publié</b> le ${hrWhen(p.at)} : l'équipe voit ce mois à jour.</span>`;
+    el.innerHTML = `<span class="ic">✓</span><span><b>Publié</b> le ${hrWhen(p.at)} : l'équipe voit ce mois à jour.</span><button class="ghost" id="pubUndo">Retirer la publication</button>`;
   } else {
     el.className = 'pub-bar changed';
     const who = p.people.map(x => `<span title="${esc(x.list.map(c => `${fmtDate(c.date)} : ${c.before} → ${c.after}`).join('\n'))}">${esc(x.name)} (${x.count} jour${x.count > 1 ? 's' : ''})</span>`).join(', ');
-    el.innerHTML = `<span class="ic">✎</span><span><b>Changements pas encore envoyés à l'équipe :</b> ${who || 'lignes étudiants'}.</span><button class="primary" id="pubGo">Envoyer les changements</button>`;
+    el.innerHTML = `<span class="ic">✎</span><span><b>Changements pas encore envoyés à l'équipe :</b> ${who || 'lignes étudiants'}.</span><button class="ghost" id="pubUndo">Retirer la publication</button><button class="primary" id="pubGo">Envoyer les changements</button>`;
   }
 }
 $('#pubBar').addEventListener('click', async e => {
+  const u = e.target.closest('#pubUndo');
+  if (u) {
+    const name = `${MONTHS[Number(month.slice(5)) - 1]} ${month.slice(0, 4)}`;
+    if (!confirm(`Retirer la publication de ${name} ? L'équipe ne verra plus ce mois dans son espace jusqu'à ce que tu le publies à nouveau. L'horaire lui-même ne change pas.`)) return;
+    u.disabled = true;
+    try { await api('/api/unpublish', {}); toast(`${cap(name)} n'est plus visible par l'équipe`); } catch { u.disabled = false; }
+    return;
+  }
   const b = e.target.closest('#pubGo'); if (!b) return;
   const name = `${MONTHS[Number(month.slice(5)) - 1]} ${month.slice(0, 4)}`;
   if (!data.publish.published && !confirm(`Publier ${name} ? Toute l'équipe le verra dans son espace et sera prévenue.`)) return;
@@ -907,9 +899,17 @@ setInterval(async () => {
 
 // ----- Navigation entre les pages -----
 const PAGES = [...document.querySelectorAll('.page')];
+// Auteur d'un élément : un nom (compte employé) ou une adresse e-mail, dont on garde la partie avant @.
+const personLabel = s => String(s || '').includes('@') ? String(s).split('@')[0] : String(s || '');
+// Pages ouvertes à un compte employé.
+const EMP_PAGES = ['me', 'stats', 'zones', 'agenda', 'log'];
 function go(page) {
-  if (document.body.classList.contains('employee')) page = 'me';
-  else if (page === 'me') page = 'dashboard';
+  const emp = document.body.classList.contains('employee');
+  if (emp && !EMP_PAGES.includes(page)) page = 'me';
+  else if (!emp && page === 'me') page = 'dashboard';
+  // Employé : Statistiques et Zones en lecture seule ; Agenda et Reporting modifiables.
+  if (emp) document.body.classList.toggle('readonly', ['zones', 'stats'].includes(page));
+  if (emp && page === 'stats' && data && data.me) renderStatsPage(data.stats ? { stats: data.stats.rows } : null);
   const el = PAGES.find(p => p.dataset.page === page) || PAGES[0];
   if (rfOn() && el.dataset.page === 'dashboard') return openTab(rfTab);
   if (rfOn() && el.dataset.page !== 'me') rfOpen(el);
@@ -1137,6 +1137,29 @@ function renderOverview(animate = false) {
   $('#rfMonth').textContent = cap(rfMonthLabel());
   $('#rfGrid').innerHTML = RF_LAYOUT[rfTab].map(k => RF_TILES[k] ? RF_TILES[k]() : '').join('');
   if (data.account.email) $('#accountLabel').textContent = initials(data.account.email.split('@')[0].replace(/[._-]+/g, ' ')) || '?';
+}
+
+// Compteurs du mois, roulement foot / dimanches et matchs de la saison (page Statistiques ; aussi pour l'espace employé).
+function renderStatsPage(v) {
+  if (!v || !v.stats || !v.stats.length) { $('#stats').innerHTML = '<tr><td class="muted">Pas encore de chiffres ce mois-ci.</td></tr>'; $('#footStats').innerHTML = ''; renderDuty(); return; }
+  const cols = [['8-16', '8-16'], ['10-18', '10-18'], ['12-20', '12-20'], ['foot', '⚽ mois'], ['footSeason', '⚽ saison'], ['sat8', 'Sam. 8h saison'], ['REPOS', 'Repos'], ['RTT', 'RTT'], ['worked', 'Jours trav.']];
+  const spread = k => { const xs = v.stats.map(s => s[k]); return Math.max(...xs) - Math.min(...xs); };
+  let s = '<tr><th></th>' + cols.map(c => `<th>${c[1]}</th>`).join('') + '</tr>';
+  for (const st of v.stats) {
+    s += `<tr><td>${esc(st.name)}</td>` + cols.map(([k]) => {
+      const xs = v.stats.map(x => x[k]);
+      const hi = ['8-16', '10-18', '12-20'].includes(k) && spread(k) > 1 && st[k] === Math.max(...xs);
+      return `<td class="${hi ? 'hi' : ''}">${st[k]}</td>`;
+    }).join('') + '</tr>';
+  }
+  $('#stats').innerHTML = s;
+
+  renderDuty();
+  // Matchs de la saison, par personne.
+  const rot = v.stats.slice().sort((a, b) => a.footSeason - b.footSeason || (a.lastFoot || '').localeCompare(b.lastFoot || ''));
+  $('#footStats').innerHTML = '<tr><th>Employé</th><th>Ce mois</th><th>Saison</th><th>Matchs de la saison</th></tr>'
+    + rot.map(st => `<tr><td>${esc(st.name)}</td><td>${st.foot}</td><td>${st.footSeason}</td>
+      <td class="footlist">${st.footList.length ? st.footList.map(m => `<span>${fmtDate(m.date)}${m.opponent ? ' · ' + esc(m.opponent) : ''}</span>`).join('') : '—'}</td></tr>`).join('');
 }
 
 // Les anciennes fenêtres sont devenues des pages : « ouvrir » = aller à la page.
@@ -2386,7 +2409,7 @@ function renderLog() {
           <details class="log-orig"><summary>✨ Reformulé pour le rapport · voir mon texte</summary>${block(e.text, e.action)}</details>`;
       })()}
       ${e.followUp ? '<p class="log-follow">► Suivi nécessaire</p>' : ''}
-      ${e.author || e.updatedBy ? `<p class="muted small log-by">${e.author ? 'Noté par ' + esc(e.author) : ''}${e.updatedBy && e.updatedBy !== e.author ? (e.author ? ' · ' : '') + 'modifié par ' + esc(e.updatedBy) : ''}</p>` : ''}
+      ${e.author || e.updatedBy ? `<p class="muted small log-by">${e.author ? 'Noté par ' + esc(personLabel(e.author)) : ''}${e.updatedBy && e.updatedBy !== e.author ? (e.author ? ' · ' : '') + 'modifié par ' + esc(personLabel(e.updatedBy)) + (e.updatedAt ? ' à ' + new Date(e.updatedAt).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }) : '') : ''}</p>` : ''}
       ${edit ? `<div class="row"><button class="log-edit">Modifier</button> <button class="ghost danger log-del">Supprimer</button></div>` : ''}
     </div>`;
   }).join('') : `<p class="muted">${L.editable ? 'Aucun événement pour le moment. Choisis un type ci-dessus pour en noter un.' : 'Aucun événement ce jour-là.'}</p>`;
@@ -2643,6 +2666,7 @@ function renderAgenda() {
       <div class="ag-main">
         <b>${esc(it.title)}</b>
         <span class="ag-meta"><span>${agWhen(it)}</span>${it.location ? `<span>${esc(it.location)}</span>` : ''}${it.notes ? `<span>${esc(it.notes.split('\n')[0]).slice(0, 70)}</span>` : ''}</span>
+        ${it.by || it.updatedBy ? `<small class="ag-by">${it.by ? 'Ajouté par ' + esc(personLabel(it.by)) : ''}${it.updatedBy && it.updatedBy !== it.by ? (it.by ? ' · ' : '') + 'modifié par ' + esc(personLabel(it.updatedBy)) + (it.updatedAt ? ' le ' + hrWhen(it.updatedAt) : '') : ''}</small>` : ''}
       </div>
       <span class="ag-status ${it.sentAt ? 'ok' : ''}">${it.sentAt ? '✓ Dans Outlook' : 'À ajouter'}</span>
       <button class="${it.sentAt ? 'ghost' : 'primary'} ag-out" data-ag-out="${it.id}">📅 ${it.sentAt ? 'Rouvrir' : 'Ajouter à Outlook'}</button>
@@ -2861,7 +2885,7 @@ function renderDuty() {
   if (!du) return;
   $('#dutySeason').textContent = `· saison ${du.season}`;
   const row = id => du.rows.find(r => r.id === id) || { name: id, foot: 0, sunday: 0, holiday: 0 };
-  const ro = document.body.classList.contains('readonly');
+  const ro = document.body.classList.contains('readonly') || document.body.classList.contains('employee');
   const table = (kind, head, cells) => `<tr><th>#</th><th>${head}</th>${cells.map(c => `<th>${c[0]}</th>`).join('')}${ro ? '' : '<th></th>'}</tr>`
     + du.order[kind].map((id, k) => `<tr class="${du.next[kind] === id ? 'next' : ''}"><td>${k + 1}</td><td>${esc(row(id).name)}${du.next[kind] === id ? ' <span class="badge foot">prochain</span>' : ''}</td>
       ${cells.map(c => `<td>${row(id)[c[1]]}</td>`).join('')}

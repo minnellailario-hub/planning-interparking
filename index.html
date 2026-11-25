@@ -7,13 +7,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261125145602">
+  <link rel="stylesheet" href="style.css?v=20261125150208">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#1d2330">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="theme-shyfter.css?v=20261125145602">
-  <link rel="stylesheet" href="theme-refonte.css?v=20261125145602">
+  <link rel="stylesheet" href="theme-shyfter.css?v=20261125150208">
+  <link rel="stylesheet" href="theme-refonte.css?v=20261125150208">
   <!-- Apparence choisie sur cet appareil (nouveau thème par défaut, l'ancien reste disponible dans Paramètres). -->
   <!-- Apparence « Nouveau » (menu à gauche). La refonte (theme-refonte.css, classe refonte) reste dans les fichiers, inactive. -->
   <script>document.documentElement.classList.add('theme-new');</script>
@@ -61,9 +61,9 @@
         <button class="nav" id="openMatches" data-go="calendar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 4.5h-5L8 10z"/></svg>Matchs &amp; dimanches</button>
         <button class="nav" data-go="students"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21c1-4.5 4.3-7 8-7s7 2.5 8 7"/></svg>Étudiants</button>
         <div class="nav-label">Terrain</div>
-        <button class="nav" id="zonesOpen" data-go="zones"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Zones &amp; dispatch</button>
-        <button class="nav" id="logOpen" data-go="log"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h7M9 16h7"/></svg>Reporting</button>
-        <button class="nav" id="agOpen" data-go="agenda"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4M8 14h3"/></svg>Agenda</button>
+        <button class="nav emp-ok" id="zonesOpen" data-go="zones"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Zones &amp; dispatch</button>
+        <button class="nav emp-ok" id="logOpen" data-go="log"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h7M9 16h7"/></svg>Reporting</button>
+        <button class="nav emp-ok" id="agOpen" data-go="agenda"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4M8 14h3"/></svg>Agenda</button>
         <div class="nav-label">Absences</div>
         <button class="nav" id="sickOpen" data-go="sick"><svg viewBox="0 0 24 24"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"/></svg>Maladie</button>
         <button class="nav" id="formOpen" data-go="formation"><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/></svg>Formation</button>
@@ -73,7 +73,7 @@
         <button class="nav" data-go="hr"><svg viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="18" rx="2"/><path d="M9 3.5h6v3H9zM8.5 11h7M8.5 15h7M8.5 19h4"/></svg>RH</button>
         <div class="nav-label">Gestion</div>
         <button class="nav admin-only" id="invOpen" data-go="invoices"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 11h7M9 15h7M9 19h4"/></svg>Factures</button>
-        <button class="nav" data-go="stats"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Statistiques</button>
+        <button class="nav emp-ok" data-go="stats"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Statistiques</button>
       </nav>
       <div class="side-foot">
         <button class="nav" id="openSettings" data-go="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Paramètres</button>
@@ -514,7 +514,7 @@
           <div class="row" id="logReformRow" hidden><button id="logReform">✨ Reformuler les événements pas encore reformulés</button></div>
           <div id="logList"></div>
         </div>
-        <div class="card">
+        <div class="card no-emp">
           <h3>Rapport de fin de journée</h3>
           <p class="muted">Un PDF complet : bilan chiffré, points à suivre, tous les événements, retards et remarques RH du jour.</p>
           <div class="row">
@@ -530,7 +530,7 @@
       <section class="page" data-page="stats" data-title="Statistiques" data-sub="Roulement des matchs et des dimanches d'ouverture, compteurs du mois.">
         <div class="card">
           <h3>Roulement foot ⚽ et dimanches d'ouverture <span class="muted" id="dutySeason"></span></h3>
-          <p class="muted">Tour de rôle fixe : chaque match (et chaque dimanche d'ouverture) va au suivant de la liste, en sautant ceux qui sont absents ou en week-end obligatoire. Change l'ordre avec ↑ ↓ puis régénère le mois. Les compteurs repartent à zéro chaque saison (juillet → juin).</p>
+          <p class="muted no-emp">Tour de rôle fixe : chaque match (et chaque dimanche d'ouverture) va au suivant de la liste, en sautant ceux qui sont absents ou en week-end obligatoire. Change l'ordre avec ↑ ↓ puis régénère le mois. Les compteurs repartent à zéro chaque saison (juillet → juin).</p>
           <div class="duty-grid">
             <div class="scroll-x"><table id="dutyFoot" class="stats"></table></div>
             <div class="scroll-x"><table id="dutySunday" class="stats"></table></div>
@@ -683,7 +683,7 @@
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
-  <script src="backend.js?v=20261125145602"></script>
-  <script src="app.js?v=20261125145602"></script>
+  <script src="backend.js?v=20261125150208"></script>
+  <script src="app.js?v=20261125150208"></script>
 </body>
 </html>

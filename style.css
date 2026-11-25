@@ -809,7 +809,7 @@ body.readonly .edit-only { display: none !important; }
 /* ===== Espace employé, cloche, publication (les deux apparences) ===== */
 .me-nav { display: none !important; }
 body.employee .me-nav { display: flex !important; }
-body.employee .sidebar .nav:not(.me-nav):not(#accountBtn), body.employee .sidebar .nav-label,
+body.employee .sidebar .nav:not(.me-nav):not(.emp-ok):not(#accountBtn), body.employee .sidebar .nav-label,
 body.employee .topbar .monthnav, body.employee .topbar .actions, body.employee #undoBtn, body.employee #alertChip { display: none !important; }
 .me-hero { display: flex; align-items: center; gap: 16px; padding: 18px 20px; margin-bottom: 16px; }
 .me-hello h2 { margin: 0 0 4px; font-size: 22px; }
@@ -998,3 +998,9 @@ body.employee .topbar .monthnav, body.employee .topbar .actions, body.employee #
 .me-team.month th, .me-team.month td { padding: 5px 2px; min-width: 34px; }
 .me-team.month td span { padding: 2px 4px; font-size: 11px; }
 .me-team.month tbody th { position: sticky; left: 0; background: var(--surface); z-index: 1; }
+
+/* Espace employé : pages partagées (Statistiques, Zones en lecture ; Agenda, Reporting sans suppression ni PDF) */
+body.employee .no-emp, body.employee .log-del, body.employee [data-ag-del] { display: none !important; }
+body.employee .sidebar .nav.emp-ok { display: flex !important; }
+.ag-by { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+body.readonly #znEvent, body.readonly #znMsg { display: none !important; }
