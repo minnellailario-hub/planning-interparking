@@ -7,13 +7,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261125153411">
+  <link rel="stylesheet" href="style.css?v=20261125154056">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#1d2330">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="theme-shyfter.css?v=20261125153411">
-  <link rel="stylesheet" href="theme-refonte.css?v=20261125153411">
+  <link rel="stylesheet" href="theme-shyfter.css?v=20261125154056">
+  <link rel="stylesheet" href="theme-refonte.css?v=20261125154056">
   <!-- Apparence choisie sur cet appareil (nouveau thème par défaut, l'ancien reste disponible dans Paramètres). -->
   <!-- Apparence « Nouveau » (menu à gauche). La refonte (theme-refonte.css, classe refonte) reste dans les fichiers, inactive. -->
   <script>document.documentElement.classList.add('theme-new');</script>
@@ -346,6 +346,11 @@
                   <p class="late-planned ok" id="hoursPreview"></p>
                 </div>
                 <textarea id="hrxText" rows="3"></textarea>
+                <div class="hrx-attach" data-drop="compose">
+                  <label class="btn ghost">📎 Joindre un fichier<input type="file" id="hrxFiles" multiple hidden></label>
+                  <span class="muted small">ou glisse le fichier ici (mail d'avertissement, PDF, photo…)</span>
+                  <div id="hrxPending" class="hrx-files"></div>
+                </div>
                 <div class="hrx-send">
                   <span class="hrx-ai">✨ Écris comme ça vient : l'IA met ton texte au propre. Ce que tu as écrit reste dans « Mon texte ».</span>
                   <button id="hrxSave" class="primary">Enregistrer</button>
@@ -360,6 +365,7 @@
             <aside class="hrx-side">
               <div class="card hrx-bilan" id="hrxBilan"></div>
               <div class="card hrx-hours" id="hrxHours"></div>
+              <div class="card hrx-docs" id="hrxDocs" data-drop="docs"></div>
             </aside>
           </div>
         </div>
@@ -695,7 +701,7 @@
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
-  <script src="backend.js?v=20261125153411"></script>
-  <script src="app.js?v=20261125153411"></script>
+  <script src="backend.js?v=20261125154056"></script>
+  <script src="app.js?v=20261125154056"></script>
 </body>
 </html>

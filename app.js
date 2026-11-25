@@ -294,8 +294,98 @@ function renderHrSheet() {
     <div class="${bal > 0 ? 'pos' : bal < 0 ? 'neg' : ''}"><span>⏱ Heures</span><b>${bal ? (bal > 0 ? '+' : '−') + hm(Math.abs(bal)) : '0h'}</b><small>${balanceText(bal)}</small></div>`;
   renderHrBilan(e, r);
   renderHrHours(e);
+  renderHrDocs(e);
   renderHrTimeline(e, r, s);
+  renderHrPending();
+  hrFocusDeep();
 }
+
+// ----- Pièces jointes RH : sur une remarque, ou dans les documents du dossier -----
+const hrFiles = () => (data.hr && data.hr.files) || [];
+let hrPending = [];        // fichiers choisis dans le formulaire, envoyés avec la remarque
+let hrDeep = null;         // lien du PDF (#rh=…&note=… ou &fichier=…) à ouvrir après la connexion
+const fileSize = s => s >= 1048576 ? (s / 1048576).toFixed(1).replace('.', ',') + ' Mo' : Math.max(1, Math.round(s / 1024)) + ' Ko';
+const fileIcon = f => /pdf/.test(f.type) ? '📄' : /^image\//.test(f.type) ? '🖼' : /\.(msg|eml)$/i.test(f.name) || /message|outlook/.test(f.type) ? '✉️' : '📎';
+const hrFileChip = f => `<span class="hrx-file"><a href="#" data-hrfile="${f.id}" title="Ouvrir">${fileIcon(f)} ${esc(f.name)}</a><small>${fileSize(f.size)}</small><button class="ghost no-print" data-hrfiledel="${f.id}" title="Retirer ce fichier">✕</button></span>`;
+function renderHrDocs(e) {
+  const notes = new Set(hrNotes().map(n => n.id));
+  const docs = hrFiles().filter(f => f.empId === e.id && (!f.noteId || !notes.has(f.noteId)));
+  $('#hrxDocs').innerHTML = `<h3>Documents</h3>
+    ${docs.length ? `<div class="hrx-files col">${docs.map(hrFileChip).join('')}</div>` : '<p class="hint">Contrat, avertissement, courrier… Tout type de fichier, 10 Mo maximum.</p>'}
+    <label class="btn ghost no-print">📎 Ajouter un document<input type="file" multiple hidden data-hrup="docs"></label>
+    <p class="hint no-print">Tu peux aussi glisser un fichier ici.</p>`;
+}
+function renderHrPending() {
+  $('#hrxPending').innerHTML = hrPending.map((f, i) => `<span class="hrx-file pending">${fileIcon(f)} ${esc(f.name)}<small>${fileSize(f.size)}</small><button class="ghost" data-pendel="${i}" title="Enlever">✕</button></span>`).join('');
+}
+async function uploadHrFiles(files, noteId) {
+  let ok = 0;
+  for (const f of files) {
+    if (f.size > 10 * 1024 * 1024) { toast(`${f.name} : trop lourd (10 Mo maximum)`); continue; }
+    try {
+      const j = await invApi('/api/hr/file', { month, empId: hrSel, noteId: noteId || null, name: f.name, type: f.type || '', data: await readB64(f) });
+      data = j; ok++;
+    } catch {}
+  }
+  render();
+  if (ok) toast(ok > 1 ? `${ok} fichiers joints` : 'Fichier joint');
+}
+async function openHrFile(id) {
+  const q = { month, id };
+  if (!backend) { window.open('/api/hr/file?' + new URLSearchParams(q), '_blank'); return; }
+  const w = window.open('', '_blank');
+  const out = await backend.handle('GET', '/api/hr/file', q, {});
+  if (!out.file) { if (w) w.close(); return toast((out.json && out.json.error) || 'Ouverture impossible'); }
+  const blob = new Blob([out.file], { type: out.type });
+  // PDF et images : ouverts dans un onglet ; le reste (mail Outlook, Word…) : téléchargé.
+  if (w && /pdf|^image\//.test(out.type)) { const url = URL.createObjectURL(blob); w.location.href = url; setTimeout(() => URL.revokeObjectURL(url), 60000); }
+  else { if (w) w.close(); saveFile(new File([out.file], out.filename, { type: out.type })); }
+}
+// Lien du PDF : ouvre le dossier, met la remarque en avant, ou ouvre le fichier.
+function hrFocusDeep() {
+  if (!hrDeep || hrDeep.emp !== hrSel) return;
+  const d = hrDeep; hrDeep = null;
+  if (d.file) { if (hrFiles().some(f => f.id === d.file)) openHrFile(d.file); else toast('Ce fichier n\'existe plus.'); return; }
+  if (d.note) setTimeout(() => {
+    const li = document.querySelector(`#hrxTimeline [data-note="${CSS.escape(d.note)}"]`);
+    if (!li) return toast('Cette remarque n\'est pas dans la période affichée : choisis « Tout ».');
+    li.scrollIntoView({ block: 'center' }); li.classList.add('flash'); setTimeout(() => li.classList.remove('flash'), 2500);
+  }, 50);
+}
+function openDeepLink(d) {
+  if (!data || !data.hr || data.account.role !== 'admin') return false;
+  if (!hrEmps().some(e => e.id === d.emp)) { toast('Personne introuvable dans le dossier RH.'); return false; }
+  hrDeep = d; hrSel = d.emp; hrFilter = 'all'; if (d.note) hrPeriod = 'all';
+  go('hr'); renderHr(); return true;
+}
+// Glisser-déposer : sur une remarque, dans le formulaire, ou dans les documents.
+function dropTarget(e) { return e.target.closest && e.target.closest('#hrSheet [data-drop]'); }
+document.addEventListener('dragover', e => { const t = dropTarget(e); if (!t) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; t.classList.add('drop-on'); });
+document.addEventListener('dragleave', e => { const t = dropTarget(e); if (t && !t.contains(e.relatedTarget)) t.classList.remove('drop-on'); });
+document.addEventListener('drop', e => {
+  const t = dropTarget(e); if (!t) return;
+  e.preventDefault(); t.classList.remove('drop-on');
+  const files = [...(e.dataTransfer.files || [])];
+  if (!files.length) return toast("Rien à joindre : depuis Outlook, enregistre d'abord le mail (Fichier › Enregistrer sous), puis glisse le fichier.");
+  if (t.dataset.drop === 'compose') { hrPending.push(...files); renderHrPending(); return; }
+  uploadHrFiles(files, t.dataset.drop === 'docs' ? null : t.dataset.drop);
+});
+$('#hrxFiles').addEventListener('change', e => { hrPending.push(...e.target.files); e.target.value = ''; renderHrPending(); });
+$('#hrxPending').addEventListener('click', e => { const b = e.target.closest('[data-pendel]'); if (b) { hrPending.splice(Number(b.dataset.pendel), 1); renderHrPending(); } });
+$('#hrSheet').addEventListener('change', e => {
+  const up = e.target.closest('input[data-hrup]'); if (!up || !up.files.length) return;
+  const files = [...up.files]; up.value = '';
+  uploadHrFiles(files, up.dataset.hrup === 'docs' ? null : up.dataset.hrup);
+});
+$('#hrSheet').addEventListener('click', async e => {
+  const o = e.target.closest('[data-hrfile]');
+  if (o) { e.preventDefault(); return openHrFile(o.dataset.hrfile); }
+  const d = e.target.closest('[data-hrfiledel]');
+  if (d && confirm('Retirer ce fichier du dossier ? Il sera supprimé.')) {
+    const j = await invApi('/api/hr/file/delete', { month, id: d.dataset.hrfiledel }).catch(() => null);
+    if (j) { data = j; render(); toast('Fichier retiré'); }
+  }
+});
 
 function renderHrBilan(e, r) {
   const b = data.hr.bilans && data.hr.bilans[e.id];
@@ -358,10 +448,12 @@ function editorHtml(canType) {
 function noteItem(n) {
   const k = hrKindOf(n);
   const tag = n.late ? `⏰ Retard · ${n.late.minutes} min` : n.field ? '📍 Terrain' : k === 'positive' ? '👍 Positif' : '👎 Négatif';
-  return `<li class="hrx-item ${k}"><span class="dot"></span><div class="b">
+  const files = hrFiles().filter(f => f.noteId === n.id);
+  return `<li class="hrx-item ${k}" data-note="${n.id}" data-drop="${n.id}"><span class="dot"></span><div class="b">
     <div class="meta"><span class="tag">${tag}</span><span class="when">${dayLong(hrDateOf(n))}</span>${n.textPro && n.textPro !== n.text ? '<span class="ai" title="Mis au propre par l\'IA">✨</span>' : ''}
       <span class="acts no-print"><button class="ghost" data-edit="${n.id}" title="Modifier">✎ Modifier</button><button class="ghost del" data-del="${n.id}" title="Supprimer">✕</button></span></div>
     ${hrEdit && hrEdit.id === n.id ? editorHtml(!n.late && !n.field) : proText(n.id, n.textPro, n.text)}
+    <div class="hrx-files">${files.map(hrFileChip).join('')}<label class="hrx-addfile no-print" title="Joindre un fichier (ou glisse-le sur la remarque)">📎 Joindre<input type="file" multiple hidden data-hrup="${n.id}"></label></div>
     <small class="by">Noté le ${hrWhen(n.createdAt)}${hrBy(n)}${n.editedAt ? ' · modifié le ' + hrWhen(n.editedAt) : ''}</small></div></li>`;
 }
 function hourItem(h) {
@@ -377,7 +469,7 @@ function hourItem(h) {
 $('#hrPeriod').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (b) { hrPeriod = b.dataset.p; renderHr(); } });
 $('#hrTeam').addEventListener('click', e => {
   const b = e.target.closest('[data-emp]'); if (!b) return;
-  hrSel = b.dataset.emp; hrFilter = 'all'; hrOrig.clear(); hrEdit = null;
+  hrSel = b.dataset.emp; hrFilter = 'all'; hrOrig.clear(); hrEdit = null; hrPending = [];
   $('#hrxText').value = ''; $('#lateTime').value = '';
   renderHr(); hrSetMode(hrMode); scrollTo(0, 0);
 });
@@ -500,6 +592,7 @@ $('#hrxSave').onclick = async () => {
   b.disabled = true; b.textContent = text ? '✨ Mise au propre…' : 'Enregistrement…';
   try {
     const j = await api(path, body);
+    if (hrPending.length) { const files = hrPending; hrPending = []; renderHrPending(); await uploadHrFiles(files, j.noteId || null); }
     $('#hrxText').value = '';
     if (hrMode === 'late') { $('#lateTime').value = ''; checkLate(); }
     hrFilter = 'all'; renderHr();
@@ -508,7 +601,7 @@ $('#hrxSave').onclick = async () => {
 };
 // PDF du dossier (même style que le rapport du Reporting) : fabriqué dans la page (en ligne) ou par le serveur local.
 async function hrPdfFile() {
-  const r = hrRange(), q = { month, emp: hrSel, from: r.from, label: r.label };
+  const r = hrRange(), q = { month, emp: hrSel, from: r.from, label: r.label, app: location.origin + location.pathname };
   if (backend) {
     const out = await backend.handle('GET', '/api/hr-report.pdf', q, {});
     if (!out.pdf) throw new Error((out.json && out.json.error) || 'PDF impossible');
@@ -3228,6 +3321,8 @@ $('#loginForm').onsubmit = e => {
     await authCall('/api/auth/login', { email: $('#lEmail').value, password: $('#lPass').value });
     $('#login').hidden = true;
     await api('/api/state');
+    // Lien du PDF RH ouvert avant la connexion : on y va maintenant.
+    try { if (sessionStorage.getItem('deepLink')) restorePage(); } catch {}
   });
 };
 $('#lForgot').onclick = () => {
@@ -3301,6 +3396,12 @@ if (backend && 'serviceWorker' in navigator) navigator.serviceWorker.register('s
   const here = location.pathname;
   // Version web : retour du lien « mot de passe oublié » (#access_token=…&type=recovery, ou #error=…).
   const hash = location.hash.slice(1);
+  // Lien du PDF du dossier RH (#rh=<personne>&note=… ou &fichier=…) : gardé le temps de se connecter.
+  if (/(^|&)rh=/.test(hash)) {
+    const p = new URLSearchParams(hash);
+    try { sessionStorage.setItem('deepLink', JSON.stringify({ emp: p.get('rh'), note: p.get('note') || null, file: p.get('fichier') || null })); } catch {}
+    history.replaceState(null, '', here + location.search);
+  }
   // Lien d'invitation de l'outil : on garde le code, la personne choisit son mot de passe (le code sert à ce moment-là).
   if (backend && /(^|&)activer=/.test(hash)) {
     const p = new URLSearchParams(hash);
@@ -3335,6 +3436,9 @@ if (backend && 'serviceWorker' in navigator) navigator.serviceWorker.register('s
 })();
 function restorePage() {
   if (data && data.account.role === 'employee') return go('me');
+  let deep = null;
+  try { deep = JSON.parse(sessionStorage.getItem('deepLink') || 'null'); sessionStorage.removeItem('deepLink'); } catch {}
+  if (deep && openDeepLink(deep)) return;
   if (rfOn()) return openTab(rfTab);
   let p = 'dashboard';
   try { p = localStorage.getItem('page') || p; } catch {}

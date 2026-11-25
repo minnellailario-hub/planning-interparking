@@ -1030,3 +1030,21 @@ body.employee #ztTeam { display: none !important; }
 /* Front office (compte employé) : textes réservés à l'un ou l'autre */
 .emp-only { display: none; }
 body.employee .emp-only { display: block; }
+
+/* RH : pièces jointes */
+.hrx-attach { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0; padding: 8px; border: 1px dashed var(--line-strong); border-radius: 10px; }
+.hrx-files { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.hrx-files.col { flex-direction: column; align-items: flex-start; }
+.hrx-files:empty { display: none; }
+.hrx-file { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line); font-size: 12.5px; max-width: 100%; }
+.hrx-file a { color: var(--text); text-decoration: none; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px; }
+.hrx-file a:hover { text-decoration: underline; }
+.hrx-file small { color: var(--muted); }
+.hrx-file button { padding: 0 6px; min-height: 0; line-height: 1.4; }
+.hrx-file.pending { background: var(--accent-soft); }
+.hrx-addfile { display: inline-flex; align-items: center; font-size: 12px; color: var(--muted); cursor: pointer; padding: 3px 8px; border-radius: 8px; border: 1px dashed var(--line-strong); }
+.hrx-addfile:hover { color: var(--text); border-color: var(--text); }
+.hrx-docs .btn { margin-top: 8px; }
+[data-drop].drop-on { outline: 2px dashed var(--accent); outline-offset: 2px; background: var(--accent-soft); }
+.hrx-item.flash { animation: hrxFlash 2.4s ease; }
+@keyframes hrxFlash { 0%, 60% { background: #fff3c4; } 100% { background: transparent; } }
