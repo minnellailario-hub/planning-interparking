@@ -1157,15 +1157,17 @@ function renderStatsPage(v) {
   const gq = v.stats.filter(st => st.gapPrev);
   // Pour chaque horaire : nombre le mois d'avant, écart exact avec la moyenne (au prorata des jours), puis ce mois-ci.
   const cur = v.month || month || '';
-  const mName = ym => ym ? ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'][Number(ym.slice(5)) - 1] : '';
   const prevYm = cur ? (() => { const [y, m] = cur.split('-').map(Number), d = new Date(y, m - 2, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })() : '';
-  const fx = n => (n > 0 ? '+' : n < 0 ? '−' : '') + String(Math.abs(n)).replace('.', ',');
-  const gcell = (st, t) => {
-    const n = st.gapPrev.gap[t] || 0, big = Math.abs(n) >= 0.5;
-    return `<td class="gaps"><b>${st.gapPrev.count[t]}</b> <span class="gap ${big ? (n > 0 ? 'plus' : 'minus') : 'even'}" title="${n > 0 ? 'en a fait trop' : n < 0 ? 'pas assez' : 'pile la moyenne'}">${big ? fx(n) : '='}</span> <span class="muted">→</span> <b>${st[t]}</b></td>`;
+  // Une phrase par personne : seulement les horaires où elle était nettement au-dessus ou en dessous des autres.
+  const full = ym => ym ? MONTHS[Number(ym.slice(5)) - 1].toLowerCase() : '';
+  const line = st => {
+    const out = ['8-16', '10-18', '12-20'].filter(k => Math.abs(st.gapPrev.gap[k] || 0) >= 1).map(k => {
+      const more = st.gapPrev.gap[k] > 0;
+      return `<span class="gap ${more ? 'plus' : 'minus'}">${more ? 'Trop' : 'Pas assez'} de ${k}</span> ${st.gapPrev.count[k]} en ${full(prevYm)} → ${more ? 'moins' : 'plus'} en ${full(cur)} : <b>${st[k]}</b>`;
+    });
+    return out.length ? out.join('<br>') : '<span class="gap even">✓ Comme les autres</span>';
   };
-  $('#gapStats').innerHTML = gq.length ? `<tr><th>Employé</th>${['8-16', '10-18', '12-20'].map(t => `<th>${t}<br><small class="muted">${mName(prevYm)} · écart → ${mName(cur)}</small></th>`).join('')}</tr>`
-    + gq.map(st => `<tr><td>${esc(st.name)}</td>${['8-16', '10-18', '12-20'].map(t => gcell(st, t)).join('')}</tr>`).join('')
+  $('#gapStats').innerHTML = gq.length ? gq.map(st => `<tr><td>${esc(st.name)}</td><td class="gaps">${line(st)}</td></tr>`).join('')
     : "<tr><td class='muted'>Pas de mois d'avant à comparer.</td></tr>";
 
   renderDuty();
