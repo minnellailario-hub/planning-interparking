@@ -1710,6 +1710,8 @@ const Z_LABEL = { Z1: 'Zone 1', Z2: 'Zone 2', Z3: 'Zone 3', D: 'Dispatch', T: 'T
 const Z_PLACE = { Z1: 'Total-Delhaize', Z2: 'City-Crélan', Z3: 'Toit & sous-terrain', D: 'Bureau', T: 'Seul sur le terrain' };
 const DAY_NAMES = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 let zDate = localDay(), zView = 'people', zData = null, zTab = 'now', zCounts = null;
+// Onglet « Maintenant » : créneau choisi avec ‹ › (n'importe quel jour) ; null = créneau en cours (ou le premier).
+let zPick = null;
 try { zView = localStorage.getItem('zView') || zView; } catch {}
 
 async function loadZones() {
@@ -1963,12 +1965,17 @@ function renderNow() {
   let k = today ? slots.findIndex(s => m >= s.start * 60 && m < s.end * 60) : 0;
   const before = today && m < slots[0].start * 60, after = today && m >= slots[slots.length - 1].end * 60;
   if (k < 0) k = after ? slots.length - 1 : 0;
+  const picked = zPick && zPick.date === zDate && zPick.k < slots.length ? zPick.k : null;
+  if (picked !== null) k = picked;
   const sl = slots[k], end = sl.end * 60;
+  // Flèches pour voir les autres créneaux de la journée (aujourd'hui comme un autre jour).
+  const slotNav = `<span class="zslot-nav"><button class="icon-btn" data-zk="-1" ${k ? '' : 'disabled'} aria-label="Créneau précédent">‹</button><b>${sl.label}</b><button class="icon-btn" data-zk="1" ${k < slots.length - 1 ? '' : 'disabled'} aria-label="Créneau suivant">›</button>${picked !== null && today ? '<button class="ghost" data-zk="0">Maintenant</button>' : ''}</span>`;
   let head;
-  if (!today) head = `<b>${esc($('#zTitle').textContent)}</b> · ce n'est pas aujourd'hui : voici le premier créneau (${sl.label}).`;
+  if (!today || picked !== null) head = `${today ? '' : `<b>${esc($('#zTitle').textContent)}</b> · `}Créneau ${slotNav}`;
   else if (before) head = `Pas encore commencé · premier créneau <b>${sl.label}</b> dans <b>${fmtDelay(slots[0].start * 60 - m)}</b>`;
   else if (after) head = 'Journée terminée · dernier créneau affiché.';
   else head = `Créneau <b>${sl.label}</b> · ${k < slots.length - 1 ? 'rotation' : 'fermeture'} dans <b class="${end - m <= 10 ? 'soon' : ''}">${fmtDelay(end - m)}</b>`;
+  if (today && picked === null) head += ` ${slotNav.replace(`<b>${sl.label}</b>`, '')}`;
 
   const inSlot = code => z.people.filter(p => p.cells[k] && p.cells[k].code === code);
   const fieldCount = z.people.filter(p => p.cells[k] && p.cells[k].code && p.cells[k].code !== 'D').length;
@@ -2020,6 +2027,18 @@ const fmtDelay = n => n >= 60 ? `${Math.floor(n / 60)} h ${String(n % 60).padSta
 setInterval(() => { if (document.body.dataset.page === 'zones' && zTab === 'now' && zData && !$('#zSheet').open) renderNow(); }, 20000);
 
 $('#zNow').addEventListener('click', e => {
+  const zk = e.target.closest('[data-zk]');
+  if (zk && zData) {
+    const d = Number(zk.dataset.zk);
+    if (!d) zPick = null;
+    else {
+      const m = nowMin(), slots = zData.slots, today = zDate === localDay();
+      let k = zPick && zPick.date === zDate ? zPick.k : today ? slots.findIndex(s => m >= s.start * 60 && m < s.end * 60) : 0;
+      if (k < 0) k = today && m >= slots[slots.length - 1].end * 60 ? slots.length - 1 : 0;
+      zPick = { date: zDate, k: Math.max(0, Math.min(slots.length - 1, k + d)) };
+    }
+    return renderNow();
+  }
   const c = e.target.closest('[data-clear]');
   if (c) return clearEvent(c.dataset.clear);
   if (e.target.closest('#znEvent')) return openEventSheet();

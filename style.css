@@ -1004,3 +1004,8 @@ body.employee .no-emp, body.employee .log-del, body.employee [data-ag-del] { dis
 body.employee .sidebar .nav.emp-ok { display: flex !important; }
 .ag-by { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
 body.readonly #znEvent, body.readonly #znMsg { display: none !important; }
+
+/* Zones › Maintenant : choisir le créneau affiché */
+.zslot-nav { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; }
+.zslot-nav .icon-btn { width: 30px; height: 30px; }
+.zslot-nav b { min-width: 64px; text-align: center; }
