@@ -179,7 +179,7 @@ function render() {
     .map(([c, l]) => `<span><span class="sw c-${c}">&nbsp;</span>${l}</span>`).join('');
 
   $('#warnings').innerHTML = !v.generated ? '<li class="ok">Mois pas encore généré.</li>'
-    : v.warnings.length ? v.warnings.map(w => `<li>${esc(w)}</li>`).join('') : '<li class="ok">Aucune alerte, toutes les règles sont respectées.</li>';
+    : v.warnings.length ? v.warnings.map((w, i) => `<li class="alert-link" data-alert="${i}" title="Voir dans l'horaire">${esc(w)}</li>`).join('') : '<li class="ok">Aucune alerte, toutes les règles sont respectées.</li>';
 
   renderStatsPage(v);
 
@@ -1427,6 +1427,52 @@ function applyView(scroll) {
   if (scroll && view === 'days' && t) t.scrollIntoView({ block: 'start' });
 }
 $('#vTable').onclick = () => { view = 'table'; applyView(); if (data) render(); };
+
+// ----- Alertes du mois : un clic ouvre l'horaire sur la case (ou la journée, ou la personne) en cause -----
+// Les alertes sont des phrases : « Ve 4 : il manque… » (un jour) ou « Ilario : RTT du 05/12… » (une personne, une date).
+function alertTarget(w) {
+  const v = data.view, rows = [...v.rows, ...(v.studentRows || [])];
+  const year = Number(month.slice(0, 4)), mm = Number(month.slice(5));
+  const dateOf = (d, m) => { let y = year; if (m === 12 && mm === 1) y--; if (m === 1 && mm === 12) y++; return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`; };
+  const t = { date: null, emp: null, week: false };
+  let m = /^(Lu|Ma|Me|Je|Ve|Sa|Di) (\d{1,2}) : (.*)$/.exec(w);
+  if (m) {
+    const d = v.days.find(x => x.day === Number(m[2])); if (d) t.date = d.date;
+    const r = rows.find(x => m[3].startsWith(x.name + ' ')); if (r) t.emp = r.id;
+    return t;
+  }
+  m = /^(.+?) : (.*)$/.exec(w);
+  if (m) {
+    const r = rows.find(x => x.name === m[1]); if (r) t.emp = r.id;
+    const dm = /(\d{2})\/(\d{2})/.exec(m[2]); if (dm) t.date = dateOf(Number(dm[1]), Number(dm[2]));
+    t.week = /semaine du/.test(m[2]);
+  }
+  return t;
+}
+async function goToAlert(t) {
+  go('planning');
+  if (t.date) {
+    view = 'week'; applyView();
+    wkStart = addDay(t.date, -((new Date(t.date + 'T12:00:00').getDay() + 6) % 7));
+    const all = data.view.allDays || data.view.days;
+    if (!all.some(d => d.date === wkStart)) { month = addDay(wkStart, 3).slice(0, 7); await api('/api/state'); } else render();
+  } else render();
+  setTimeout(() => {
+    const q = s => [...document.querySelectorAll(s)];
+    const emp = t.emp && CSS.escape(t.emp);
+    let els = t.emp && t.date && !t.week ? q(`#grid td.cell[data-emp="${emp}"][data-date="${t.date}"]`)
+      : t.emp ? q(`#grid td.cell[data-emp="${emp}"]`) : t.date ? q(`#grid [data-date="${t.date}"]`) : [];
+    if (t.emp && t.date && !t.week && !els.length) els = q(`#grid td.cell[data-emp="${emp}"]`);
+    if (!els.length) return toast("Impossible de retrouver la case : regarde l'horaire du mois.");
+    els[0].scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+    els.forEach(e => { e.classList.remove('alert-flash'); void e.offsetWidth; e.classList.add('alert-flash'); });
+    setTimeout(() => els.forEach(e => e.classList.remove('alert-flash')), 4000);
+  }, 80);
+}
+$('#warnings').addEventListener('click', e => {
+  const li = e.target.closest('[data-alert]'); if (!li || !data) return;
+  const w = data.view.warnings[Number(li.dataset.alert)]; if (w) goToAlert(alertTarget(w));
+});
 $('#vWeek').onclick = () => { view = 'week'; applyView(); if (data) render(); };
 // Semaine précédente / suivante (on change de mois quand la semaine en sort).
 function weekGo(start) {
