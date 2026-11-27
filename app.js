@@ -182,6 +182,7 @@ function render() {
     : v.warnings.length ? v.warnings.map((w, i) => `<li class="alert-link" data-alert="${i}" title="Voir dans l'horaire">${esc(w)}</li>`).join('') : '<li class="ok">Aucune alerte, toutes les règles sont respectées.</li>';
 
   renderStatsPage(v);
+  if (document.body.dataset.page === 'salaires') renderPayPage();
 
   renderDays();
   renderDashboard();
@@ -1094,7 +1095,7 @@ function go(page) {
   document.querySelectorAll('.nav[data-go]').forEach(b => b.classList.toggle('on', b.dataset.go === el.dataset.page));
   document.body.classList.remove('menu-open');
   try { localStorage.setItem('page', el.dataset.page); } catch {}
-  if (el.dataset.page === 'settings' || el.dataset.page === 'team') loadAccess();
+  if (['settings', 'team', 'access'].includes(el.dataset.page)) loadAccess();
   if (!rfOn() || el.dataset.page === 'me') window.scrollTo(0, 0);
 }
 // ----- Refonte : en-tête (logo, parking, menu en pilules), pages « Overview » d'encadrés, grande fenêtre -----
@@ -3255,7 +3256,10 @@ function loadTeam(force) {
   teamDirty = false; $('#teamErr').hidden = true;
   renderTeam();
 }
-$('#openTeam').onclick = () => { loadTeam(true); loadGroups(true); renderPay(); renderPaySend(); $('#teamDlg').showModal(); };
+$('#openTeam').onclick = () => { loadTeam(true); $('#teamDlg').showModal(); };
+$('#grpOpen').onclick = () => { loadGroups(true); go('groups'); };
+$('#accessOpen').onclick = () => { go('access'); renderTeamAccess(); };
+$('#payOpen').onclick = () => { go('salaires'); renderPayPage(); };
 $('#teamChefBtn').onclick = () => openChef();
 $('#teamList').addEventListener('change', e => {
   const { i, k } = e.target.dataset; if (i === undefined) return;
@@ -3344,14 +3348,31 @@ function renderPaySend() {
     : '<p class="muted">Pas encore envoyée ce mois-ci.</p>';
   $('#payMail').textContent = `📧 Préparer le mail · envoi n°${n}`;
   $('#paySent').textContent = `✓ Marquer l'envoi n°${n} comme envoyé`;
+  if (document.body.dataset.page === 'salaires' && !list.length) $('#payHistory').innerHTML = '<p class="muted">Pas encore envoyée ce mois-ci.</p>';
   $('#payHint').textContent = list.length ? `La prochaine fiche (envoi n°${n}) montre ce qui a changé depuis l'envoi n°${list.length}.` : "Une fois le mail envoyé, clique sur « Marquer comme envoyé » : la fiche suivante montrera ce qui a changé.";
+}
+let payReq = 0;
+async function renderPayPage() {
+  renderPay(); renderPaySend();
+  const list = (data.hr && data.hr.payroll || {})[month] || [];
+  const st = $('#payStatus');
+  st.className = 'chip ' + (list.length ? 'sent' : 'todo');
+  st.textContent = list.length ? `Envoyée ${list.length} fois` : 'Pas encore envoyée';
+  const ask = ++payReq;
+  $('#payChanges').innerHTML = '';
+  if (!list.length) return;
+  const m = await invApi('/api/payroll/mail', { month }).catch(() => null);
+  if (!m || ask !== payReq) return;
+  $('#payChanges').innerHTML = `<div class="pay-changes"><h4>Changements depuis l'envoi n°${m.prev.n}</h4>${m.lines.length
+    ? `<ul>${m.lines.map(l => `<li>${esc(l.replace(/^- /, ''))}</li>`).join('')}</ul><p class="hint">Ils seront en orange dans la fiche (envoi n°${m.n}).</p>`
+    : '<p class="muted">Rien n\'a changé : pas besoin de renvoyer la fiche.</p>'}</div>`;
 }
 $('#payHistory').addEventListener('click', e => { const b = e.target.closest('[data-payv]'); if (b) downloadXlsx('/api/export-salaires.xlsx', { version: b.dataset.payv }); });
 $('#payEmailSave').onclick = () => api('/api/payroll/email', { email: $('#payEmail').value }).then(() => { renderPaySend(); toast('Adresse de la RH enregistrée'); }).catch(() => {});
 $('#paySent').onclick = async () => {
   const n = ((data.hr.payroll || {})[month] || []).length + 1;
   if (!confirm(`Marquer la fiche de ${$('#payMonth').textContent} comme envoyée à la RH (envoi n°${n}) ?\nLa prochaine fiche montrera en orange ce qui a changé depuis.`)) return;
-  try { await api('/api/payroll/sent', {}); renderPaySend(); toast(`Envoi n°${n} enregistré`); } catch {}
+  try { await api('/api/payroll/sent', {}); renderPayPage(); toast(`Envoi n°${n} enregistré`); } catch {}
 };
 // Mail : sur ordinateur, un nouveau message dans Outlook sur le web (adresse de la RH, objet et texte déjà remplis)
 // et la fiche téléchargée à côté, à glisser dans le message (Outlook ne permet pas de joindre un fichier par un lien) ;

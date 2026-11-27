@@ -7,14 +7,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261127111126">
+  <link rel="stylesheet" href="style.css?v=20261127111640">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#1d2330">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="theme-shyfter.css?v=20261127111126">
-  <link rel="stylesheet" href="theme-refonte.css?v=20261127111126">
-  <link rel="stylesheet" href="theme-dark.css?v=20261127111126">
+  <link rel="stylesheet" href="theme-shyfter.css?v=20261127111640">
+  <link rel="stylesheet" href="theme-refonte.css?v=20261127111640">
+  <link rel="stylesheet" href="theme-dark.css?v=20261127111640">
   <!-- Apparence choisie sur cet appareil (nouveau thème par défaut, l'ancien reste disponible dans Paramètres). -->
   <!-- Apparence « Nouveau » (menu à gauche). La refonte (theme-refonte.css, classe refonte) reste dans les fichiers, inactive. -->
   <script>document.documentElement.classList.add('theme-new');
@@ -73,9 +73,12 @@
         <button class="nav" id="formOpen" data-go="formation"><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/></svg>Formation</button>
         <button class="nav" id="reqOpen" data-go="requests"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>Demandes</button>
         <div class="nav-label">Équipe</div>
-        <button class="nav" id="openTeam" data-go="team"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.8.7 3 2.5 3.5 5.2"/></svg>Équipe</button>
-        <button class="nav" data-go="hr"><svg viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="18" rx="2"/><path d="M9 3.5h6v3H9zM8.5 11h7M8.5 15h7M8.5 19h4"/></svg>RH</button>
+        <button class="nav" id="openTeam" data-go="team"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.8.7 3 2.5 3.5 5.2"/></svg>Employés</button>
+        <button class="nav no-bordet" id="grpOpen" data-go="groups"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="8" y="13" width="8" height="7" rx="1.5"/></svg>Groupes de week-end</button>
+        <button class="nav admin-only no-bordet" id="accessOpen" data-go="access"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18h2"/></svg>Espace employé</button>
         <div class="nav-label">Gestion</div>
+        <button class="nav" data-go="hr"><svg viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="18" rx="2"/><path d="M9 3.5h6v3H9zM8.5 11h7M8.5 15h7M8.5 19h4"/></svg>RH</button>
+        <button class="nav admin-only" id="payOpen" data-go="salaires"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg>Salaires</button>
         <button class="nav admin-only" id="invOpen" data-go="invoices"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 11h7M9 15h7M9 19h4"/></svg>Factures</button>
         <button class="nav emp-ok" data-go="stats"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Statistiques</button>
       </nav>
@@ -247,13 +250,7 @@
       </section>
 
       <!-- Équipe -->
-      <section class="page" id="teamDlg" data-page="team" data-title="Équipe" data-sub="Noms, groupes de week-end, arrivées et départs. Une personne qui part garde son historique.">
-        <div class="card grp-card no-bordet">
-          <div class="card-head"><h3>Groupes de week-end</h3><span class="muted" id="grpInfo"></span></div>
-          <p class="muted">Pour chaque groupe, choisis les personnes dans les listes (« + ajouter une personne » pour en mettre autant que tu veux). « + Créer un groupe » en ajoute un. <b>L'horaire déjà fait ne change pas</b> : les nouveaux groupes s'appliquent quand tu cliques sur « Générer le mois ».</p>
-          <div class="grp-board" id="grpBoard"></div>
-          <div class="row"><button id="grpSave" class="primary" disabled>Enregistrer les groupes</button><button id="grpReset" class="ghost" hidden>Annuler les changements</button><span class="team-err" id="grpErr" hidden></span></div>
-        </div>
+      <section class="page" id="teamDlg" data-page="team" data-title="Employés" data-sub="Prénoms et noms de l'équipe, chef terrain et chef de parc. Une personne qui part garde son historique.">
         <div class="card">
           <div class="card-head"><h3>Employés</h3></div>
           <p class="muted" id="teamGroupsInfo">Prénom et nom de chaque personne. « Retirer » pour quelqu'un qui part. Les groupes de week-end se changent dans la carte au-dessus.</p>
@@ -266,25 +263,26 @@
           <div class="card-head"><h3>Chef terrain &amp; chef de parc</h3><button id="teamChefBtn">Modifier</button></div>
           <div id="teamChefInfo" class="muted"></div>
         </div>
-        <div class="card admin-only" id="payCard">
-          <div class="card-head"><h3>Fiche salaires</h3><button id="payDownload">⬇ Fiche salaires du mois</button></div>
-          <p class="muted">Ce qui est écrit en début de ligne dans la fiche salaires. Le calendrier et les totaux sont remplis tout seuls à partir de l'horaire du mois.</p>
-          <div class="scroll-x"><table class="list" id="payList"></table></div>
-          <div class="row"><button id="paySave" class="primary">Enregistrer</button></div>
-          <div class="pay-send">
-            <h4>Envois à la RH · <span id="payMonth"></span></h4>
-            <p class="muted">Chaque fois que tu renvoies la fiche du mois (une maladie arrivée après, un changement…), les cases qui ont changé depuis l'envoi d'avant sont en orange : la nouvelle valeur en grand, l'ancienne en petit barrée.</p>
-            <div class="row"><label class="grow">Adresse e-mail de la RH <input id="payEmail" type="email" placeholder="adresse de la RH" autocomplete="off"></label><button id="payEmailSave" class="ghost">Enregistrer l'adresse</button></div>
-            <div id="payHistory"></div>
-            <div class="row"><button id="payMail" class="primary">📧 Préparer le mail pour la RH</button><button id="paySent">✓ Marquer comme envoyée</button><button id="payCal" class="ghost">📅 Ajouter à mon agenda</button></div>
-            <p class="hint" id="payHint"></p>
-          </div>
+      </section>
+
+      <!-- Groupes de week-end -->
+      <section class="page" data-page="groups" data-title="Groupes de week-end" data-sub="Qui est en week-end obligatoire avec qui. L'horaire déjà fait ne change pas : les nouveaux groupes s'appliquent avec « Générer le mois ».">
+        <div class="card grp-card no-bordet">
+          <div class="card-head"><h3>Groupes de week-end</h3><span class="muted" id="grpInfo"></span></div>
+          <p class="muted">Pour chaque groupe, choisis les personnes dans les listes (« + ajouter une personne » pour en mettre autant que tu veux). « + Créer un groupe » en ajoute un. <b>L'horaire déjà fait ne change pas</b> : les nouveaux groupes s'appliquent quand tu cliques sur « Générer le mois ».</p>
+          <div class="grp-board" id="grpBoard"></div>
+          <div class="row"><button id="grpSave" class="primary" disabled>Enregistrer les groupes</button><button id="grpReset" class="ghost" hidden>Annuler les changements</button><span class="team-err" id="grpErr" hidden></span></div>
         </div>
+      </section>
+
+      <!-- Espace employé -->
+      <section class="page" data-page="access" data-title="Espace employé" data-sub="Inviter chacun dans son espace sur son téléphone : son horaire publié, ses zones et ses heures.">
         <div class="card" id="teamAccessCard" hidden>
           <div class="card-head"><h3>Espace employé</h3></div>
           <p class="muted">Chacun peut avoir son espace sur son téléphone : son horaire publié, l'horaire de l'équipe, ses zones du jour et ses heures (jamais la RH). Invite la personne avec son adresse e-mail : l'outil te donne un lien à lui envoyer par WhatsApp ou SMS.</p>
           <div class="scroll-x"><table class="list" id="teamAccess"></table></div>
         </div>
+        <p class="muted access-off">L'espace employé se gère en ligne, avec un compte administrateur.</p>
       </section>
 
       <!-- Espace employé -->
@@ -552,6 +550,37 @@
         </div>
       </section>
 
+      <!-- Salaires : la fiche du mois pour la RH, ses envois et les réglages -->
+      <section class="page" data-page="salaires" data-title="Salaires" data-sub="La fiche salaires du mois pour la RH : la préparer, l'envoyer, et la renvoyer avec les changements mis en évidence.">
+        <div class="pay-page">
+          <div class="card pay-now">
+            <div class="card-head"><h3>Fiche de <span id="payMonth"></span></h3><span class="chip" id="payStatus"></span></div>
+            <p class="muted" id="payHint"></p>
+            <ol class="pay-steps">
+              <li><span class="n">1</span><div><b>Vérifier la fiche</b><small>Remplie toute seule à partir de l'horaire du mois.</small></div><button id="payDownload">⬇ Télécharger la fiche</button></li>
+              <li><span class="n">2</span><div><b>Envoyer à la RH</b><small>Ouvre Outlook avec le mail prêt ; la fiche se télécharge : glisse-la dans le message.</small></div><button id="payMail" class="primary">📧 Préparer le mail</button></li>
+              <li><span class="n">3</span><div><b>Noter l'envoi</b><small>La fiche suivante montrera en orange ce qui a changé depuis.</small></div><button id="paySent">✓ Marquer comme envoyée</button></li>
+            </ol>
+            <div id="payChanges"></div>
+            <div class="row pay-extra"><button id="payCal" class="ghost">📅 Ajouter à mon agenda</button></div>
+          </div>
+          <div class="card pay-hist-card">
+            <div class="card-head"><h3>Envois du mois</h3></div>
+            <div id="payHistory"></div>
+          </div>
+          <div class="card pay-settings">
+            <div class="card-head"><h3>Réglages</h3></div>
+            <div class="row"><label class="grow">Adresse e-mail de la RH <input id="payEmail" type="email" placeholder="adresse de la RH" autocomplete="off"></label><button id="payEmailSave">Enregistrer l'adresse</button></div>
+            <details class="pay-people">
+              <summary>Infos de chaque personne (nom de famille, statut, catégorie, heures)</summary>
+              <p class="muted">Ce qui est écrit en début de ligne dans la fiche salaires.</p>
+              <div class="scroll-x"><table class="list" id="payList"></table></div>
+              <div class="row"><button id="paySave" class="primary">Enregistrer</button></div>
+            </details>
+          </div>
+        </div>
+      </section>
+
       <section class="page" data-page="stats" data-title="Statistiques" data-sub-emp="Répartition des horaires, des matchs et des dimanches d'ouverture." data-sub="Roulement des matchs et des dimanches d'ouverture, compteurs du mois.">
         <div class="card">
           <h3 class="no-bordet-card">Roulement foot ⚽ et dimanches d'ouverture <span class="muted" id="dutySeason"></span></h3>
@@ -714,7 +743,7 @@
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
-  <script src="backend.js?v=20261127111126"></script>
-  <script src="app.js?v=20261127111126"></script>
+  <script src="backend.js?v=20261127111640"></script>
+  <script src="app.js?v=20261127111640"></script>
 </body>
 </html>

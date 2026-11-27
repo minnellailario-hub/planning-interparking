@@ -60,7 +60,7 @@ h1, h2, h3, h4 { letter-spacing: -.01em; }
 .icon-btn:hover { background: var(--surface); }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; }
 /* Mois et actions seulement sur les pages qui en ont besoin */
-body:not([data-page="dashboard"]):not([data-page="planning"]):not([data-page="stats"]) .topbar .monthnav,
+body:not([data-page="dashboard"]):not([data-page="planning"]):not([data-page="stats"]):not([data-page="salaires"]) .topbar .monthnav,
 body:not([data-page="dashboard"]):not([data-page="planning"]):not([data-page="stats"]) .topbar .actions { display: none; }
 body:not([data-page="planning"]) #print { display: none; }
 
@@ -1081,3 +1081,32 @@ body.site-bordet .card:has(> .no-bordet-card) { display: none !important; }
 .pay-hist li .muted { flex: 1; }
 .pay-send .row { align-items: flex-end; }
 .pay-send label.grow input { width: 100%; max-width: 380px; }
+
+/* Page Salaires */
+.pay-page { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.pay-page .pay-now { grid-row: span 2; }
+@media (max-width: 1000px) { .pay-page { grid-template-columns: 1fr; } .pay-page .pay-now { grid-row: auto; } }
+.pay-steps { list-style: none; margin: 14px 0; padding: 0; display: grid; gap: 10px; }
+.pay-steps li { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); flex-wrap: wrap; }
+.pay-steps li > div { flex: 1 1 220px; display: flex; flex-direction: column; gap: 2px; }
+.pay-steps li small { color: var(--muted); }
+.pay-steps .n { width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; background: var(--accent-soft); color: var(--ok); flex: 0 0 30px; }
+.pay-steps li button { min-width: 200px; }
+.pay-changes { margin: 6px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--warn-bg); }
+.pay-changes h4 { margin: 0 0 6px; color: var(--warn); }
+.pay-changes ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.pay-extra { margin-top: 10px; }
+.pay-settings label.grow { flex: 1 1 260px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.pay-settings label.grow input { width: 100%; }
+.pay-settings .row { align-items: flex-end; }
+.pay-people { margin-top: 14px; }
+.pay-people summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+#payStatus.sent { background: var(--ok-soft); color: var(--ok); }
+#payStatus.todo { background: var(--warn-bg); color: var(--warn); }
+
+/* Espace employé : message quand la carte n'est pas disponible (en local, ou pas administrateur) */
+.access-off { display: none; }
+#teamAccessCard[hidden] + .access-off { display: block; }
+.pay-steps li button { min-width: 230px; flex: 0 0 auto; }
+.pay-steps li > div { flex: 1 1 200px; min-width: 0; }
+.pay-settings label.grow { text-align: left; align-items: stretch; }
