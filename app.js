@@ -3363,7 +3363,7 @@ $('#payMail').onclick = async () => {
   const w = phone ? null : window.open('about:blank', '_blank');
   try {
     if (!phone) {
-      const m = await api('/api/payroll/mail', {});
+      const m = await invApi('/api/payroll/mail', { month });
       const p = new URLSearchParams({ to: m.to || '', subject: m.subject, body: m.body });
       const url = 'https://outlook.cloud.microsoft/mail/deeplink/compose?' + p.toString().replace(/\+/g, '%20');
       if (w) w.location.href = url; else window.open(url, '_blank');
@@ -3373,7 +3373,7 @@ $('#payMail').onclick = async () => {
       return;
     }
     if (phone && backend) {
-      const m = await api('/api/payroll/mail', {});
+      const m = await invApi('/api/payroll/mail', { month });
       const out = await backend.handle('GET', '/api/export-salaires.xlsx', { month }, {});
       const file = new File([out.xlsx], out.filename, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       if (navigator.canShare({ files: [file] })) {
