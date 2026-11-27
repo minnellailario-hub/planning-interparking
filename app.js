@@ -2394,7 +2394,8 @@ function renderRemark() {
     ${r.motif === 'talk' ? `<label class="zs-field">Avec qui ? <select data-r="colleague"><option value="">— Un collègue —</option>${others.map(o => `<option value="${o.id}" ${o.id === r.colleague ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select></label>
       <p class="muted small">La remarque ne concerne que la personne qui a quitté sa zone.</p>` : ''}
     ${r.motif === 'late' ? `<label class="zs-field">Arrivé à <input type="time" data-r="time" value="${r.time}"></label>` : ''}
-    <label class="zs-field">Détail (facultatif) <textarea data-r="text" rows="3" placeholder="Ce que tu as vu…">${esc(r.text)}</textarea></label>
+    <label class="zs-field">Détail (facultatif) <textarea class="zs-text" data-r="text" rows="5" placeholder="Ce que tu as vu, comme ça vient…">${esc(r.text)}</textarea></label>
+    <p class="zs-ai">✨ Écris comme ça vient : l'IA met ton texte au propre pour la RH et le Reporting. Ce que tu as écrit reste dans « Mon texte ».</p>
     <div class="row"><button type="button" class="mic" id="zsMic">${zDict ? '■ Arrêter' : '🎤 Dicter'}</button>
       <label class="check"><input type="checkbox" data-r="told" ${r.told ? 'checked' : ''}> Dit oralement à la personne</label></div>
     <div class="row zs-actions"><button class="primary" id="zsSave" ${r.personId && r.motif ? '' : 'disabled'}>Enregistrer la remarque</button><button class="ghost" data-close>Annuler</button></div>
@@ -2443,8 +2444,10 @@ $('#zSheetBody').addEventListener('click', async e => {
     if (e.target.closest('#zsSave')) {
       const r = remark;
       if (r.motif === 'talk' && !r.colleague && !confirm('Aucun collègue choisi. Enregistrer quand même ?')) return;
+      const btn = e.target.closest('#zsSave'); btn.disabled = true; btn.textContent = String(r.text || '').trim() ? '✨ Mise au propre…' : 'Enregistrement…';
       const j = await api('/api/hr/field', { date: zDate, personId: r.personId, motif: r.motif, colleague: r.colleague, text: r.text, told: r.told, time: r.time, slot: r.slot }).catch(() => null);
-      if (j) { zData = j.zones; zCounts = j.fieldCounts; sheet.close(); renderZones(); toast('Remarque enregistrée (RH et Reporting du jour)'); }
+      if (j) { zData = j.zones; zCounts = j.fieldCounts; sheet.close(); renderZones(); toast(j.reformError ? 'Remarque enregistrée (texte gardé tel quel : ' + j.reformError + ')' : 'Remarque enregistrée et mise au propre (RH et Reporting du jour)'); }
+      else if (btn.isConnected) { btn.disabled = false; btn.textContent = 'Enregistrer la remarque'; }
     }
     return;
   }

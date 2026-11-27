@@ -1110,3 +1110,9 @@ body.site-bordet .card:has(> .no-bordet-card) { display: none !important; }
 .pay-steps li button { min-width: 230px; flex: 0 0 auto; }
 .pay-steps li > div { flex: 1 1 200px; min-width: 0; }
 .pay-settings label.grow { text-align: left; align-items: stretch; }
+
+/* Remarque terrain : libellés à gauche, grande zone de texte dans la police de l'outil */
+.zs-field { align-items: stretch; text-align: left; }
+.zs-field textarea.zs-text { width: 100%; box-sizing: border-box; min-height: 130px; font: inherit; font-size: 16px; font-weight: 400; line-height: 1.5;
+  padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); resize: vertical; }
+.zs-ai { margin: -4px 0 10px; font-size: 12.5px; color: var(--muted); }
