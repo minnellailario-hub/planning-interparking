@@ -3255,7 +3255,7 @@ function loadTeam(force) {
   teamDirty = false; $('#teamErr').hidden = true;
   renderTeam();
 }
-$('#openTeam').onclick = () => { loadTeam(true); loadGroups(true); renderPay(); $('#teamDlg').showModal(); };
+$('#openTeam').onclick = () => { loadTeam(true); loadGroups(true); renderPay(); renderPaySend(); $('#teamDlg').showModal(); };
 $('#teamChefBtn').onclick = () => openChef();
 $('#teamList').addEventListener('change', e => {
   const { i, k } = e.target.dataset; if (i === undefined) return;
@@ -3330,6 +3330,56 @@ $('#paySave').onclick = async () => {
   await api('/api/hr/payinfo', { people }).then(() => toast('Infos de la fiche salaires enregistrées')).catch(() => {});
 };
 const payDownload = () => downloadXlsx('/api/export-salaires.xlsx', {});
+// Envois à la RH : liste des envois du mois, mail prêt pour Outlook, « Marquer comme envoyée ».
+function renderPaySend() {
+  if (!data || data.account.role !== 'admin' || !data.hr) return;
+  const list = (data.hr.payroll || {})[month] || [], n = list.length + 1;
+  const [y, m] = month.split('-').map(Number);
+  $('#payMonth').textContent = `${MONTHS[m - 1]} ${y}`;
+  if (document.activeElement !== $('#payEmail')) $('#payEmail').value = data.hr.payrollEmail || '';
+  const when = iso => new Date(iso).toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit' }) + ' à ' + new Date(iso).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+  $('#payHistory').innerHTML = list.length ? `<ul class="pay-hist">${list.slice().reverse().map(e => `<li><b>Envoi n°${e.n}</b><span>${when(e.at)}${e.by ? ' · ' + esc(personLabel(e.by)) : ''}</span>
+      <span class="muted">${e.n === 1 ? 'premier envoi' : e.changes ? e.changes + ' case' + (e.changes > 1 ? 's' : '') + ' changée' + (e.changes > 1 ? 's' : '') : 'aucun changement'}</span>
+      <button class="ghost" data-payv="${e.n}" title="Re-télécharger cette version">⬇ Fiche</button></li>`).join('')}</ul>`
+    : '<p class="muted">Pas encore envoyée ce mois-ci.</p>';
+  $('#payMail').textContent = `📧 Préparer le mail · envoi n°${n}`;
+  $('#paySent').textContent = `✓ Marquer l'envoi n°${n} comme envoyé`;
+  $('#payHint').textContent = list.length ? `La prochaine fiche (envoi n°${n}) montre ce qui a changé depuis l'envoi n°${list.length}.` : "Une fois le mail envoyé, clique sur « Marquer comme envoyé » : la fiche suivante montrera ce qui a changé.";
+}
+$('#payHistory').addEventListener('click', e => { const b = e.target.closest('[data-payv]'); if (b) downloadXlsx('/api/export-salaires.xlsx', { version: b.dataset.payv }); });
+$('#payEmailSave').onclick = () => api('/api/payroll/email', { email: $('#payEmail').value }).then(() => { renderPaySend(); toast('Adresse de la RH enregistrée'); }).catch(() => {});
+$('#paySent').onclick = async () => {
+  const n = ((data.hr.payroll || {})[month] || []).length + 1;
+  if (!confirm(`Marquer la fiche de ${$('#payMonth').textContent} comme envoyée à la RH (envoi n°${n}) ?\nLa prochaine fiche montrera en orange ce qui a changé depuis.`)) return;
+  try { await api('/api/payroll/sent', {}); renderPaySend(); toast(`Envoi n°${n} enregistré`); } catch {}
+};
+// Mail : sur ordinateur, un brouillon .eml (s'ouvre dans Outlook avec la fiche jointe, il reste à cliquer « Envoyer ») ;
+// sur téléphone, le partage du téléphone (choisir Outlook) avec la fiche, l'objet et le texte.
+$('#payMail').onclick = async () => {
+  const b = $('#payMail'); b.disabled = true;
+  try {
+    const phone = matchMedia('(pointer: coarse)').matches && navigator.canShare;
+    if (phone && backend) {
+      const m = await api('/api/payroll/mail', {});
+      const out = await backend.handle('GET', '/api/export-salaires.xlsx', { month }, {});
+      const file = new File([out.xlsx], out.filename, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      if (navigator.canShare({ files: [file] })) {
+        if (m.to) { try { await navigator.clipboard.writeText(m.to); toast("Adresse de la RH copiée : colle-la dans « À »"); } catch {} }
+        await navigator.share({ files: [file], title: m.subject, text: m.body });
+        return;
+      }
+    }
+    if (!backend) { location.href = '/api/payroll/mail.eml?' + new URLSearchParams({ month }); }
+    else {
+      const out = await backend.handle('GET', '/api/payroll/mail.eml', { month }, {});
+      if (!out.file) throw new Error((out.json && out.json.error) || 'Mail impossible');
+      saveFile(new File([out.file], out.filename, { type: 'message/rfc822' }));
+    }
+    toast("Ouvre le fichier .eml téléchargé : le mail s'ouvre dans Outlook avec la fiche jointe. Après l'envoi, clique « Marquer comme envoyé ».");
+    if (!data.hr.payrollEmail) toast("Pense à enregistrer l'adresse de la RH : elle sera mise dans « À » toute seule.");
+  } catch (err) { if (err && err.name !== 'AbortError') toast(err.message || 'Mail impossible'); }
+  finally { b.disabled = false; }
+};
 $('#payDownload').onclick = payDownload;
 $('#payXlsx').onclick = payDownload;
 
