@@ -3393,6 +3393,20 @@ $('#payMail').onclick = async () => {
   } catch (err) { if (w && !w.closed && w.location.href === 'about:blank') w.close(); if (err && err.name !== 'AbortError') toast(err.message || 'Mail impossible'); }
   finally { b.disabled = false; }
 };
+// Mon agenda Outlook : un rendez-vous « Fiche salaires … envoyée à la RH (envoi n°X) » aujourd'hui, avec la liste des changements.
+$('#payCal').onclick = async () => {
+  const w = window.open('about:blank', '_blank');
+  try {
+    const m = await invApi('/api/payroll/mail', { month });
+    const start = new Date(); start.setSeconds(0, 0); start.setMinutes(Math.ceil(start.getMinutes() / 15) * 15);
+    const end = new Date(start.getTime() + 15 * 60000);
+    const title = m.subject.replace(/^Salaires /, 'Fiche salaires ').replace(/ – envoi n°\d+ \(modifications\)$/, '') + ` envoyée à la RH (envoi n°${m.n})`;
+    const body = m.body.split('\n').filter(l => !/^(Bonjour,|Bonne journée,|Vous trouverez en pièce jointe.*)$/.test(l)).join('\n').trim();
+    const p = new URLSearchParams({ subject: title, body, startdt: start.toISOString(), enddt: end.toISOString(), allday: 'false' });
+    const url = 'https://outlook.cloud.microsoft/calendar/deeplink/compose?' + p.toString().replace(/\+/g, '%20');
+    if (w) w.location.href = url; else window.open(url, '_blank');
+  } catch (err) { if (w) w.close(); }
+};
 $('#payDownload').onclick = payDownload;
 $('#payXlsx').onclick = payDownload;
 
