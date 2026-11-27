@@ -16,6 +16,7 @@ html.dark.theme-new { --accent: #3ccb7f; }
 html.dark body { background: var(--bg); color: var(--text); }
 html.dark.theme-new .side-brand .logo { filter: none; }
 html.dark img.logo-img, html.dark .logo-img { background: #fff; border-radius: 6px; }
+html.dark .toast { background: #2b313d; border: 1px solid var(--line-strong); }
 html.dark ::placeholder { color: #6b7385; }
 html.dark input, html.dark select, html.dark textarea { background: var(--surface-2); color: var(--text); }
 html.dark ::-webkit-scrollbar { width: 10px; height: 10px; }
