@@ -68,6 +68,22 @@ function monthHours(r) {
   return Object.entries(r.cells).filter(([d, c]) => d.startsWith(month) && c && c.kind === 'work').reduce((n, [, c]) => n + (parseInt(shiftDur(c.label)) || 0), 0);
 }
 
+// ----- Mode sombre : bouton lune / soleil en haut, choix gardé sur cet appareil -----
+const MOON = '<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
+const SUN = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+function renderDarkBtn() {
+  const on = document.documentElement.classList.contains('dark');
+  $('#darkBtn').innerHTML = on ? SUN : MOON;
+  $('#darkBtn').title = on ? 'Mode clair' : 'Mode sombre';
+  const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.content = on ? '#14171d' : '#1d2330';
+}
+$('#darkBtn').onclick = () => {
+  const on = document.documentElement.classList.toggle('dark');
+  try { localStorage.setItem('dark', on ? '1' : '0'); } catch {}
+  renderDarkBtn();
+};
+renderDarkBtn();
+
 // ----- Parkings liés : Westland et Bordet (sélecteur en haut à gauche) -----
 const SITE_HIDDEN = ['zones', 'fixed', 'calendar', 'students']; // pages sans objet à Bordet
 function renderSite() {

@@ -1059,3 +1059,8 @@ body.employee .emp-only { display: block; }
 body.site-bordet .nav[data-go="zones"], body.site-bordet .nav[data-go="fixed"], body.site-bordet .nav[data-go="calendar"], body.site-bordet .nav[data-go="students"],
 body.site-bordet #pubBar, body.site-bordet #rotBar, body.site-bordet #teamAccessCard, body.site-bordet .no-bordet { display: none !important; }
 body.site-bordet .card:has(> .no-bordet-card) { display: none !important; }
+
+/* Bouton mode sombre (lune / soleil), à côté de la cloche */
+.dark-btn { width: 40px; height: 40px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; }
+.dark-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 900px) { .topbar .page-title { flex: 1 1 100px; } .dark-btn { width: 36px; height: 36px; } }
