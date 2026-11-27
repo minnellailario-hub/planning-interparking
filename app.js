@@ -311,13 +311,11 @@ function renderHrTeam() {
     + `<span class="neg"><b>${tot('neg')}</b> négatives</span><span class="late"><b>${tot('late')}</b> retards${tot('lateMin') ? ` · ${tot('lateMin')} min` : ''}</span><span class="muted">${r.short}</span>`;
   $('#hrTeam').innerHTML = all.map(({ e, s }) => {
     const bal = balanceOf(e.id);
-    const last = s.notes.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 2);
     return `<button type="button" class="hrx-card" data-emp="${e.id}">
       <span class="hrx-card-top"><i class="hrx-av ${hrAv(e.id)}">${esc(initials(e.name))}</i>
         <span class="who"><b>${esc(e.name)}</b><small>${esc(e.note || 'Agent')}</small></span>
         <span class="hrx-bal ${bal > 0 ? 'pos' : bal < 0 ? 'neg' : ''}" title="Solde d'heures (depuis le début)">⏱ ${bal ? (bal > 0 ? '+' : '−') + hm(Math.abs(bal)) : 'à jour'}</span></span>
       <span class="hrx-pills"><span class="pos ${s.pos ? '' : 'zero'}">👍 ${s.pos}</span><span class="neg ${s.neg ? '' : 'zero'}">👎 ${s.neg}</span><span class="late ${s.late ? '' : 'zero'}">⏰ ${s.late}${s.late ? ` · ${s.lateMin} min` : ''}</span></span>
-      <span class="hrx-last">${last.length ? last.map(n => `<span class="${hrKindOf(n)}">${esc(n.late ? `Retard de ${n.late.minutes} min · ${fmtDate(n.late.date)}` : firstLine(n.textPro || n.text))}</span>`).join('') : `<span class="none">Rien de noté ${r.short}.</span>`}</span>
       <span class="hrx-foot"><span>${s.lastAt ? 'Dernière note ' + ago(s.lastAt) : 'Aucune note pour le moment'}</span><span class="go">Ouvrir le dossier →</span></span>
     </button>`;
   }).join('') || '<p class="muted">Aucun employé.</p>';
