@@ -3353,12 +3353,25 @@ $('#paySent').onclick = async () => {
   if (!confirm(`Marquer la fiche de ${$('#payMonth').textContent} comme envoyée à la RH (envoi n°${n}) ?\nLa prochaine fiche montrera en orange ce qui a changé depuis.`)) return;
   try { await api('/api/payroll/sent', {}); renderPaySend(); toast(`Envoi n°${n} enregistré`); } catch {}
 };
-// Mail : sur ordinateur, un brouillon .eml (s'ouvre dans Outlook avec la fiche jointe, il reste à cliquer « Envoyer ») ;
+// Mail : sur ordinateur, un nouveau message dans Outlook sur le web (adresse de la RH, objet et texte déjà remplis)
+// et la fiche téléchargée à côté, à glisser dans le message (Outlook ne permet pas de joindre un fichier par un lien) ;
 // sur téléphone, le partage du téléphone (choisir Outlook) avec la fiche, l'objet et le texte.
 $('#payMail').onclick = async () => {
   const b = $('#payMail'); b.disabled = true;
+  const phone = matchMedia('(pointer: coarse)').matches && navigator.canShare;
+  // L'onglet Outlook s'ouvre tout de suite (sinon le navigateur bloque la fenêtre), puis reçoit l'adresse du message.
+  const w = phone ? null : window.open('about:blank', '_blank');
   try {
-    const phone = matchMedia('(pointer: coarse)').matches && navigator.canShare;
+    if (!phone) {
+      const m = await api('/api/payroll/mail', {});
+      const p = new URLSearchParams({ to: m.to || '', subject: m.subject, body: m.body });
+      const url = 'https://outlook.cloud.microsoft/mail/deeplink/compose?' + p.toString().replace(/\+/g, '%20');
+      if (w) w.location.href = url; else window.open(url, '_blank');
+      await downloadXlsx('/api/export-salaires.xlsx', {});
+      toast("Outlook est ouvert avec le mail prêt : glisse la fiche qui vient d'être téléchargée dans le message, puis Envoyer. Ensuite, clique « Marquer comme envoyé ».");
+      if (!m.to) toast("Pense à enregistrer l'adresse de la RH : elle sera mise dans « À » toute seule.");
+      return;
+    }
     if (phone && backend) {
       const m = await api('/api/payroll/mail', {});
       const out = await backend.handle('GET', '/api/export-salaires.xlsx', { month }, {});
@@ -3377,7 +3390,7 @@ $('#payMail').onclick = async () => {
     }
     toast("Ouvre le fichier .eml téléchargé : le mail s'ouvre dans Outlook avec la fiche jointe. Après l'envoi, clique « Marquer comme envoyé ».");
     if (!data.hr.payrollEmail) toast("Pense à enregistrer l'adresse de la RH : elle sera mise dans « À » toute seule.");
-  } catch (err) { if (err && err.name !== 'AbortError') toast(err.message || 'Mail impossible'); }
+  } catch (err) { if (w && !w.closed && w.location.href === 'about:blank') w.close(); if (err && err.name !== 'AbortError') toast(err.message || 'Mail impossible'); }
   finally { b.disabled = false; }
 };
 $('#payDownload').onclick = payDownload;
